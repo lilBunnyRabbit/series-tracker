@@ -6,27 +6,28 @@
 
   let playing = $state<string | null>(null);
 
-  const trailers = $derived.by(() => {
+  const ordered = $derived.by(() => {
     const yt = videos.filter((v) => v.site === "YouTube");
     const officialTrailers = yt.filter((v) => v.type === "Trailer" && v.official);
-    const trailers = yt.filter((v) => v.type === "Trailer");
+    const allTrailers = yt.filter((v) => v.type === "Trailer");
     const teasers = yt.filter((v) => v.type === "Teaser");
     const clips = yt.filter((v) => v.type === "Clip");
     const seen = new Set<string>();
-    const ordered = [...officialTrailers, ...trailers, ...teasers, ...clips].filter((v) => {
-      if (seen.has(v.key)) return false;
+    const result: typeof yt = [];
+    for (const v of [...officialTrailers, ...allTrailers, ...teasers, ...clips]) {
+      if (seen.has(v.key)) continue;
       seen.add(v.key);
-      return true;
-    });
-    return ordered.slice(0, 6);
+      result.push(v);
+    }
+    return result.slice(0, 6);
   });
 </script>
 
-{#if trailers.length > 0}
+{#if ordered.length > 0}
   <div class="space-y-2">
     <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Trailers & clips</h2>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-      {#each trailers as v (v.key)}
+      {#each ordered as v (v.key)}
         <div class="overflow-hidden rounded-lg border border-border bg-surface">
           {#if playing === v.key}
             <div class="aspect-video w-full">

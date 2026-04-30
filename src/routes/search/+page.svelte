@@ -1,8 +1,8 @@
 <script lang="ts">
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
-  import { movieDetail, posterUrl, searchMulti, tvDetail } from "$lib/tmdb";
-  import type { MovieEntry, SearchMultiPage, SearchMultiResult, TvEntry } from "$lib/types";
+  import { entryFromSearchResult, searchMulti } from "$lib/tmdb";
+  import type { SearchMultiPage, SearchMultiResult, Status } from "$lib/types";
 
   let query = $state("");
   let results = $state<SearchMultiPage | null>(null);
@@ -51,43 +51,10 @@
     };
   });
 
-  async function handleAdd(r: SearchMultiResult) {
+  async function handleAdd(r: SearchMultiResult, status: Status): Promise<void> {
     if (!store.apiKey) throw new Error("API key not set");
-    const now = new Date().toISOString();
-    if (r.media_type === "tv") {
-      const detail = await tvDetail(r.id, store.apiKey);
-      const entry: TvEntry = {
-        kind: "tv",
-        id: detail.id,
-        title: detail.name,
-        poster: posterUrl(detail.poster_path, "w342"),
-        year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
-        voteAverage: detail.vote_average,
-        seasons: detail.seasons
-          .filter((s) => s.season_number > 0 || s.episode_count > 0)
-          .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count })),
-        progress: {},
-        status: "plan",
-        addedAt: now,
-        updatedAt: now,
-      };
-      store.addToLibrary(entry);
-    } else if (r.media_type === "movie") {
-      const detail = await movieDetail(r.id, store.apiKey);
-      const entry: MovieEntry = {
-        kind: "movie",
-        id: detail.id,
-        title: detail.title,
-        poster: posterUrl(detail.poster_path, "w342"),
-        year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
-        voteAverage: detail.vote_average,
-        watched: false,
-        status: "plan",
-        addedAt: now,
-        updatedAt: now,
-      };
-      store.addToLibrary(entry);
-    }
+    const entry = await entryFromSearchResult(r, store.apiKey, status);
+    if (entry) store.addToLibrary(entry);
   }
 
   const filtered = $derived(results?.results.filter((r) => r.media_type !== "person") ?? []);
@@ -102,6 +69,8 @@
     bind:value={query}
     placeholder="Search for movies and TV shows..."
     autofocus
+    autocomplete="off"
+    spellcheck="false"
     class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 outline-none focus:border-accent"
   />
 

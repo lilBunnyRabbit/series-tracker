@@ -1,11 +1,15 @@
 import type {
+  Entry,
   MovieDetail,
   MovieDetailFull,
+  MovieEntry,
   SearchMultiPage,
   SearchMultiResult,
   SeasonDetail,
+  Status,
   TvDetail,
   TvDetailFull,
+  TvEntry,
 } from "./types";
 
 const BASE = "https://api.themoviedb.org/3";
@@ -17,17 +21,40 @@ export const posterUrl = (path: string | null, size: ImageSize = "w185"): string
   path ? `${IMG}/${size}${path}` : null;
 
 type CacheEntry = { data: unknown; expiresAt: number };
+
+const CACHE_MAX = 200;
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 function cacheKey(path: string, params: Record<string, string>): string {
-  const sortedKeys = Object.keys(params)
+  const keys = Object.keys(params)
     .filter((k) => k !== "api_key")
     .sort();
-  const qs = sortedKeys.map((k) => `${k}=${params[k]}`).join("&");
-  return `${path}?${qs}`;
+  return keys.length ? `${path}?${keys.map((k) => `${k}=${params[k]}`).join("&")}` : path;
+}
+
+function cacheGet<T>(key: string): T | undefined {
+  const hit = cache.get(key);
+  if (!hit) return undefined;
+  if (hit.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return undefined;
+  }
+  // LRU bump: re-insert to mark as most-recent
+  cache.delete(key);
+  cache.set(key, hit);
+  return hit.data as T;
+}
+
+function cacheSet(key: string, data: unknown, ttlMs: number): void {
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  if (cache.size > CACHE_MAX) {
+    // Map iteration is insertion order; first key is least-recent.
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
 }
 
 type GetOptions = {
@@ -46,8 +73,8 @@ async function get<T>(
   const ckey = cacheKey(path, params);
 
   if (!noCache) {
-    const hit = cache.get(ckey);
-    if (hit && hit.expiresAt > Date.now()) return hit.data as T;
+    const hit = cacheGet<T>(ckey);
+    if (hit !== undefined) return hit;
     const pending = inflight.get(ckey);
     if (pending) return (await pending) as T;
   }
@@ -63,7 +90,7 @@ async function get<T>(
       throw new Error(`TMDB ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
     }
     const data = (await res.json()) as T;
-    if (!noCache) cache.set(ckey, { data, expiresAt: Date.now() + ttlMs });
+    if (!noCache) cacheSet(ckey, data, ttlMs);
     return data;
   })();
 
@@ -76,12 +103,7 @@ async function get<T>(
 }
 
 export const searchMulti = (q: string, key: string, signal?: AbortSignal) =>
-  get<SearchMultiPage>(
-    "/search/multi",
-    key,
-    { query: q, include_adult: "false" },
-    { signal, ttlMs: 60 * 1000 }
-  );
+  get<SearchMultiPage>("/search/multi", key, { query: q, include_adult: "false" }, { signal, ttlMs: 60 * 1000 });
 
 export const tvDetail = (id: number, key: string, signal?: AbortSignal) =>
   get<TvDetail>(`/tv/${id}`, key, {}, { signal });
@@ -160,7 +182,62 @@ export async function popularTv(key: string, signal?: AbortSignal): Promise<Reco
 
 export const ping = (key: string) => get<{ images: unknown }>("/configuration", key, {}, { noCache: true });
 
-export function clearCache() {
+export function clearCache(): void {
   cache.clear();
   inflight.clear();
+}
+
+// ---- Entry constructors (single source of truth for SearchResult → library Entry conversion) ----
+
+export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): TvEntry {
+  const now = new Date().toISOString();
+  return {
+    kind: "tv",
+    id: detail.id,
+    title: detail.name,
+    poster: posterUrl(detail.poster_path, "w342"),
+    year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
+    voteAverage: detail.vote_average,
+    seasons: detail.seasons
+      .filter((s) => s.season_number > 0 || s.episode_count > 0)
+      .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count })),
+    progress: {},
+    status,
+    addedAt: now,
+    updatedAt: now,
+  };
+}
+
+export function entryFromMovieDetail(detail: MovieDetail, status: Status = "plan"): MovieEntry {
+  const now = new Date().toISOString();
+  return {
+    kind: "movie",
+    id: detail.id,
+    title: detail.title,
+    poster: posterUrl(detail.poster_path, "w342"),
+    year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
+    voteAverage: detail.vote_average,
+    watched: status === "completed",
+    status,
+    addedAt: now,
+    updatedAt: now,
+  };
+}
+
+// Fetches detail then constructs an Entry. Used by Search/Discover "Add" handlers.
+export async function entryFromSearchResult(
+  r: SearchMultiResult,
+  apiKey: string,
+  status: Status = "plan",
+  signal?: AbortSignal
+): Promise<Entry | null> {
+  if (r.media_type === "tv") {
+    const detail = await tvDetail(r.id, apiKey, signal);
+    return entryFromTvDetail(detail, status);
+  }
+  if (r.media_type === "movie") {
+    const detail = await movieDetail(r.id, apiKey, signal);
+    return entryFromMovieDetail(detail, status);
+  }
+  return null;
 }

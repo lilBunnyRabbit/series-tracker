@@ -8,11 +8,16 @@
   let { children } = $props();
 
   onMount(async () => {
-    const { registerSW } = await import("virtual:pwa-register");
-    registerSW({ immediate: true });
+    try {
+      const { registerSW } = await import("virtual:pwa-register");
+      registerSW({ immediate: true });
+    } catch (e) {
+      console.warn("[pwa] service worker registration failed", e);
+    }
   });
 
-  const isSettings = $derived(page.url.pathname.includes("/settings"));
+  const relPath = $derived(page.url.pathname.replace(base, ""));
+  const isSettings = $derived(relPath.startsWith("/settings"));
 
   const items: { href: string; label: string; path: string; icon: string }[] = [
     { href: `${base}/`, label: "Library", path: "/", icon: "📚" },
@@ -26,8 +31,6 @@
     if (path === "/") return p === `${base}/` || p === base;
     return p.startsWith(`${base}${path}`);
   }
-
-  const relPath = $derived(page.url.pathname.replace(base, ""));
 
   const pageTitle = $derived.by(() => {
     if (relPath === "/" || relPath === "") return "Library";
@@ -47,10 +50,12 @@
     if (d) return `${base}/`;
     return null;
   });
+
+  const documentTitle = $derived(pageTitle === "Library" ? "Series Tracker" : `${pageTitle} · Series Tracker`);
 </script>
 
 <svelte:head>
-  <title>Series Tracker</title>
+  <title>{documentTitle}</title>
 </svelte:head>
 
 <div class="flex min-h-[100dvh] flex-col">
@@ -70,14 +75,14 @@
           </a>
           <span class="text-sm font-medium">{pageTitle}</span>
         {:else}
-          <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight">
+          <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight" aria-label="Home">
             <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
           </a>
           <span class="text-sm font-medium text-muted">{pageTitle}</span>
         {/if}
       </div>
 
-      <a href="{base}/" class="hidden items-center gap-2 font-semibold tracking-tight sm:flex">
+      <a href="{base}/" class="hidden items-center gap-2 font-semibold tracking-tight sm:flex" aria-label="Home">
         <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
         <span>Series Tracker</span>
       </a>
@@ -118,6 +123,7 @@
   <nav
     class="sticky bottom-0 z-10 border-t border-border bg-bg/95 backdrop-blur sm:hidden"
     style="padding-bottom: env(safe-area-inset-bottom)"
+    aria-label="Primary"
   >
     <div class="mx-auto flex max-w-5xl items-stretch">
       {#each items as item (item.path)}

@@ -44,6 +44,16 @@ function entryKey(kind: "tv" | "movie", id: number): string {
   return `${kind}:${id}`;
 }
 
+function newer(a: Entry, b: Entry): Entry {
+  return (a.updatedAt ?? "") >= (b.updatedAt ?? "") ? a : b;
+}
+function latestDate(a: string, b: string): string {
+  return a >= b ? a : b;
+}
+function earliestDate(a: string, b: string): string {
+  return a <= b ? a : b;
+}
+
 function mergeEntries(a: Entry, b: Entry): Entry {
   if (a.kind !== b.kind) return newer(a, b);
   if (a.kind === "tv" && b.kind === "tv") {
@@ -64,7 +74,7 @@ function mergeEntries(a: Entry, b: Entry): Entry {
   }
   if (a.kind === "movie" && b.kind === "movie") {
     return {
-      ...(newer(a, b) as Entry),
+      ...newer(a, b),
       watched: a.watched || b.watched,
       updatedAt: latestDate(a.updatedAt, b.updatedAt),
       addedAt: earliestDate(a.addedAt, b.addedAt),
@@ -73,19 +83,22 @@ function mergeEntries(a: Entry, b: Entry): Entry {
   return newer(a, b);
 }
 
-function newer(a: Entry, b: Entry): Entry {
-  return (a.updatedAt ?? "") >= (b.updatedAt ?? "") ? a : b;
-}
-function latestDate(a: string, b: string): string {
-  return a >= b ? a : b;
-}
-function earliestDate(a: string, b: string): string {
-  return a <= b ? a : b;
-}
-
 function createStore() {
   const state = $state<Store>(structuredClone(empty));
   const meta = $state({ loaded: !browser, error: null as string | null, migratedFromLs: false });
+
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function flushPendingSave(): void {
+    if (!saveTimer) return;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    const snapshot = $state.snapshot(state) as Store;
+    void idbSet(IDB_KEY, snapshot).catch((e) => {
+      meta.error = e instanceof Error ? e.message : String(e);
+      console.error("[store] IDB save failed", e);
+    });
+  }
 
   if (browser) {
     void (async () => {
@@ -117,7 +130,6 @@ function createStore() {
       }
     })();
 
-    let saveTimer: ReturnType<typeof setTimeout> | null = null;
     $effect.root(() => {
       $effect(() => {
         // $state.snapshot traverses every property, so any nested mutation
@@ -126,6 +138,7 @@ function createStore() {
         if (!meta.loaded) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
+          saveTimer = null;
           void idbSet(IDB_KEY, snapshot).catch((e) => {
             meta.error = e instanceof Error ? e.message : String(e);
             console.error("[store] IDB save failed", e);
@@ -134,23 +147,15 @@ function createStore() {
       });
     });
 
-    if (typeof window !== "undefined") {
-      window.addEventListener("beforeunload", () => {
-        if (saveTimer) {
-          clearTimeout(saveTimer);
-          const snapshot = $state.snapshot(state) as Store;
-          void idbSet(IDB_KEY, snapshot);
-        }
-      });
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden" && saveTimer) {
-          clearTimeout(saveTimer);
-          saveTimer = null;
-          const snapshot = $state.snapshot(state) as Store;
-          void idbSet(IDB_KEY, snapshot);
-        }
-      });
-    }
+    window.addEventListener("beforeunload", flushPendingSave);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushPendingSave();
+    });
+  }
+
+  function withTimestamp<T extends { updatedAt: string }>(e: T): T {
+    e.updatedAt = new Date().toISOString();
+    return e;
   }
 
   return {
@@ -203,11 +208,12 @@ function createStore() {
       if (!s) return;
       const next = (e.progress[season] ?? 0) + delta;
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, next));
-      e.updatedAt = new Date().toISOString();
+      withTimestamp(e);
       const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       const anyProgress = Object.values(e.progress).some((v) => v > 0);
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
+      else if (!anyProgress && e.status === "completed") e.status = "watching";
     },
 
     setProgress(showId: number, season: number, value: number) {
@@ -216,7 +222,7 @@ function createStore() {
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, Math.floor(value || 0)));
-      e.updatedAt = new Date().toISOString();
+      withTimestamp(e);
     },
 
     incrementCurrent(showId: number): boolean {
@@ -236,7 +242,7 @@ function createStore() {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
       e.status = status;
-      e.updatedAt = new Date().toISOString();
+      withTimestamp(e);
     },
 
     setMovieWatched(id: number, watched: boolean) {
@@ -244,7 +250,8 @@ function createStore() {
       if (!e || e.kind !== "movie") return;
       e.watched = watched;
       if (watched && e.status !== "dropped") e.status = "completed";
-      e.updatedAt = new Date().toISOString();
+      else if (!watched && e.status === "completed") e.status = "watching";
+      withTimestamp(e);
     },
 
     pushSearchHistory(query: string) {
@@ -258,11 +265,12 @@ function createStore() {
       state.searchHistory = [];
     },
 
-    exportJson(): string {
+    /** Export library + search history. API key is excluded by default to avoid leaking secrets. */
+    exportJson({ includeApiKey = false }: { includeApiKey?: boolean } = {}): string {
       return JSON.stringify(
         {
           version: SCHEMA_VERSION,
-          apiKey: state.apiKey,
+          ...(includeApiKey ? { apiKey: state.apiKey } : {}),
           library: state.library,
           searchHistory: state.searchHistory,
         },
@@ -311,6 +319,10 @@ function createStore() {
     },
 
     async wipeAll() {
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+      }
       state.apiKey = null;
       state.library = {};
       state.searchHistory = [];

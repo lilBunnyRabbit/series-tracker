@@ -5,24 +5,34 @@
 
   let keyDraft = $state(store.apiKey ?? "");
   let savedNote = $state<string | null>(null);
+  let savedTimer: ReturnType<typeof setTimeout> | null = null;
   let testStatus = $state<"idle" | "testing" | "ok" | "fail">("idle");
   let testMessage = $state<string | null>(null);
   let importMessage = $state<string | null>(null);
   let importMode = $state<"replace" | "merge">("merge");
+  let exportApiKey = $state(false);
 
-  function save() {
-    store.setApiKey(keyDraft);
-    savedNote = "Saved.";
-    setTimeout(() => (savedNote = null), 1500);
+  function flashSaved(msg: string): void {
+    savedNote = msg;
+    if (savedTimer) clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+      savedNote = null;
+      savedTimer = null;
+    }, 1500);
   }
 
-  function clear() {
+  function save(): void {
+    store.setApiKey(keyDraft);
+    flashSaved("Saved.");
+  }
+
+  function clear(): void {
     if (!confirm("Forget the saved API key?")) return;
     store.setApiKey(null);
     keyDraft = "";
   }
 
-  async function test() {
+  async function test(): Promise<void> {
     if (!keyDraft.trim()) return;
     testStatus = "testing";
     testMessage = null;
@@ -36,39 +46,42 @@
     }
   }
 
-  function exportData() {
-    const json = store.exportJson();
+  function exportData(): void {
+    const json = store.exportJson({ includeApiKey: exportApiKey });
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `series-tracker-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }
 
-  async function importData(e: Event) {
-    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+  async function importData(e: Event): Promise<void> {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
     importMessage = null;
     try {
       const text = await file.text();
       const result = store.importJson(text, importMode);
       keyDraft = store.apiKey ?? "";
-      if (importMode === "replace") {
-        importMessage = `Replaced library with ${result.added} item(s).`;
-      } else {
-        importMessage = `Merged: ${result.added} added, ${result.merged} updated. Total: ${result.total}.`;
-      }
+      importMessage =
+        importMode === "replace"
+          ? `Replaced library with ${result.added} item(s).`
+          : `Merged: ${result.added} added, ${result.merged} updated. Total: ${result.total}.`;
     } catch (err) {
       importMessage = err instanceof Error ? err.message : String(err);
     }
-    (e.currentTarget as HTMLInputElement).value = "";
+    input.value = "";
   }
 
-  function wipe() {
+  async function wipe(): Promise<void> {
     if (!confirm("This will delete your entire library. Continue?")) return;
-    store.wipeLibrary();
+    await store.wipeAll();
+    keyDraft = "";
   }
 </script>
 
@@ -78,15 +91,20 @@
   <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
     <h2 class="font-medium">TMDB API key</h2>
     <p class="text-sm text-muted">
-      Stored only in your browser's localStorage. Get one from
-      <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" class="text-accent underline"
-        >themoviedb.org/settings/api</a
+      Stored only in your browser (IndexedDB). Get a free key from
+      <a
+        href="https://www.themoviedb.org/settings/api"
+        target="_blank"
+        rel="noopener"
+        class="text-accent underline">themoviedb.org/settings/api</a
       >.
     </p>
     <input
       type="password"
       bind:value={keyDraft}
       placeholder="Paste your v3 API key"
+      autocomplete="off"
+      spellcheck="false"
       class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
     />
     <div class="flex flex-wrap items-center gap-2">
@@ -117,7 +135,7 @@
       {/if}
     </div>
     {#if savedNote}
-      <p class="text-xs text-accent">{savedNote}</p>
+      <p class="text-xs text-primary">{savedNote}</p>
     {/if}
     {#if testMessage}
       <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-danger'}">{testMessage}</p>
@@ -131,7 +149,8 @@
       newer metadata wins). <strong>Replace</strong> overwrites your current library.
     </p>
 
-    <fieldset class="flex gap-4 text-sm">
+    <fieldset class="flex flex-wrap gap-4 text-sm">
+      <legend class="sr-only">Import mode</legend>
       <label class="flex items-center gap-2">
         <input type="radio" bind:group={importMode} value="merge" />
         Merge
@@ -139,6 +158,10 @@
       <label class="flex items-center gap-2">
         <input type="radio" bind:group={importMode} value="replace" />
         Replace
+      </label>
+      <label class="ml-auto flex items-center gap-2 text-xs text-muted">
+        <input type="checkbox" bind:checked={exportApiKey} />
+        Include API key in export
       </label>
     </fieldset>
 
@@ -159,7 +182,7 @@
         onclick={wipe}
         class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
       >
-        Wipe library
+        Wipe everything
       </button>
     </div>
     {#if importMessage}

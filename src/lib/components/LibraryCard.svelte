@@ -62,7 +62,7 @@
         onclick={handleQuickAdd}
         aria-label="Mark next episode watched"
         title="+1 episode ({currentSeasonHint})"
-        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-lg font-semibold text-bg opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100 active:opacity-100"
+        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-lg font-semibold text-bg opacity-90 shadow-lg transition focus:opacity-100 active:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
       >
         +
       </button>

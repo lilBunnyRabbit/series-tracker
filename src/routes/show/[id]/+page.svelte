@@ -3,8 +3,9 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import SeasonCounter from "$lib/components/SeasonCounter.svelte";
+  import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
-  import { posterUrl, tvDetail } from "$lib/tmdb";
+  import { entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
   import { STATUSES, STATUS_LABEL } from "$lib/types";
   import type { Status, TvDetail, TvEntry } from "$lib/types";
 
@@ -23,22 +24,27 @@
   );
 
   $effect(() => {
-    if (tvEntry || !store.apiKey || !id) return;
+    if (tvEntry || !store.apiKey || !id || Number.isNaN(id)) return;
     loading = true;
     error = null;
-    tvDetail(id, store.apiKey)
-      .then((d) => (detail = d))
-      .catch((e) => (error = e instanceof Error ? e.message : String(e)))
-      .finally(() => (loading = false));
+    const ctrl = new AbortController();
+    tvDetail(id, store.apiKey, ctrl.signal)
+      .then((d) => {
+        if (!ctrl.signal.aborted) detail = d;
+      })
+      .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") return;
+        error = e instanceof Error ? e.message : String(e);
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) loading = false;
+      });
+    return () => ctrl.abort();
   });
 
   const headerInfo = $derived.by(() => {
-    if (tvEntry) {
-      return { title: tvEntry.title, poster: tvEntry.poster, overview: detail?.overview ?? "" };
-    }
-    if (detail) {
-      return { title: detail.name, poster: posterUrl(detail.poster_path, "w342"), overview: detail.overview };
-    }
+    if (tvEntry) return { title: tvEntry.title, poster: tvEntry.poster, overview: detail?.overview ?? "" };
+    if (detail) return { title: detail.name, poster: posterUrl(detail.poster_path, "w342"), overview: detail.overview };
     return null;
   });
 
@@ -50,33 +56,21 @@
           .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }))
   );
 
-  async function addToLibrary() {
-    if (!detail || !store.apiKey) return;
-    const now = new Date().toISOString();
-    const entry: TvEntry = {
-      kind: "tv",
-      id: detail.id,
-      title: detail.name,
-      poster: posterUrl(detail.poster_path, "w342"),
-      year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
-      voteAverage: detail.vote_average,
-      seasons: detail.seasons
-        .filter((s) => s.season_number > 0 || s.episode_count > 0)
-        .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count })),
-      progress: {},
-      status: "plan",
-      addedAt: now,
-      updatedAt: now,
-    };
-    store.addToLibrary(entry);
+  function addToLibrary(status: Status): void {
+    if (!detail) return;
+    store.addToLibrary(entryFromTvDetail(detail, status));
   }
 
-  function remove() {
+  function remove(): void {
     if (!confirm(`Remove "${tvEntry?.title}" from your library?`)) return;
     store.removeFromLibrary("tv", id);
-    goto(`${base}/`);
+    void goto(`${base}/`);
   }
 </script>
+
+<svelte:head>
+  <title>{headerInfo ? `${headerInfo.title} · Series Tracker` : "Show · Series Tracker"}</title>
+</svelte:head>
 
 <section class="space-y-6">
   <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
@@ -129,13 +123,11 @@
           </div>
         {:else}
           <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onclick={addToLibrary}
-              class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
-            >
-              + Add to library
-            </button>
+            <StatusMenu
+              label="+ Add to library"
+              onSelect={addToLibrary}
+              title={`Add "${headerInfo.title}" as...`}
+            />
             <a
               href="{base}/show/{id}/info/"
               class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"

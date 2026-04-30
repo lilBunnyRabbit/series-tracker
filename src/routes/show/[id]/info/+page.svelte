@@ -16,17 +16,21 @@
   let error = $state<string | null>(null);
 
   $effect(() => {
-    if (!store.apiKey || !id) return;
+    if (!store.apiKey || !id || Number.isNaN(id)) return;
     loading = true;
     error = null;
     const ctrl = new AbortController();
     tvDetailFull(id, store.apiKey, ctrl.signal)
-      .then((d) => (detail = d))
+      .then((d) => {
+        if (!ctrl.signal.aborted) detail = d;
+      })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
         error = e instanceof Error ? e.message : String(e);
       })
-      .finally(() => (loading = false));
+      .finally(() => {
+        if (!ctrl.signal.aborted) loading = false;
+      });
     return () => ctrl.abort();
   });
 
@@ -36,6 +40,10 @@
   const inLibrary = $derived(store.has("tv", id));
   const creators = $derived(detail?.credits?.crew.filter((c) => c.job === "Creator" || c.job === "Executive Producer").slice(0, 3) ?? []);
 </script>
+
+<svelte:head>
+  <title>{detail ? `${detail.name} · Info · Series Tracker` : "Info · Series Tracker"}</title>
+</svelte:head>
 
 {#if loading && !detail}
   <p class="text-sm text-muted">Loading...</p>

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
   import { posterUrl } from "$lib/tmdb";
-  import type { SearchMultiResult } from "$lib/types";
+  import type { SearchMultiResult, Status } from "$lib/types";
 
-  type Props = { result: SearchMultiResult; onAdd: (r: SearchMultiResult) => Promise<void> | void };
+  type Props = { result: SearchMultiResult; onAdd: (r: SearchMultiResult, status: Status) => Promise<void> | void };
   let { result, onAdd }: Props = $props();
 
   let busy = $state(false);
@@ -24,12 +25,12 @@
         : null
   );
 
-  async function handleAdd() {
+  async function handleStatusPick(status: Status): Promise<void> {
     if (result.media_type === "person" || inLibrary) return;
     busy = true;
     error = null;
     try {
-      await onAdd(result);
+      await onAdd(result, status);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -58,21 +59,24 @@
         </div>
       </div>
       {#if result.media_type !== "person"}
-        <button
-          type="button"
-          onclick={handleAdd}
-          disabled={busy || inLibrary}
-          class="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {inLibrary ? "Added" : busy ? "Adding..." : "Add"}
-        </button>
+        {#if inLibrary}
+          <span
+            class="shrink-0 rounded-md border border-primary px-3 py-1.5 text-xs font-medium text-primary"
+          >
+            Added
+          </span>
+        {:else}
+          <div class="shrink-0">
+            <StatusMenu label="Add" {busy} size="sm" onSelect={handleStatusPick} title={`Add "${title}" as...`} />
+          </div>
+        {/if}
       {/if}
     </div>
     {#if result.media_type !== "person" && result.overview}
       <p class="mt-2 line-clamp-3 text-xs text-muted">{result.overview}</p>
     {/if}
     {#if error}
-      <p class="mt-2 text-xs text-red-400">{error}</p>
+      <p class="mt-2 text-xs text-danger">{error}</p>
     {/if}
   </div>
 </div>

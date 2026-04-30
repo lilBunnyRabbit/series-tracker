@@ -2,8 +2,9 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
-  import { movieDetail, posterUrl } from "$lib/tmdb";
+  import { entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
   import { STATUSES, STATUS_LABEL } from "$lib/types";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
@@ -17,18 +18,32 @@
   const movieEntry = $derived(entry?.kind === "movie" ? (entry as MovieEntry) : null);
 
   $effect(() => {
-    if (movieEntry || !store.apiKey || !id) return;
+    if (movieEntry || !store.apiKey || !id || Number.isNaN(id)) return;
     loading = true;
     error = null;
-    movieDetail(id, store.apiKey)
-      .then((d) => (detail = d))
-      .catch((e) => (error = e instanceof Error ? e.message : String(e)))
-      .finally(() => (loading = false));
+    const ctrl = new AbortController();
+    movieDetail(id, store.apiKey, ctrl.signal)
+      .then((d) => {
+        if (!ctrl.signal.aborted) detail = d;
+      })
+      .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") return;
+        error = e instanceof Error ? e.message : String(e);
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) loading = false;
+      });
+    return () => ctrl.abort();
   });
 
   const headerInfo = $derived.by(() => {
     if (movieEntry) {
-      return { title: movieEntry.title, poster: movieEntry.poster, overview: detail?.overview ?? "", date: detail?.release_date ?? "" };
+      return {
+        title: movieEntry.title,
+        poster: movieEntry.poster,
+        overview: detail?.overview ?? "",
+        date: detail?.release_date ?? movieEntry.year ?? "",
+      };
     }
     if (detail) {
       return {
@@ -41,30 +56,21 @@
     return null;
   });
 
-  function addToLibrary() {
+  function addToLibrary(status: Status): void {
     if (!detail) return;
-    const now = new Date().toISOString();
-    const entry: MovieEntry = {
-      kind: "movie",
-      id: detail.id,
-      title: detail.title,
-      poster: posterUrl(detail.poster_path, "w342"),
-      year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
-      voteAverage: detail.vote_average,
-      watched: false,
-      status: "plan",
-      addedAt: now,
-      updatedAt: now,
-    };
-    store.addToLibrary(entry);
+    store.addToLibrary(entryFromMovieDetail(detail, status));
   }
 
-  function remove() {
+  function remove(): void {
     if (!confirm(`Remove "${movieEntry?.title}" from your library?`)) return;
     store.removeFromLibrary("movie", id);
-    goto(`${base}/`);
+    void goto(`${base}/`);
   }
 </script>
+
+<svelte:head>
+  <title>{headerInfo ? `${headerInfo.title} · Series Tracker` : "Movie · Series Tracker"}</title>
+</svelte:head>
 
 <section class="space-y-6">
   <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
@@ -123,13 +129,11 @@
           </div>
         {:else}
           <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onclick={addToLibrary}
-              class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
-            >
-              + Add to library
-            </button>
+            <StatusMenu
+              label="+ Add to library"
+              onSelect={addToLibrary}
+              title={`Add "${headerInfo.title}" as...`}
+            />
             <a
               href="{base}/movie/{id}/info/"
               class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"
