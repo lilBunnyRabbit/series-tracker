@@ -1,16 +1,51 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { base } from "$app/paths";
+  import { page } from "$app/state";
   import LibraryCard from "$lib/components/LibraryCard.svelte";
   import { store } from "$lib/store.svelte";
   import { STATUSES, STATUS_LABEL } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
   type Filter = "all" | Status;
+  type KindFilter = "all" | "tv" | "movie";
   type Sort = "updated" | "added" | "title" | "progress";
 
-  let filter = $state<Filter>("all");
-  let kindFilter = $state<"all" | "tv" | "movie">("all");
-  let sort = $state<Sort>("updated");
+  const VALID_FILTER: Filter[] = ["all", ...STATUSES];
+  const VALID_KIND: KindFilter[] = ["all", "tv", "movie"];
+  const VALID_SORT: Sort[] = ["updated", "added", "title", "progress"];
+
+  const filter = $derived.by<Filter>(() => {
+    const v = page.url.searchParams.get("status");
+    return VALID_FILTER.includes(v as Filter) ? (v as Filter) : "all";
+  });
+  const kindFilter = $derived.by<KindFilter>(() => {
+    const v = page.url.searchParams.get("kind");
+    return VALID_KIND.includes(v as KindFilter) ? (v as KindFilter) : "all";
+  });
+  const sort = $derived.by<Sort>(() => {
+    const v = page.url.searchParams.get("sort");
+    return VALID_SORT.includes(v as Sort) ? (v as Sort) : "updated";
+  });
+
+  function updateParams(patch: Record<string, string | null>): void {
+    const url = new URL(page.url);
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "") url.searchParams.delete(k);
+      else url.searchParams.set(k, v);
+    }
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  function setFilter(f: Filter): void {
+    updateParams({ status: f === "all" ? null : f });
+  }
+  function setKind(k: KindFilter): void {
+    updateParams({ kind: k === "all" ? null : k });
+  }
+  function setSort(s: Sort): void {
+    updateParams({ sort: s === "updated" ? null : s });
+  }
 
   function progressPct(e: Entry): number {
     if (e.kind !== "tv") return e.watched ? 1 : 0;
@@ -21,10 +56,10 @@
   }
 
   const filtered = $derived.by(() => {
-    const base = store.entries
+    const list = store.entries
       .filter((e) => (filter === "all" ? true : e.status === filter))
       .filter((e) => (kindFilter === "all" ? true : e.kind === kindFilter));
-    return [...base].sort((a, b) => {
+    return [...list].sort((a, b) => {
       switch (sort) {
         case "title":
           return a.title.localeCompare(b.title);
@@ -83,22 +118,22 @@
     </div>
   {:else}
     <div class="flex flex-wrap items-center gap-1.5 text-xs">
-      {#each ["all", ...STATUSES] as f (f)}
+      {#each VALID_FILTER as f (f)}
         <button
           type="button"
-          onclick={() => (filter = f as Filter)}
+          onclick={() => setFilter(f)}
           class="rounded-full border px-3 py-1 transition {filter === f
             ? 'border-primary bg-primary text-bg'
             : 'border-border text-muted hover:text-text'}"
         >
-          {f === "all" ? "All" : STATUS_LABEL[f as Status]} · {counts[f as Filter]}
+          {f === "all" ? "All" : STATUS_LABEL[f as Status]} · {counts[f]}
         </button>
       {/each}
       <span class="mx-2 hidden h-4 w-px bg-border sm:inline"></span>
-      {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as [k, label] (k)}
+      {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
         <button
           type="button"
-          onclick={() => (kindFilter = k as "all" | "tv" | "movie")}
+          onclick={() => setKind(k)}
           class="rounded-full border px-3 py-1 transition {kindFilter === k
             ? 'border-primary bg-primary text-bg'
             : 'border-border text-muted hover:text-text'}"
@@ -109,7 +144,8 @@
       <label class="ml-auto flex items-center gap-1.5 text-muted">
         Sort
         <select
-          bind:value={sort}
+          value={sort}
+          onchange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as Sort)}
           class="rounded-md border border-border bg-surface px-2 py-1"
         >
           <option value="updated">Recently updated</option>

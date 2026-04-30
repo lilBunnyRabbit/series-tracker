@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { base } from "$app/paths";
+  import { page } from "$app/state";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
   import {
@@ -13,7 +15,15 @@
   import type { SearchMultiResult, Status } from "$lib/types";
   import { untrack } from "svelte";
 
-  let trendingWindow = $state<"day" | "week">("day");
+  type Window = "day" | "week";
+  const trendingWindow = $derived.by<Window>(() => (page.url.searchParams.get("w") === "week" ? "week" : "day"));
+
+  function setTrendingWindow(w: Window): void {
+    const url = new URL(page.url);
+    if (w === "day") url.searchParams.delete("w");
+    else url.searchParams.set("w", w);
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
 
   let trendingItems = $state<SearchMultiResult[]>([]);
   let recItems = $state<RecommendationItem[]>([]);
@@ -119,7 +129,7 @@
         {#each ["day", "week"] as const as w (w)}
           <button
             type="button"
-            onclick={() => (trendingWindow = w)}
+            onclick={() => setTrendingWindow(w)}
             class="rounded-full border px-3 py-1 transition {trendingWindow === w
               ? 'border-primary bg-primary text-bg'
               : 'border-border text-muted'}"

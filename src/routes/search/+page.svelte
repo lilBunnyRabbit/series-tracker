@@ -1,16 +1,28 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
   import { entryFromSearchResult, searchMulti } from "$lib/tmdb";
   import type { SearchMultiPage, SearchMultiResult, Status } from "$lib/types";
 
-  let query = $state("");
+  // Local state for typing UX; URL syncs on debounce settle so back/forward + share work.
+  let query = $state(page.url.searchParams.get("q") ?? "");
   let results = $state<SearchMultiPage | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   let activeController: AbortController | null = null;
+
+  function syncUrl(q: string): void {
+    const url = new URL(page.url);
+    if (q) url.searchParams.set("q", q);
+    else url.searchParams.delete("q");
+    if (url.search !== page.url.search) {
+      void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+    }
+  }
 
   $effect(() => {
     const q = query.trim();
@@ -21,6 +33,7 @@
       results = null;
       error = null;
       loading = false;
+      syncUrl("");
       return;
     }
     if (!store.apiKey) return;
@@ -35,6 +48,7 @@
           if (ctrl.signal.aborted) return;
           results = r;
           store.pushSearchHistory(q);
+          syncUrl(q);
         })
         .catch((e) => {
           if (e instanceof Error && e.name === "AbortError") return;
