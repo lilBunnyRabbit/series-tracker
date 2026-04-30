@@ -38,8 +38,8 @@
   }
 </script>
 
-<div class="flex gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-  <div class="h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-[var(--color-surface-2)]">
+<div class="flex gap-3 rounded-lg border border-border bg-surface p-3">
+  <div class="h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
     {#if poster}
       <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
@@ -52,8 +52,8 @@
         {:else}
           <span class="block truncate font-medium">{title}</span>
         {/if}
-        <div class="mt-0.5 text-xs text-[var(--color-muted)]">
-          <span class="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 uppercase tracking-wider">{result.media_type}</span>
+        <div class="mt-0.5 text-xs text-muted">
+          <span class="rounded bg-surface-2 px-1.5 py-0.5 uppercase tracking-wider">{result.media_type}</span>
           {#if date}<span class="ml-2">{date.slice(0, 4)}</span>{/if}
         </div>
       </div>
@@ -62,14 +62,14 @@
           type="button"
           onclick={handleAdd}
           disabled={busy || inLibrary}
-          class="shrink-0 rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+          class="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {inLibrary ? "Added" : busy ? "Adding..." : "Add"}
         </button>
       {/if}
     </div>
     {#if result.media_type !== "person" && result.overview}
-      <p class="mt-2 line-clamp-3 text-xs text-[var(--color-muted)]">{result.overview}</p>
+      <p class="mt-2 line-clamp-3 text-xs text-muted">{result.overview}</p>
     {/if}
     {#if error}
       <p class="mt-2 text-xs text-red-400">{error}</p>

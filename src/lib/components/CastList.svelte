@@ -11,15 +11,15 @@
 {#if items.length > 0}
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
     {#each items as c (c.id)}
-      <div class="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div class="aspect-[2/3] w-full bg-[var(--color-surface-2)]">
+      <div class="overflow-hidden rounded-lg border border-border bg-surface">
+        <div class="aspect-[2/3] w-full bg-surface-2">
           {#if c.profile_path}
             <img src={posterUrl(c.profile_path, "w185")} alt="" class="h-full w-full object-cover" loading="lazy" />
           {/if}
         </div>
         <div class="p-2">
           <div class="truncate text-xs font-medium">{c.name}</div>
-          <div class="truncate text-[11px] text-[var(--color-muted)]">{c.character}</div>
+          <div class="truncate text-[11px] text-muted">{c.character}</div>
         </div>
       </div>
     {/each}

@@ -130,22 +130,22 @@
   <h1 class="text-xl font-semibold">Discover</h1>
 
   {#if error}
-    <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">
+    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">
       {error}
     </p>
   {/if}
 
   <div class="space-y-3">
     <div class="flex items-center gap-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Trending</h2>
+      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Trending</h2>
       <div class="flex gap-1 text-xs">
         {#each ["day", "week"] as w (w)}
           <button
             type="button"
             onclick={() => (trendingWindow = w as "day" | "week")}
             class="rounded-full border px-3 py-1 transition {trendingWindow === w
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
-              : 'border-[var(--color-border)] text-[var(--color-muted)]'}"
+              ? 'border-primary bg-primary text-bg'
+              : 'border-border text-muted'}"
           >
             {w === "day" ? "Today" : "This week"}
           </button>
@@ -153,7 +153,7 @@
       </div>
     </div>
     {#if filteredTrending.length === 0 && loading}
-      <p class="text-sm text-[var(--color-muted)]">Loading...</p>
+      <p class="text-sm text-muted">Loading...</p>
     {:else}
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each filteredTrending.slice(0, 12) as r (r.media_type + ":" + r.id)}
@@ -165,9 +165,9 @@
 
   {#if recItems.length > 0}
     <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">
+      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
         Recommended for you
-        <span class="ml-2 font-normal normal-case text-[var(--color-muted)]/70">based on your library</span>
+        <span class="ml-2 font-normal normal-case text-muted/70">based on your library</span>
       </h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each recItems as r (r.media_type + ":" + r.id)}
@@ -176,14 +176,14 @@
       </div>
     </div>
   {:else if store.entries.length === 0}
-    <div class="rounded-lg border border-dashed border-[var(--color-border)] p-6 text-center text-sm text-[var(--color-muted)]">
+    <div class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
       Add a few things to your library and we'll generate recommendations here.
     </div>
   {/if}
 
   {#if popularTvItems.length > 0}
     <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Popular TV</h2>
+      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular TV</h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each popularTvItems.slice(0, 8) as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
@@ -194,7 +194,7 @@
 
   {#if popularMovieItems.length > 0}
     <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Popular movies</h2>
+      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular movies</h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each popularMovieItems.slice(0, 8) as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />

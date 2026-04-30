@@ -67,16 +67,16 @@
 </script>
 
 <section class="space-y-6">
-  <a href="{base}/" class="hidden text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] sm:inline-block">← Back</a>
+  <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
-    <p class="text-sm text-[var(--color-muted)]">Loading...</p>
+    <p class="text-sm text-muted">Loading...</p>
   {:else if error}
-    <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">{error}</p>
+    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
   {:else if headerInfo}
     <div class="flex flex-col gap-6 md:flex-row">
       <div class="w-full max-w-[200px] flex-shrink-0">
-        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg bg-[var(--color-surface-2)]">
+        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface-2">
           {#if headerInfo.poster}
             <img src={headerInfo.poster} alt="" class="h-full w-full object-cover" />
           {/if}
@@ -86,16 +86,16 @@
         <div>
           <h1 class="text-2xl font-semibold">{headerInfo.title}</h1>
           {#if headerInfo.date}
-            <p class="mt-1 text-sm text-[var(--color-muted)]">{headerInfo.date}</p>
+            <p class="mt-1 text-sm text-muted">{headerInfo.date}</p>
           {/if}
         </div>
         {#if headerInfo.overview}
-          <p class="text-sm text-[var(--color-muted)]">{headerInfo.overview}</p>
+          <p class="text-sm text-muted">{headerInfo.overview}</p>
         {/if}
 
         {#if movieEntry}
           <div class="flex flex-wrap items-center gap-3">
-            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm">
+            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm">
               <input
                 type="checkbox"
                 checked={movieEntry.watched}
@@ -103,12 +103,12 @@
               />
               Watched
             </label>
-            <label class="text-xs uppercase tracking-wider text-[var(--color-muted)]" for="status">Status</label>
+            <label class="text-xs uppercase tracking-wider text-muted" for="status">Status</label>
             <select
               id="status"
               value={movieEntry.status}
               onchange={(e) => store.setStatus("movie", id, (e.currentTarget as HTMLSelectElement).value as Status)}
-              class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm"
+              class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
             >
               {#each STATUSES as s (s)}
                 <option value={s}>{STATUS_LABEL[s]}</option>
@@ -116,7 +116,7 @@
             </select>
             <a
               href="{base}/movie/{id}/info/"
-              class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs hover:border-[var(--color-accent)]"
+              class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
             >
               ⓘ More info
             </a>
@@ -126,13 +126,13 @@
             <button
               type="button"
               onclick={addToLibrary}
-              class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
+              class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
             >
               + Add to library
             </button>
             <a
               href="{base}/movie/{id}/info/"
-              class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm hover:border-[var(--color-accent)]"
+              class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"
             >
               More info
             </a>
@@ -142,11 +142,11 @@
     </div>
 
     {#if movieEntry}
-      <div class="flex justify-center border-t border-[var(--color-border)] pt-6">
+      <div class="flex justify-center border-t border-border pt-6">
         <button
           type="button"
           onclick={remove}
-          class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+          class="rounded-md border border-border px-4 py-2 text-sm text-muted hover:border-danger hover:text-danger"
         >
           Remove from library
         </button>

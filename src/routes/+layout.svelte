@@ -49,7 +49,7 @@
 
 <div class="flex min-h-[100dvh] flex-col">
   <header
-    class="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur"
+    class="sticky top-0 z-10 border-b border-border bg-bg/95 backdrop-blur"
     style="padding-top: env(safe-area-inset-top)"
   >
     <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
@@ -58,7 +58,7 @@
           <a
             href={backHref}
             aria-label="Back"
-            class="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-lg"
+            class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-lg"
           >
             ←
           </a>
@@ -67,7 +67,7 @@
           <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight">
             <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
           </a>
-          <span class="text-sm font-medium text-[var(--color-muted)]">{pageTitle}</span>
+          <span class="text-sm font-medium text-muted">{pageTitle}</span>
         {/if}
       </div>
 
@@ -80,9 +80,9 @@
         {#each items as item (item.path)}
           <a
             href={item.href}
-            class="rounded-md px-3 py-2 transition hover:bg-[var(--color-surface)] {isActive(item.path)
-              ? 'bg-[var(--color-surface)] text-[var(--color-accent)]'
-              : 'text-[var(--color-muted)]'}"
+            class="rounded-md px-3 py-2 transition hover:bg-surface {isActive(item.path)
+              ? 'bg-surface text-accent'
+              : 'text-muted'}"
           >
             {item.label}
           </a>
@@ -92,7 +92,7 @@
       <a
         href="{base}/settings/"
         aria-label="Settings"
-        class="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-base text-[var(--color-muted)] sm:hidden"
+        class="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-border text-base text-muted sm:hidden"
       >
         ⚙
       </a>
@@ -110,7 +110,7 @@
   </main>
 
   <nav
-    class="sticky bottom-0 z-10 border-t border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur sm:hidden"
+    class="sticky bottom-0 z-10 border-t border-border bg-bg/95 backdrop-blur sm:hidden"
     style="padding-bottom: env(safe-area-inset-bottom)"
   >
     <div class="mx-auto flex max-w-5xl items-stretch">
@@ -118,8 +118,8 @@
         <a
           href={item.href}
           class="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] {isActive(item.path)
-            ? 'text-[var(--color-accent)]'
-            : 'text-[var(--color-muted)]'}"
+            ? 'text-accent'
+            : 'text-muted'}"
         >
           <span class="text-lg leading-none" aria-hidden="true">{item.icon}</span>
           <span>{item.label}</span>

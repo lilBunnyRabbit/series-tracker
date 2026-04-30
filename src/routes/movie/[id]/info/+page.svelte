@@ -41,9 +41,9 @@
 </script>
 
 {#if loading && !detail}
-  <p class="text-sm text-[var(--color-muted)]">Loading...</p>
+  <p class="text-sm text-muted">Loading...</p>
 {:else if error}
-  <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">{error}</p>
+  <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
 {:else if detail}
   <div class="space-y-8">
     <!-- HERO -->
@@ -51,14 +51,14 @@
       {#if backdrop}
         <div class="relative h-44 w-full overflow-hidden sm:h-72 md:h-[28rem]">
           <img src={backdrop} alt="" class="h-full w-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-bg)] via-[var(--color-bg)]/60 to-[var(--color-bg)]/20"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-bg/20"></div>
         </div>
       {/if}
 
-      <div class="px-3 sm:px-4 {backdrop ? 'md:-mt-40' : ''}">
-        <div class="flex gap-4 md:items-end md:gap-6">
-          <div class="w-24 flex-shrink-0 sm:w-32 md:w-52">
-            <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] shadow-lg">
+      <div class="px-3 sm:px-4">
+        <div class="flex gap-4 md:items-start md:gap-6">
+          <div class="w-24 flex-shrink-0 sm:w-32 md:w-44">
+            <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-2 shadow-lg">
               {#if detail.poster_path}
                 <img src={posterUrl(detail.poster_path, "w342")} alt="" class="h-full w-full object-cover" />
               {/if}
@@ -69,13 +69,13 @@
             <div>
               <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{detail.title}</h1>
               {#if detail.tagline}
-                <p class="mt-1 text-sm italic text-[var(--color-muted)]">"{detail.tagline}"</p>
+                <p class="mt-1 text-sm italic text-muted">"{detail.tagline}"</p>
               {/if}
             </div>
 
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-muted)]">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
               {#if typeof detail.vote_average === "number" && detail.vote_average > 0}
-                <span class="rounded bg-[var(--color-surface)] px-2 py-0.5 font-medium text-[var(--color-text)]">
+                <span class="rounded bg-surface px-2 py-0.5 font-medium text-text">
                   ★ {detail.vote_average.toFixed(1)}
                 </span>
               {/if}
@@ -87,7 +87,7 @@
             {#if detail.genres && detail.genres.length > 0}
               <div class="flex flex-wrap gap-1.5">
                 {#each detail.genres as g (g.id)}
-                  <span class="rounded-full bg-[var(--color-surface)] px-2.5 py-0.5 text-xs">{g.name}</span>
+                  <span class="rounded-full bg-surface px-2.5 py-0.5 text-xs">{g.name}</span>
                 {/each}
               </div>
             {/if}
@@ -95,7 +95,7 @@
             <div class="flex flex-wrap gap-2 pt-1">
               <a
                 href="{base}/movie/{id}/"
-                class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
+                class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
               >
                 {inLibrary ? "Track" : "Add to library"}
               </a>
@@ -104,7 +104,7 @@
                   href="https://www.imdb.com/title/{detail.external_ids.imdb_id}/"
                   target="_blank"
                   rel="noopener"
-                  class="rounded-md border border-[var(--color-secondary)]/40 px-4 py-2 text-sm text-[var(--color-secondary)] transition hover:bg-[var(--color-secondary)] hover:text-[var(--color-bg)]"
+                  class="rounded-md border border-secondary/40 px-4 py-2 text-sm text-secondary transition hover:bg-secondary hover:text-bg"
                 >
                   IMDb ↗
                 </a>
@@ -113,7 +113,7 @@
                 href="https://www.themoviedb.org/movie/{detail.id}"
                 target="_blank"
                 rel="noopener"
-                class="rounded-md border border-[var(--color-secondary)]/40 px-4 py-2 text-sm text-[var(--color-secondary)] transition hover:bg-[var(--color-secondary)] hover:text-[var(--color-bg)]"
+                class="rounded-md border border-secondary/40 px-4 py-2 text-sm text-secondary transition hover:bg-secondary hover:text-bg"
               >
                 TMDB ↗
               </a>
@@ -126,8 +126,8 @@
     <!-- OVERVIEW -->
     {#if detail.overview}
       <section class="space-y-2">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Overview</h2>
-        <p class="max-w-prose text-sm leading-relaxed text-[var(--color-text)]/90 sm:text-base">{detail.overview}</p>
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Overview</h2>
+        <p class="max-w-prose text-sm leading-relaxed text-text/90 sm:text-base">{detail.overview}</p>
       </section>
     {/if}
 
@@ -152,7 +152,7 @@
     <!-- CAST -->
     {#if detail.credits?.cast && detail.credits.cast.length > 0}
       <section class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Cast</h2>
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Cast</h2>
         <CastList cast={detail.credits.cast} />
       </section>
     {/if}

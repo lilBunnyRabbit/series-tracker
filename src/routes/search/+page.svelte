@@ -102,19 +102,19 @@
     bind:value={query}
     placeholder="Search for movies and TV shows..."
     autofocus
-    class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 outline-none focus:border-[var(--color-accent)]"
+    class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 outline-none focus:border-accent"
   />
 
   {#if !store.apiKey}
-    <p class="text-sm text-[var(--color-muted)]">Set your TMDB API key in settings first.</p>
+    <p class="text-sm text-muted">Set your TMDB API key in settings first.</p>
   {:else if showHistory}
     <div class="flex flex-wrap items-center gap-1.5 text-xs">
-      <span class="mr-1 text-[var(--color-muted)]">Recent:</span>
+      <span class="mr-1 text-muted">Recent:</span>
       {#each store.searchHistory as q (q)}
         <button
           type="button"
           onclick={() => (query = q)}
-          class="rounded-full border border-[var(--color-border)] px-3 py-1 hover:border-[var(--color-accent)]"
+          class="rounded-full border border-border px-3 py-1 hover:border-accent"
         >
           {q}
         </button>
@@ -122,7 +122,7 @@
       <button
         type="button"
         onclick={() => store.clearSearchHistory()}
-        class="ml-auto rounded-full border border-[var(--color-border)] px-3 py-1 text-[var(--color-muted)]"
+        class="ml-auto rounded-full border border-border px-3 py-1 text-muted"
       >
         Clear
       </button>
@@ -130,13 +130,13 @@
   {/if}
 
   {#if loading}
-    <p class="text-sm text-[var(--color-muted)]">Searching...</p>
+    <p class="text-sm text-muted">Searching...</p>
   {:else if error}
-    <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">
+    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">
       {error}
     </p>
   {:else if results && filtered.length === 0 && query.trim()}
-    <p class="text-sm text-[var(--color-muted)]">No results for "{query}".</p>
+    <p class="text-sm text-muted">No results for "{query}".</p>
   {:else if filtered.length > 0}
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       {#each filtered as r (r.media_type + ":" + r.id)}

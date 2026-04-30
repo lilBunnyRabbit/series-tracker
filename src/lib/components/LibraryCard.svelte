@@ -27,10 +27,10 @@
 
   const borderClass = $derived(
     entry.status === "completed"
-      ? "border-[var(--color-primary)]"
+      ? "border-primary"
       : entry.status === "dropped"
-        ? "border-[var(--color-border)] opacity-60"
-        : "border-[var(--color-border)]"
+        ? "border-border opacity-60"
+        : "border-border"
   );
 
   function handleQuickAdd(e: MouseEvent) {
@@ -43,15 +43,15 @@
 
 <a
   {href}
-  class="group relative flex flex-col overflow-hidden rounded-lg border bg-[var(--color-surface)] transition hover:border-[var(--color-accent)] {borderClass}"
+  class="group relative flex flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
 >
-  <div class="relative aspect-[2/3] w-full bg-[var(--color-surface-2)]">
+  <div class="relative aspect-[2/3] w-full bg-surface-2">
     {#if entry.poster}
       <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
     {#if typeof entry.voteAverage === "number" && entry.voteAverage > 0}
       <div
-        class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[var(--color-text)] backdrop-blur-sm"
+        class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm"
       >
         ★ {entry.voteAverage.toFixed(1)}
       </div>
@@ -62,7 +62,7 @@
         onclick={handleQuickAdd}
         aria-label="Mark next episode watched"
         title="+1 episode ({currentSeasonHint})"
-        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-lg font-semibold text-[var(--color-bg)] opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100 active:opacity-100"
+        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-lg font-semibold text-bg opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100 active:opacity-100"
       >
         +
       </button>
@@ -70,8 +70,8 @@
   </div>
   <div class="flex flex-1 flex-col gap-1 p-2.5">
     <div class="line-clamp-2 text-sm font-medium leading-snug">{entry.title}</div>
-    <div class="mt-auto flex items-center justify-between text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
-      <span class="truncate {entry.status === 'completed' ? 'text-[var(--color-primary)]' : ''}"
+    <div class="mt-auto flex items-center justify-between text-[10px] uppercase tracking-wider text-muted">
+      <span class="truncate {entry.status === 'completed' ? 'text-primary' : ''}"
         >{STATUS_LABEL[entry.status]}{entry.year ? ` · ${entry.year}` : ""}</span
       >
       {#if entry.kind === "tv"}
@@ -81,8 +81,8 @@
       {/if}
     </div>
     {#if entry.kind === "tv" && totalEpisodes > 0}
-      <div class="h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-        <div class="h-full bg-[var(--color-primary)] transition-all" style="width: {pct}%"></div>
+      <div class="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+        <div class="h-full bg-primary transition-all" style="width: {pct}%"></div>
       </div>
     {/if}
   </div>

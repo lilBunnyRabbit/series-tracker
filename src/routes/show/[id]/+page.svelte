@@ -79,16 +79,16 @@
 </script>
 
 <section class="space-y-6">
-  <a href="{base}/" class="hidden text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] sm:inline-block">← Back</a>
+  <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
-    <p class="text-sm text-[var(--color-muted)]">Loading...</p>
+    <p class="text-sm text-muted">Loading...</p>
   {:else if error}
-    <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">{error}</p>
+    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
   {:else if headerInfo}
     <div class="flex flex-col gap-6 md:flex-row">
       <div class="w-full max-w-[200px] flex-shrink-0">
-        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg bg-[var(--color-surface-2)]">
+        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface-2">
           {#if headerInfo.poster}
             <img src={headerInfo.poster} alt="" class="h-full w-full object-cover" />
           {/if}
@@ -98,23 +98,23 @@
         <div>
           <h1 class="text-2xl font-semibold">{headerInfo.title}</h1>
           {#if tvEntry}
-            <p class="mt-1 text-sm text-[var(--color-muted)]">
+            <p class="mt-1 text-sm text-muted">
               {watchedEpisodes} / {totalEpisodes} episodes watched
             </p>
           {/if}
         </div>
         {#if headerInfo.overview}
-          <p class="text-sm text-[var(--color-muted)]">{headerInfo.overview}</p>
+          <p class="text-sm text-muted">{headerInfo.overview}</p>
         {/if}
 
         {#if tvEntry}
           <div class="flex flex-wrap items-center gap-2">
-            <label class="text-xs uppercase tracking-wider text-[var(--color-muted)]" for="status">Status</label>
+            <label class="text-xs uppercase tracking-wider text-muted" for="status">Status</label>
             <select
               id="status"
               value={tvEntry.status}
               onchange={(e) => store.setStatus("tv", id, (e.currentTarget as HTMLSelectElement).value as Status)}
-              class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm"
+              class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
             >
               {#each STATUSES as s (s)}
                 <option value={s}>{STATUS_LABEL[s]}</option>
@@ -122,7 +122,7 @@
             </select>
             <a
               href="{base}/show/{id}/info/"
-              class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs hover:border-[var(--color-accent)]"
+              class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
             >
               ⓘ More info
             </a>
@@ -132,13 +132,13 @@
             <button
               type="button"
               onclick={addToLibrary}
-              class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
+              class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
             >
               + Add to library
             </button>
             <a
               href="{base}/show/{id}/info/"
-              class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm hover:border-[var(--color-accent)]"
+              class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"
             >
               More info
             </a>
@@ -149,16 +149,16 @@
 
     {#if seasons.length > 0}
       <div class="space-y-2">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">Seasons</h2>
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Seasons</h2>
         <div class="space-y-2">
           {#each seasons as s (s.number)}
             {#if tvEntry}
               <SeasonCounter showId={id} season={s.number} name={s.name} total={s.episodeCount} />
             {:else}
-              <div class="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+              <div class="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2">
                 <div>
                   <div class="text-sm font-medium">{s.name}</div>
-                  <div class="text-xs text-[var(--color-muted)]">Season {s.number} · {s.episodeCount} episodes</div>
+                  <div class="text-xs text-muted">Season {s.number} · {s.episodeCount} episodes</div>
                 </div>
               </div>
             {/if}
@@ -168,11 +168,11 @@
     {/if}
 
     {#if tvEntry}
-      <div class="flex justify-center border-t border-[var(--color-border)] pt-6">
+      <div class="flex justify-center border-t border-border pt-6">
         <button
           type="button"
           onclick={remove}
-          class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+          class="rounded-md border border-border px-4 py-2 text-sm text-muted hover:border-danger hover:text-danger"
         >
           Remove from library
         </button>

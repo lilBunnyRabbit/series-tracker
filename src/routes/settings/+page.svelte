@@ -75,11 +75,11 @@
 <section class="mx-auto max-w-2xl space-y-8">
   <h1 class="text-xl font-semibold">Settings</h1>
 
-  <div class="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+  <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
     <h2 class="font-medium">TMDB API key</h2>
-    <p class="text-sm text-[var(--color-muted)]">
+    <p class="text-sm text-muted">
       Stored only in your browser's localStorage. Get one from
-      <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" class="text-[var(--color-accent)] underline"
+      <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" class="text-accent underline"
         >themoviedb.org/settings/api</a
       >.
     </p>
@@ -87,14 +87,14 @@
       type="password"
       bind:value={keyDraft}
       placeholder="Paste your v3 API key"
-      class="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 outline-none focus:border-[var(--color-accent)]"
+      class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
     />
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
         onclick={save}
         disabled={!keyDraft.trim() || keyDraft.trim() === store.apiKey}
-        class="rounded-md bg-[var(--color-primary)] px-4 py-1.5 text-sm font-medium text-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-40"
+        class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
       >
         Save
       </button>
@@ -102,7 +102,7 @@
         type="button"
         onclick={test}
         disabled={!keyDraft.trim() || testStatus === "testing"}
-        class="rounded-md border border-[var(--color-border)] px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+        class="rounded-md border border-border px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
       >
         {testStatus === "testing" ? "Testing..." : "Test connection"}
       </button>
@@ -110,23 +110,23 @@
         <button
           type="button"
           onclick={clear}
-          class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+          class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
         >
           Forget key
         </button>
       {/if}
     </div>
     {#if savedNote}
-      <p class="text-xs text-[var(--color-accent)]">{savedNote}</p>
+      <p class="text-xs text-accent">{savedNote}</p>
     {/if}
     {#if testMessage}
-      <p class="text-xs {testStatus === 'ok' ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'}">{testMessage}</p>
+      <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-danger'}">{testMessage}</p>
     {/if}
   </div>
 
-  <div class="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+  <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
     <h2 class="font-medium">Backup</h2>
-    <p class="text-sm text-[var(--color-muted)]">
+    <p class="text-sm text-muted">
       Export your library as JSON, or restore from a previous export. <strong>Merge</strong> combines two backups (max season progress wins,
       newer metadata wins). <strong>Replace</strong> overwrites your current library.
     </p>
@@ -146,28 +146,28 @@
       <button
         type="button"
         onclick={exportData}
-        class="rounded-md border border-[var(--color-border)] px-4 py-1.5 text-sm hover:border-[var(--color-accent)]"
+        class="rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent"
       >
         Export JSON
       </button>
-      <label class="cursor-pointer rounded-md border border-[var(--color-border)] px-4 py-1.5 text-sm hover:border-[var(--color-accent)]">
+      <label class="cursor-pointer rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent">
         Import JSON ({importMode})
         <input type="file" accept="application/json" onchange={importData} class="hidden" />
       </label>
       <button
         type="button"
         onclick={wipe}
-        class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+        class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
       >
         Wipe library
       </button>
     </div>
     {#if importMessage}
-      <p class="text-xs text-[var(--color-muted)]">{importMessage}</p>
+      <p class="text-xs text-muted">{importMessage}</p>
     {/if}
   </div>
 
-  <p class="text-xs text-[var(--color-muted)]">
+  <p class="text-xs text-muted">
     <a href="{base}/" class="underline">← Back to library</a>
   </p>
 </section>

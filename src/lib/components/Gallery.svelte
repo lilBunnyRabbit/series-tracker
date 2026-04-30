@@ -11,7 +11,7 @@
 
 {#if items.length > 0}
   <div class="space-y-2">
-    <h2 class="text-sm font-medium uppercase tracking-wider text-[var(--color-muted)]">{title}</h2>
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
     <div
       class="grid gap-2 {aspect === '16/9'
         ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
@@ -21,7 +21,7 @@
         <button
           type="button"
           onclick={() => (zoomed = img.file_path)}
-          class="overflow-hidden rounded-md bg-[var(--color-surface-2)] transition hover:opacity-80"
+          class="overflow-hidden rounded-md bg-surface-2 transition hover:opacity-80"
           style="aspect-ratio: {aspect}"
         >
           <img

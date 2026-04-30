@@ -51,31 +51,31 @@
     <h1 class="mr-auto text-xl font-semibold">My library</h1>
     <a
       href="{base}/discover/"
-      class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm hover:border-[var(--color-accent)]"
+      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent"
     >
       Discover
     </a>
     <a
       href="{base}/search/"
-      class="rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
+      class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
     >
       + Add
     </a>
   </div>
 
   {#if store.entries.length === 0}
-    <div class="rounded-lg border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-muted)]">
+    <div class="rounded-lg border border-dashed border-border p-10 text-center text-muted">
       <p class="mb-4">Your library is empty.</p>
       <div class="flex justify-center gap-2">
         <a
           href="{base}/discover/"
-          class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm hover:border-[var(--color-accent)]"
+          class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"
         >
           Browse discover
         </a>
         <a
           href="{base}/search/"
-          class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
+          class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
         >
           Search TMDB
         </a>
@@ -88,29 +88,29 @@
           type="button"
           onclick={() => (filter = f as Filter)}
           class="rounded-full border px-3 py-1 transition {filter === f
-            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
-            : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}"
+            ? 'border-primary bg-primary text-bg'
+            : 'border-border text-muted hover:text-text'}"
         >
           {f === "all" ? "All" : STATUS_LABEL[f as Status]} · {counts[f as Filter]}
         </button>
       {/each}
-      <span class="mx-2 hidden h-4 w-px bg-[var(--color-border)] sm:inline"></span>
+      <span class="mx-2 hidden h-4 w-px bg-border sm:inline"></span>
       {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as [k, label] (k)}
         <button
           type="button"
           onclick={() => (kindFilter = k as "all" | "tv" | "movie")}
           class="rounded-full border px-3 py-1 transition {kindFilter === k
-            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
-            : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}"
+            ? 'border-primary bg-primary text-bg'
+            : 'border-border text-muted hover:text-text'}"
         >
           {label}
         </button>
       {/each}
-      <label class="ml-auto flex items-center gap-1.5 text-[var(--color-muted)]">
+      <label class="ml-auto flex items-center gap-1.5 text-muted">
         Sort
         <select
           bind:value={sort}
-          class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1"
+          class="rounded-md border border-border bg-surface px-2 py-1"
         >
           <option value="updated">Recently updated</option>
           <option value="added">Recently added</option>
@@ -121,7 +121,7 @@
     </div>
 
     {#if filtered.length === 0}
-      <p class="rounded-lg border border-dashed border-[var(--color-border)] p-6 text-center text-sm text-[var(--color-muted)]">
+      <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
         No items match this filter.
       </p>
     {:else}
