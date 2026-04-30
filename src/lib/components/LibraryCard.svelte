@@ -1,6 +1,5 @@
 <script lang="ts">
   import { base } from "$app/paths";
-  import { store } from "$lib/store.svelte";
   import { STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
@@ -14,16 +13,6 @@
     entry.kind === "tv" ? entry.seasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0) : 0
   );
   const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
-  const canIncrement = $derived(entry.kind === "tv" && watchedEpisodes < totalEpisodes);
-
-  const currentSeasonHint = $derived.by(() => {
-    if (entry.kind !== "tv") return "";
-    for (const s of entry.seasons) {
-      const cur = entry.progress[s.number] ?? 0;
-      if (cur < s.episodeCount) return `S${s.number} ${cur}/${s.episodeCount}`;
-    }
-    return "Done";
-  });
 
   const borderClass = $derived(
     entry.status === "completed"
@@ -32,18 +21,11 @@
         ? "border-border opacity-60"
         : "border-border"
   );
-
-  function handleQuickAdd(e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (entry.kind !== "tv") return;
-    store.incrementCurrent(entry.id);
-  }
 </script>
 
 <a
   {href}
-  class="group relative flex flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
+  class="flex flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
 >
   <div class="relative aspect-[2/3] w-full bg-surface-2">
     {#if entry.poster}
@@ -55,17 +37,6 @@
       >
         ★ {entry.voteAverage.toFixed(1)}
       </div>
-    {/if}
-    {#if canIncrement}
-      <button
-        type="button"
-        onclick={handleQuickAdd}
-        aria-label="Mark next episode watched"
-        title="+1 episode ({currentSeasonHint})"
-        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-lg font-semibold text-bg opacity-90 shadow-lg transition focus:opacity-100 active:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-      >
-        +
-      </button>
     {/if}
   </div>
   <div class="flex flex-1 flex-col gap-1 p-2.5">

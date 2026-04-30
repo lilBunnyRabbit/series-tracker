@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { STATUSES, STATUS_LABEL } from "$lib/types";
+  import { STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
   type Props = {
@@ -23,6 +23,17 @@
     size = "md",
     title = "Add as...",
   }: Props = $props();
+
+  // Order optimized for "I'm logging something I've already engaged with":
+  // most common first (just finished), then in-progress, then future, then abandoned.
+  const ADD_ORDER: Status[] = ["completed", "watching", "plan", "dropped"];
+
+  const STATUS_DESCRIPTION: Record<Status, string> = {
+    completed: "Finished — already watched it",
+    watching: "Currently watching",
+    plan: "Plan to watch later",
+    dropped: "Started but won't finish",
+  };
 
   let dialog = $state<HTMLDialogElement>();
 
@@ -63,23 +74,24 @@
   onclose={() => {}}
   class="m-auto rounded-lg border border-border bg-surface p-0 text-text shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
 >
-  <div class="w-[min(20rem,90vw)] p-4">
-    <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
-    <div class="space-y-1">
-      {#each STATUSES as s (s)}
+  <div class="w-[min(22rem,92vw)] p-5">
+    <h2 class="mb-5 text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
+    <div class="flex flex-col gap-3">
+      {#each ADD_ORDER as s (s)}
         <button
           type="button"
           onclick={() => pick(s)}
-          class="w-full rounded-md border border-border bg-surface-2 px-4 py-2.5 text-left text-sm transition hover:border-primary hover:bg-primary hover:text-bg"
+          class="group w-full rounded-lg border border-border bg-surface-2 px-4 py-4 text-left transition hover:border-primary hover:bg-primary hover:text-bg"
         >
-          {STATUS_LABEL[s]}
+          <div class="text-sm font-semibold">{STATUS_LABEL[s]}</div>
+          <div class="mt-0.5 text-xs text-muted transition group-hover:text-bg/75">{STATUS_DESCRIPTION[s]}</div>
         </button>
       {/each}
     </div>
     <button
       type="button"
       onclick={close}
-      class="mt-3 w-full rounded-md px-4 py-2 text-xs text-muted hover:text-text"
+      class="mt-5 w-full rounded-md px-4 py-2 text-xs text-muted hover:text-text"
     >
       Cancel
     </button>
