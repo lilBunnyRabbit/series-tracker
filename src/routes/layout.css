@@ -16,26 +16,28 @@
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-html,
-body {
-  height: 100%;
-}
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
 
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  scrollbar-color: var(--color-surface-2) var(--color-bg);
-  scrollbar-width: thin;
-}
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    scrollbar-color: var(--color-surface-2) var(--color-bg);
+    scrollbar-width: thin;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-::selection {
-  background: var(--color-primary);
-  color: var(--color-bg);
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-bg);
+  }
 }
