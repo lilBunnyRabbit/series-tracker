@@ -57,7 +57,7 @@
     </a>
     <a
       href="{base}/search/"
-      class="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)]"
+      class="rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
     >
       + Add
     </a>
@@ -75,7 +75,7 @@
         </a>
         <a
           href="{base}/search/"
-          class="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)]"
+          class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
         >
           Search TMDB
         </a>
@@ -88,7 +88,7 @@
           type="button"
           onclick={() => (filter = f as Filter)}
           class="rounded-full border px-3 py-1 transition {filter === f
-            ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
+            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
             : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}"
         >
           {f === "all" ? "All" : STATUS_LABEL[f as Status]} · {counts[f as Filter]}
@@ -100,7 +100,7 @@
           type="button"
           onclick={() => (kindFilter = k as "all" | "tv" | "movie")}
           class="rounded-full border px-3 py-1 transition {kindFilter === k
-            ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
+            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
             : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}"
         >
           {label}

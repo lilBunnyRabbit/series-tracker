@@ -1,9 +1,12 @@
 import { browser } from "$app/environment";
+import { idbDelete, idbGet, idbSet } from "./idb";
 import type { Entry, Status, Store, TvEntry } from "./types";
 
-const KEY = "series-tracker:v1";
+const IDB_KEY = "state";
+const LEGACY_LS_KEY = "series-tracker:v1";
 const SCHEMA_VERSION = 2;
 const SEARCH_HISTORY_LIMIT = 8;
+const SAVE_DEBOUNCE_MS = 300;
 
 type PersistedV1 = { apiKey?: string | null; library?: Record<string, Entry> };
 type PersistedV2 = PersistedV1 & {
@@ -27,14 +30,13 @@ function migrate(parsed: PersistedV2): Store {
   };
 }
 
-function load(): Store {
-  if (!browser) return structuredClone(empty);
+function readLegacyLocalStorage(): Store | null {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return structuredClone(empty);
+    const raw = localStorage.getItem(LEGACY_LS_KEY);
+    if (!raw) return null;
     return migrate(JSON.parse(raw) as PersistedV2);
   } catch {
-    return structuredClone(empty);
+    return null;
   }
 }
 
@@ -82,18 +84,75 @@ function earliestDate(a: string, b: string): string {
 }
 
 function createStore() {
-  const state = $state<Store>(load());
+  const state = $state<Store>(structuredClone(empty));
+  const meta = $state({ loaded: !browser, error: null as string | null, migratedFromLs: false });
 
   if (browser) {
+    void (async () => {
+      try {
+        let data = await idbGet<PersistedV2>(IDB_KEY);
+        if (!data) {
+          const legacy = readLegacyLocalStorage();
+          if (legacy) {
+            data = legacy;
+            await idbSet(IDB_KEY, legacy);
+            try {
+              localStorage.removeItem(LEGACY_LS_KEY);
+            } catch {
+              // ignore
+            }
+            meta.migratedFromLs = true;
+          }
+        }
+        const next = data ? migrate(data) : structuredClone(empty);
+        state.apiKey = next.apiKey;
+        state.library = next.library;
+        state.searchHistory = next.searchHistory;
+        state.version = next.version;
+      } catch (e) {
+        meta.error = e instanceof Error ? e.message : String(e);
+        console.error("[store] IDB load failed", e);
+      } finally {
+        meta.loaded = true;
+      }
+    })();
+
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
     $effect.root(() => {
       $effect(() => {
-        const snapshot = JSON.stringify(state);
-        localStorage.setItem(KEY, snapshot);
+        // track all top-level fields
+        void state.apiKey;
+        void state.library;
+        void state.searchHistory;
+        void state.version;
+        if (!meta.loaded) return;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          const snapshot: Store = {
+            apiKey: state.apiKey,
+            library: $state.snapshot(state.library) as Record<string, Entry>,
+            searchHistory: [...state.searchHistory],
+            version: state.version,
+          };
+          void idbSet(IDB_KEY, snapshot).catch((e) => {
+            meta.error = e instanceof Error ? e.message : String(e);
+            console.error("[store] IDB save failed", e);
+          });
+        }, SAVE_DEBOUNCE_MS);
       });
     });
   }
 
   return {
+    get loaded() {
+      return meta.loaded;
+    },
+    get error() {
+      return meta.error;
+    },
+    get migratedFromLs() {
+      return meta.migratedFromLs;
+    },
     get apiKey() {
       return state.apiKey;
     },
@@ -239,6 +298,18 @@ function createStore() {
 
     wipeLibrary() {
       state.library = {};
+    },
+
+    async wipeAll() {
+      state.apiKey = null;
+      state.library = {};
+      state.searchHistory = [];
+      state.version = SCHEMA_VERSION;
+      try {
+        await idbDelete(IDB_KEY);
+      } catch (e) {
+        console.error("[store] wipe failed", e);
+      }
     },
   };
 }

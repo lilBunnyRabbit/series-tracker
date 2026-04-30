@@ -62,7 +62,7 @@
           type="button"
           onclick={handleAdd}
           disabled={busy || inLibrary}
-          class="shrink-0 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] disabled:cursor-not-allowed disabled:opacity-50"
+          class="shrink-0 rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {inLibrary ? "Added" : busy ? "Adding..." : "Add"}
         </button>

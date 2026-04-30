@@ -5,7 +5,9 @@
   let { children } = $props();
 </script>
 
-{#if store.apiKey}
+{#if !store.loaded}
+  <div class="flex justify-center py-12 text-sm text-[var(--color-muted)]">Loading library...</div>
+{:else if store.apiKey}
   {@render children()}
 {:else}
   <div class="mx-auto max-w-xl rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
@@ -17,7 +19,7 @@
     </p>
     <a
       href="{base}/settings/"
-      class="inline-block rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)]"
+      class="inline-block rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
     >
       Open settings
     </a>

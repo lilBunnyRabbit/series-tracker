@@ -54,7 +54,7 @@
         onclick={handleQuickAdd}
         aria-label="Mark next episode watched"
         title="+1 episode ({currentSeasonHint})"
-        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-accent)] text-lg font-semibold text-[var(--color-accent-fg)] opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100 active:opacity-100"
+        class="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-lg font-semibold text-[var(--color-bg)] opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100 active:opacity-100"
       >
         +
       </button>
@@ -72,7 +72,7 @@
     </div>
     {#if entry.kind === "tv" && totalEpisodes > 0}
       <div class="h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-        <div class="h-full bg-[var(--color-accent)] transition-all" style="width: {pct}%"></div>
+        <div class="h-full bg-[var(--color-primary)] transition-all" style="width: {pct}%"></div>
       </div>
     {/if}
   </div>

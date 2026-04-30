@@ -21,16 +21,25 @@
     return p.startsWith(`${base}${path}`);
   }
 
+  const relPath = $derived(page.url.pathname.replace(base, ""));
+
   const pageTitle = $derived.by(() => {
-    const p = page.url.pathname.replace(base, "");
-    if (p === "/" || p === "") return "Library";
-    if (p.startsWith("/search")) return "Search";
-    if (p.startsWith("/discover")) return "Discover";
-    if (p.startsWith("/settings")) return "Settings";
-    if (p.includes("/info")) return "Info";
-    if (p.startsWith("/show/")) return "Show";
-    if (p.startsWith("/movie/")) return "Movie";
+    if (relPath === "/" || relPath === "") return "Library";
+    if (relPath.startsWith("/search")) return "Search";
+    if (relPath.startsWith("/discover")) return "Discover";
+    if (relPath.startsWith("/settings")) return "Settings";
+    if (relPath.includes("/info")) return "Info";
+    if (relPath.startsWith("/show/")) return "Show";
+    if (relPath.startsWith("/movie/")) return "Movie";
     return "Series Tracker";
+  });
+
+  const backHref = $derived.by(() => {
+    const m = relPath.match(/^\/(show|movie)\/(\d+)\/info\/?$/);
+    if (m) return `${base}/${m[1]}/${m[2]}/`;
+    const d = relPath.match(/^\/(show|movie)\/\d+\/?$/);
+    if (d) return `${base}/`;
+    return null;
   });
 </script>
 
@@ -43,12 +52,30 @@
     class="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur"
     style="padding-top: env(safe-area-inset-top)"
   >
-    <nav class="mx-auto flex max-w-5xl items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
-      <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight">
+    <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
+      <div class="flex items-center gap-2 sm:hidden">
+        {#if backHref}
+          <a
+            href={backHref}
+            aria-label="Back"
+            class="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-lg"
+          >
+            ←
+          </a>
+          <span class="text-sm font-medium">{pageTitle}</span>
+        {:else}
+          <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight">
+            <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
+          </a>
+          <span class="text-sm font-medium text-[var(--color-muted)]">{pageTitle}</span>
+        {/if}
+      </div>
+
+      <a href="{base}/" class="hidden items-center gap-2 font-semibold tracking-tight sm:flex">
         <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
-        <span class="hidden sm:inline">Series Tracker</span>
+        <span>Series Tracker</span>
       </a>
-      <span class="text-sm font-medium text-[var(--color-muted)] sm:hidden">{pageTitle}</span>
+
       <div class="ml-auto hidden items-center gap-1 text-sm sm:flex">
         {#each items as item (item.path)}
           <a
@@ -61,6 +88,7 @@
           </a>
         {/each}
       </div>
+
       <a
         href="{base}/settings/"
         aria-label="Settings"

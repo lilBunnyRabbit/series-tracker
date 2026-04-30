@@ -1,14 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: oklch(0.255 0.0233 230.47);
-  --color-surface: oklch(0.305 0.022 230.47);
-  --color-surface-2: oklch(0.355 0.0205 230.47);
-  --color-border: oklch(0.42 0.018 230.47);
+  --color-bg: oklch(0.205 0.022 230.47);
+  --color-surface: oklch(0.255 0.0233 230.47);
+  --color-surface-2: oklch(0.31 0.022 230.47);
+  --color-border: oklch(0.4 0.018 230.47);
   --color-text: oklch(0.745 0.00777 50.47);
   --color-muted: oklch(0.58 0.012 50.47);
   --color-accent: oklch(0.745 0.0699 50.47);
-  --color-accent-fg: oklch(0.2 0.04 50.47);
   --color-primary: oklch(0.745 0.0699 122.47);
   --color-secondary: oklch(0.745 0.0699 302.47);
   --color-danger: oklch(0.62 0.16 25);
@@ -37,6 +36,6 @@ a {
 }
 
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-accent-fg);
+  background: var(--color-primary);
+  color: var(--color-bg);
 }

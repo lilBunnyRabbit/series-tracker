@@ -144,7 +144,7 @@
             type="button"
             onclick={() => (trendingWindow = w as "day" | "week")}
             class="rounded-full border px-3 py-1 transition {trendingWindow === w
-              ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-bg)]'
               : 'border-[var(--color-border)] text-[var(--color-muted)]'}"
           >
             {w === "day" ? "Today" : "This week"}

@@ -54,7 +54,7 @@
               />
               <div class="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/15">
                 <div
-                  class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)] shadow-lg"
+                  class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-bg)] shadow-lg"
                 >
                   <span class="ml-0.5 text-lg leading-none">▶</span>
                 </div>

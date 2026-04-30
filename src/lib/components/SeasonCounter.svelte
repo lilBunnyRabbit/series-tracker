@@ -69,7 +69,7 @@
       <span class="text-sm tabular-nums text-[var(--color-muted)]">/ {total}</span>
       <button
         type="button"
-        class="h-9 w-9 rounded-md border border-[var(--color-border)] bg-[var(--color-accent)] text-lg leading-none text-[var(--color-accent-fg)] disabled:opacity-40"
+        class="h-9 w-9 rounded-md border border-[var(--color-border)] bg-[var(--color-primary)] text-lg leading-none text-[var(--color-bg)] disabled:opacity-40"
         onclick={() => store.updateProgress(showId, season, +1)}
         disabled={current >= total}
         aria-label="Increment"

@@ -79,7 +79,7 @@
 </script>
 
 <section class="space-y-6">
-  <a href="{base}/" class="inline-block text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]">← Back</a>
+  <a href="{base}/" class="hidden text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
     <p class="text-sm text-[var(--color-muted)]">Loading...</p>
@@ -139,7 +139,7 @@
             <button
               type="button"
               onclick={addToLibrary}
-              class="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)]"
+              class="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-bg)]"
             >
               + Add to library
             </button>

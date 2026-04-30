@@ -94,7 +94,7 @@
         type="button"
         onclick={save}
         disabled={!keyDraft.trim() || keyDraft.trim() === store.apiKey}
-        class="rounded-md bg-[var(--color-accent)] px-4 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] disabled:cursor-not-allowed disabled:opacity-40"
+        class="rounded-md bg-[var(--color-primary)] px-4 py-1.5 text-sm font-medium text-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-40"
       >
         Save
       </button>
