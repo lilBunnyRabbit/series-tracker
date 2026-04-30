@@ -8,6 +8,7 @@
   let testStatus = $state<"idle" | "testing" | "ok" | "fail">("idle");
   let testMessage = $state<string | null>(null);
   let importMessage = $state<string | null>(null);
+  let importMode = $state<"replace" | "merge">("merge");
 
   function save() {
     store.setApiKey(keyDraft);
@@ -52,9 +53,13 @@
     importMessage = null;
     try {
       const text = await file.text();
-      store.importJson(text);
+      const result = store.importJson(text, importMode);
       keyDraft = store.apiKey ?? "";
-      importMessage = `Imported ${Object.keys(store.library).length} item(s).`;
+      if (importMode === "replace") {
+        importMessage = `Replaced library with ${result.added} item(s).`;
+      } else {
+        importMessage = `Merged: ${result.added} added, ${result.merged} updated. Total: ${result.total}.`;
+      }
     } catch (err) {
       importMessage = err instanceof Error ? err.message : String(err);
     }
@@ -63,7 +68,7 @@
 
   function wipe() {
     if (!confirm("This will delete your entire library. Continue?")) return;
-    store.importJson(JSON.stringify({ apiKey: store.apiKey, library: {} }));
+    store.wipeLibrary();
   }
 </script>
 
@@ -105,7 +110,7 @@
         <button
           type="button"
           onclick={clear}
-          class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-red-700 hover:text-red-400"
+          class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
         >
           Forget key
         </button>
@@ -115,13 +120,28 @@
       <p class="text-xs text-[var(--color-accent)]">{savedNote}</p>
     {/if}
     {#if testMessage}
-      <p class="text-xs {testStatus === 'ok' ? 'text-emerald-400' : 'text-red-400'}">{testMessage}</p>
+      <p class="text-xs {testStatus === 'ok' ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'}">{testMessage}</p>
     {/if}
   </div>
 
   <div class="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
     <h2 class="font-medium">Backup</h2>
-    <p class="text-sm text-[var(--color-muted)]">Export your library as JSON, or restore from a previous export.</p>
+    <p class="text-sm text-[var(--color-muted)]">
+      Export your library as JSON, or restore from a previous export. <strong>Merge</strong> combines two backups (max season progress wins,
+      newer metadata wins). <strong>Replace</strong> overwrites your current library.
+    </p>
+
+    <fieldset class="flex gap-4 text-sm">
+      <label class="flex items-center gap-2">
+        <input type="radio" bind:group={importMode} value="merge" />
+        Merge
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="radio" bind:group={importMode} value="replace" />
+        Replace
+      </label>
+    </fieldset>
+
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
@@ -131,13 +151,13 @@
         Export JSON
       </button>
       <label class="cursor-pointer rounded-md border border-[var(--color-border)] px-4 py-1.5 text-sm hover:border-[var(--color-accent)]">
-        Import JSON
+        Import JSON ({importMode})
         <input type="file" accept="application/json" onchange={importData} class="hidden" />
       </label>
       <button
         type="button"
         onclick={wipe}
-        class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-red-700 hover:text-red-400"
+        class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
       >
         Wipe library
       </button>

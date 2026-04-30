@@ -6,10 +6,11 @@
 
   let { children } = $props();
 
-  const isSettings = $derived(page.url.pathname.endsWith("/settings/") || page.url.pathname.endsWith("/settings"));
+  const isSettings = $derived(page.url.pathname.includes("/settings"));
 
   const items: { href: string; label: string; path: string; icon: string }[] = [
     { href: `${base}/`, label: "Library", path: "/", icon: "📚" },
+    { href: `${base}/discover/`, label: "Discover", path: "/discover/", icon: "✨" },
     { href: `${base}/search/`, label: "Search", path: "/search/", icon: "🔍" },
     { href: `${base}/settings/`, label: "Settings", path: "/settings/", icon: "⚙" },
   ];
@@ -19,6 +20,18 @@
     if (path === "/") return p === `${base}/` || p === base;
     return p.startsWith(`${base}${path}`);
   }
+
+  const pageTitle = $derived.by(() => {
+    const p = page.url.pathname.replace(base, "");
+    if (p === "/" || p === "") return "Library";
+    if (p.startsWith("/search")) return "Search";
+    if (p.startsWith("/discover")) return "Discover";
+    if (p.startsWith("/settings")) return "Settings";
+    if (p.includes("/info")) return "Info";
+    if (p.startsWith("/show/")) return "Show";
+    if (p.startsWith("/movie/")) return "Movie";
+    return "Series Tracker";
+  });
 </script>
 
 <svelte:head>
@@ -30,11 +43,12 @@
     class="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur"
     style="padding-top: env(safe-area-inset-top)"
   >
-    <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
+    <nav class="mx-auto flex max-w-5xl items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
       <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight">
         <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
         <span class="hidden sm:inline">Series Tracker</span>
       </a>
+      <span class="text-sm font-medium text-[var(--color-muted)] sm:hidden">{pageTitle}</span>
       <div class="ml-auto hidden items-center gap-1 text-sm sm:flex">
         {#each items as item (item.path)}
           <a
@@ -47,6 +61,13 @@
           </a>
         {/each}
       </div>
+      <a
+        href="{base}/settings/"
+        aria-label="Settings"
+        class="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-base text-[var(--color-muted)] sm:hidden"
+      >
+        ⚙
+      </a>
     </nav>
   </header>
 

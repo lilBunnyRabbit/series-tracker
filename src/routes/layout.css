@@ -1,14 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0b0d10;
-  --color-surface: #14181d;
-  --color-surface-2: #1c2128;
-  --color-border: #232a31;
-  --color-text: #e6e6e6;
-  --color-muted: #8a93a0;
-  --color-accent: #f59e0b;
-  --color-accent-fg: #1a1207;
+  --color-bg: oklch(0.255 0.0233 230.47);
+  --color-surface: oklch(0.305 0.022 230.47);
+  --color-surface-2: oklch(0.355 0.0205 230.47);
+  --color-border: oklch(0.42 0.018 230.47);
+  --color-text: oklch(0.745 0.00777 50.47);
+  --color-muted: oklch(0.58 0.012 50.47);
+  --color-accent: oklch(0.745 0.0699 50.47);
+  --color-accent-fg: oklch(0.2 0.04 50.47);
+  --color-primary: oklch(0.745 0.0699 122.47);
+  --color-secondary: oklch(0.745 0.0699 302.47);
+  --color-danger: oklch(0.62 0.16 25);
+
   --font-sans:
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -23,9 +27,16 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  scrollbar-color: var(--color-surface-2) var(--color-bg);
+  scrollbar-width: thin;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
 }

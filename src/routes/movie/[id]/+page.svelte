@@ -49,6 +49,8 @@
       id: detail.id,
       title: detail.title,
       poster: posterUrl(detail.poster_path, "w342"),
+      year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
+      voteAverage: detail.vote_average,
       watched: false,
       status: "plan",
       addedAt: now,
@@ -70,7 +72,7 @@
   {#if loading && !headerInfo}
     <p class="text-sm text-[var(--color-muted)]">Loading...</p>
   {:else if error}
-    <p class="rounded-md border border-red-700 bg-red-950/30 p-3 text-sm text-red-300">{error}</p>
+    <p class="rounded-md border border-[var(--color-danger)] bg-[var(--color-danger)]/15 p-3 text-sm text-[var(--color-danger)]">{error}</p>
   {:else if headerInfo}
     <div class="flex flex-col gap-6 md:flex-row">
       <div class="w-full max-w-[200px] flex-shrink-0">
@@ -112,22 +114,36 @@
                 <option value={s}>{STATUS_LABEL[s]}</option>
               {/each}
             </select>
+            <a
+              href="{base}/movie/{id}/info/"
+              class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs hover:border-[var(--color-accent)]"
+            >
+              ⓘ More info
+            </a>
             <button
               type="button"
               onclick={remove}
-              class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-red-700 hover:text-red-400"
+              class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
             >
               Remove
             </button>
           </div>
         {:else}
-          <button
-            type="button"
-            onclick={addToLibrary}
-            class="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)]"
-          >
-            + Add to library
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onclick={addToLibrary}
+              class="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)]"
+            >
+              + Add to library
+            </button>
+            <a
+              href="{base}/movie/{id}/info/"
+              class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm hover:border-[var(--color-accent)]"
+            >
+              More info
+            </a>
+          </div>
         {/if}
       </div>
     </div>
