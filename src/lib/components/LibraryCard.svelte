@@ -25,6 +25,14 @@
     return "Done";
   });
 
+  const borderClass = $derived(
+    entry.status === "completed"
+      ? "border-[var(--color-primary)]"
+      : entry.status === "dropped"
+        ? "border-[var(--color-border)] opacity-60"
+        : "border-[var(--color-border)]"
+  );
+
   function handleQuickAdd(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -35,7 +43,7 @@
 
 <a
   {href}
-  class="group relative flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] transition hover:border-[var(--color-accent)]"
+  class="group relative flex flex-col overflow-hidden rounded-lg border bg-[var(--color-surface)] transition hover:border-[var(--color-accent)] {borderClass}"
 >
   <div class="relative aspect-[2/3] w-full bg-[var(--color-surface-2)]">
     {#if entry.poster}
@@ -63,7 +71,9 @@
   <div class="flex flex-1 flex-col gap-1 p-2.5">
     <div class="line-clamp-2 text-sm font-medium leading-snug">{entry.title}</div>
     <div class="mt-auto flex items-center justify-between text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
-      <span class="truncate">{STATUS_LABEL[entry.status]}{entry.year ? ` · ${entry.year}` : ""}</span>
+      <span class="truncate {entry.status === 'completed' ? 'text-[var(--color-primary)]' : ''}"
+        >{STATUS_LABEL[entry.status]}{entry.year ? ` · ${entry.year}` : ""}</span
+      >
       {#if entry.kind === "tv"}
         <span class="tabular-nums">{watchedEpisodes}/{totalEpisodes}</span>
       {:else}

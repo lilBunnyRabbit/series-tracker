@@ -46,15 +46,15 @@
     <!-- HERO -->
     <div class="relative -mx-3 sm:-mx-4">
       {#if backdrop}
-        <div class="relative h-56 w-full overflow-hidden sm:h-80 md:h-[28rem]">
+        <div class="relative h-44 w-full overflow-hidden sm:h-72 md:h-[28rem]">
           <img src={backdrop} alt="" class="h-full w-full object-cover" />
           <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-bg)] via-[var(--color-bg)]/60 to-[var(--color-bg)]/20"></div>
         </div>
       {/if}
 
-      <div class="px-3 sm:px-4 {backdrop ? '-mt-24 sm:-mt-32 md:-mt-40' : ''}">
-        <div class="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
-          <div class="w-32 flex-shrink-0 sm:w-40 md:w-52">
+      <div class="px-3 sm:px-4 {backdrop ? 'md:-mt-40' : ''}">
+        <div class="flex gap-4 md:items-end md:gap-6">
+          <div class="w-24 flex-shrink-0 sm:w-32 md:w-52">
             <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] shadow-lg">
               {#if detail.poster_path}
                 <img src={posterUrl(detail.poster_path, "w342")} alt="" class="h-full w-full object-cover" />
@@ -62,7 +62,7 @@
             </div>
           </div>
 
-          <div class="min-w-0 flex-1 space-y-3">
+          <div class="min-w-0 flex-1 space-y-2 sm:space-y-3">
             <div>
               <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{detail.name}</h1>
               {#if detail.tagline}

@@ -66,7 +66,7 @@
         oninput={(e) => store.setProgress(showId, season, +(e.currentTarget as HTMLInputElement).value)}
         class="w-12 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-1 py-1 text-center text-sm tabular-nums"
       />
-      <span class="text-sm tabular-nums text-[var(--color-muted)]">/ {total}</span>
+      <span class="inline-block w-10 text-left text-sm tabular-nums text-[var(--color-muted)]">/ {total}</span>
       <button
         type="button"
         class="h-9 w-9 rounded-md border border-[var(--color-border)] bg-[var(--color-primary)] text-lg leading-none text-[var(--color-bg)] disabled:opacity-40"

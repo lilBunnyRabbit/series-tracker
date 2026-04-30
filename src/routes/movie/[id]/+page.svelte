@@ -120,13 +120,6 @@
             >
               ⓘ More info
             </a>
-            <button
-              type="button"
-              onclick={remove}
-              class="ml-auto rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
-            >
-              Remove
-            </button>
           </div>
         {:else}
           <div class="flex flex-wrap gap-2">
@@ -147,5 +140,17 @@
         {/if}
       </div>
     </div>
+
+    {#if movieEntry}
+      <div class="flex justify-center border-t border-[var(--color-border)] pt-6">
+        <button
+          type="button"
+          onclick={remove}
+          class="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+        >
+          Remove from library
+        </button>
+      </div>
+    {/if}
   {/if}
 </section>
