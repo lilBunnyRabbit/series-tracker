@@ -35,6 +35,7 @@
   const pageTitle = $derived.by(() => {
     if (relPath === "/" || relPath === "") return "Library";
     if (relPath.startsWith("/search")) return "Search";
+    if (relPath.startsWith("/discover/browse")) return "Browse";
     if (relPath.startsWith("/discover")) return "Discover";
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.includes("/info")) return "Info";
@@ -44,10 +45,11 @@
   });
 
   const backHref = $derived.by(() => {
-    const m = relPath.match(/^\/(show|movie)\/(\d+)\/info\/?$/);
-    if (m) return `${base}/${m[1]}/${m[2]}/`;
-    const d = relPath.match(/^\/(show|movie)\/\d+\/?$/);
-    if (d) return `${base}/`;
+    const info = relPath.match(/^\/(show|movie)\/(\d+)\/info\/?$/);
+    if (info) return `${base}/${info[1]}/${info[2]}/`;
+    const detail = relPath.match(/^\/(show|movie)\/\d+\/?$/);
+    if (detail) return `${base}/`;
+    if (relPath.startsWith("/discover/browse")) return `${base}/discover/`;
     return null;
   });
 

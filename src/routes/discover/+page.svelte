@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from "$app/paths";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
   import {
@@ -95,7 +96,15 @@
 </script>
 
 <section class="space-y-8">
-  <h1 class="text-xl font-semibold">Discover</h1>
+  <div class="flex flex-wrap items-center gap-2">
+    <h1 class="mr-auto text-xl font-semibold">Discover</h1>
+    <a
+      href="{base}/discover/browse/"
+      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent"
+    >
+      Browse all →
+    </a>
+  </div>
 
   {#if error}
     <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">

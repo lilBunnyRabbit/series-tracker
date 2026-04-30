@@ -1,5 +1,6 @@
 import type {
   Entry,
+  Genre,
   MovieDetail,
   MovieDetailFull,
   MovieEntry,
@@ -181,6 +182,91 @@ export async function popularTv(key: string, signal?: AbortSignal): Promise<Reco
 }
 
 export const ping = (key: string) => get<{ images: unknown }>("/configuration", key, {}, { noCache: true });
+
+// ---- Discover (filterable browse) ----
+
+export type DiscoverPage = {
+  page: number;
+  total_pages: number;
+  total_results: number;
+  results: RecommendationItem[];
+};
+
+export type DiscoverSort =
+  | "popularity.desc"
+  | "popularity.asc"
+  | "vote_average.desc"
+  | "vote_average.asc"
+  | "newest"
+  | "oldest"
+  | "title.asc"
+  | "title.desc";
+
+export type DiscoverFilters = {
+  sort: DiscoverSort;
+  /** TMDB genre IDs to AND-filter on (movie + tv have separate ID spaces). */
+  genres: number[];
+  page: number;
+  /** Minimum vote count to suppress junk (default 20). Set to 0 to disable. */
+  minVotes?: number;
+};
+
+const SORT_TV: Record<DiscoverSort, string> = {
+  "popularity.desc": "popularity.desc",
+  "popularity.asc": "popularity.asc",
+  "vote_average.desc": "vote_average.desc",
+  "vote_average.asc": "vote_average.asc",
+  newest: "first_air_date.desc",
+  oldest: "first_air_date.asc",
+  "title.asc": "name.asc",
+  "title.desc": "name.desc",
+};
+
+const SORT_MOVIE: Record<DiscoverSort, string> = {
+  "popularity.desc": "popularity.desc",
+  "popularity.asc": "popularity.asc",
+  "vote_average.desc": "vote_average.desc",
+  "vote_average.asc": "vote_average.asc",
+  newest: "primary_release_date.desc",
+  oldest: "primary_release_date.asc",
+  "title.asc": "original_title.asc",
+  "title.desc": "original_title.desc",
+};
+
+export async function discover(
+  kind: "tv" | "movie",
+  apiKey: string,
+  filters: DiscoverFilters,
+  signal?: AbortSignal
+): Promise<DiscoverPage> {
+  const sortMap = kind === "tv" ? SORT_TV : SORT_MOVIE;
+  const minVotes = filters.minVotes ?? 20;
+  const params: Record<string, string> = {
+    sort_by: sortMap[filters.sort],
+    page: String(filters.page),
+    include_adult: "false",
+  };
+  if (filters.genres.length > 0) params.with_genres = filters.genres.join(",");
+  if (minVotes > 0) params["vote_count.gte"] = String(minVotes);
+
+  type RawTv = { id: number; name: string; poster_path: string | null; first_air_date?: string; overview?: string; vote_average?: number };
+  type RawMovie = { id: number; title: string; poster_path: string | null; release_date?: string; overview?: string; vote_average?: number };
+  type Raw = { page: number; total_pages: number; total_results: number; results: (RawTv | RawMovie)[] };
+
+  const data = await get<Raw>(`/discover/${kind}`, apiKey, params, { signal, ttlMs: 5 * 60 * 1000 });
+  const results = data.results.map((r) => ({ ...r, media_type: kind }) as RecommendationItem);
+  return {
+    page: data.page,
+    total_pages: data.total_pages,
+    total_results: data.total_results,
+    results,
+  };
+}
+
+export async function genreList(kind: "tv" | "movie", apiKey: string, signal?: AbortSignal): Promise<Genre[]> {
+  const data = await get<{ genres: Genre[] }>(`/genre/${kind}/list`, apiKey, {}, { signal, ttlMs: 24 * 60 * 60 * 1000 });
+  return data.genres;
+}
 
 export function clearCache(): void {
   cache.clear();

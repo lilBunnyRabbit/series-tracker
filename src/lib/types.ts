@@ -159,6 +159,8 @@ export type MovieDetailFull = MovieDetail & {
   videos?: Videos;
 };
 
+export type Genre = { id: number; name: string };
+
 export type EpisodeBrief = {
   id: number;
   episode_number: number;
