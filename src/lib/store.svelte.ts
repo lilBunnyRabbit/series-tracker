@@ -120,20 +120,12 @@ function createStore() {
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
     $effect.root(() => {
       $effect(() => {
-        // track all top-level fields
-        void state.apiKey;
-        void state.library;
-        void state.searchHistory;
-        void state.version;
+        // $state.snapshot traverses every property, so any nested mutation
+        // (e.g. state.library[key] = entry) registers a dep and fires this effect.
+        const snapshot = $state.snapshot(state) as Store;
         if (!meta.loaded) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
-          const snapshot: Store = {
-            apiKey: state.apiKey,
-            library: $state.snapshot(state.library) as Record<string, Entry>,
-            searchHistory: [...state.searchHistory],
-            version: state.version,
-          };
           void idbSet(IDB_KEY, snapshot).catch((e) => {
             meta.error = e instanceof Error ? e.message : String(e);
             console.error("[store] IDB save failed", e);
@@ -141,6 +133,24 @@ function createStore() {
         }, SAVE_DEBOUNCE_MS);
       });
     });
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          const snapshot = $state.snapshot(state) as Store;
+          void idbSet(IDB_KEY, snapshot);
+        }
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden" && saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+          const snapshot = $state.snapshot(state) as Store;
+          void idbSet(IDB_KEY, snapshot);
+        }
+      });
+    }
   }
 
   return {

@@ -3,8 +3,14 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
+  import { onMount } from "svelte";
 
   let { children } = $props();
+
+  onMount(async () => {
+    const { registerSW } = await import("virtual:pwa-register");
+    registerSW({ immediate: true });
+  });
 
   const isSettings = $derived(page.url.pathname.includes("/settings"));
 
