@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { base } from "$app/paths";
+  import { page } from "$app/state";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
   import { discover, entryFromSearchResult, genreList } from "$lib/tmdb";
@@ -8,24 +10,92 @@
 
   type Kind = "tv" | "movie";
 
-  let kind = $state<Kind>("tv");
-  let selectedGenres = $state<Set<number>>(new Set());
-  let sort = $state<DiscoverSort>("popularity.desc");
-  let page = $state(1);
+  const VALID_KIND = ["tv", "movie"] as const;
+  const VALID_SORT: DiscoverSort[] = [
+    "popularity.desc",
+    "popularity.asc",
+    "vote_average.desc",
+    "vote_average.asc",
+    "newest",
+    "oldest",
+    "title.asc",
+    "title.desc",
+  ];
+
+  // ---- URL-derived state (persists across navigation, browser back/forward, refresh, sharing) ----
+
+  const kind = $derived.by<Kind>(() => {
+    const v = page.url.searchParams.get("kind");
+    return VALID_KIND.includes(v as Kind) ? (v as Kind) : "tv";
+  });
+
+  const sort = $derived.by<DiscoverSort>(() => {
+    const v = page.url.searchParams.get("sort");
+    return VALID_SORT.includes(v as DiscoverSort) ? (v as DiscoverSort) : "popularity.desc";
+  });
+
+  const selectedGenres = $derived.by<Set<number>>(() => {
+    const raw = page.url.searchParams.get("g");
+    if (!raw) return new Set();
+    const ids = raw.split(",").map((s) => Number(s)).filter((n) => Number.isFinite(n) && n > 0);
+    return new Set(ids);
+  });
+
+  const pageNum = $derived.by(() => {
+    const n = Number(page.url.searchParams.get("page"));
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+  });
+
+  function updateParams(patch: Record<string, string | null>): void {
+    const url = new URL(page.url);
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "") url.searchParams.delete(k);
+      else url.searchParams.set(k, v);
+    }
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  function setKind(k: Kind): void {
+    if (k === kind) return;
+    // Genre IDs differ between TV and movie; clear them when switching.
+    updateParams({ kind: k, g: null, page: null });
+  }
+
+  function setSort(s: DiscoverSort): void {
+    updateParams({ sort: s, page: null });
+  }
+
+  function toggleGenre(id: number): void {
+    const next = new Set(selectedGenres);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    updateParams({ g: next.size ? [...next].sort((a, b) => a - b).join(",") : null, page: null });
+  }
+
+  function clearGenres(): void {
+    updateParams({ g: null, page: null });
+  }
+
+  function goToPage(n: number): void {
+    updateParams({ page: n === 1 ? null : String(n) });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---- Async data ----
 
   let availableGenres = $state<Genre[]>([]);
   let result = $state<DiscoverPage | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
 
-  // Load genres when kind changes; clear selection (genre IDs differ between TV/movie).
+  // Genre list per kind. Cached 24h server-side via TMDB cache, so kind switches are instant after first fetch.
   $effect(() => {
     void kind;
     if (!store.apiKey) return;
     const ctrl = new AbortController();
     genreList(kind, store.apiKey, ctrl.signal)
       .then((g) => {
-        if (!ctrl.signal.aborted) availableGenres = g.sort((a, b) => a.name.localeCompare(b.name));
+        if (!ctrl.signal.aborted) availableGenres = g.toSorted((a, b) => a.name.localeCompare(b.name));
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
@@ -34,14 +104,13 @@
     return () => ctrl.abort();
   });
 
-  // Fetch discover results when any filter changes.
   $effect(() => {
     if (!store.apiKey) return;
     const apiKey = store.apiKey;
     const filters = {
       sort,
-      genres: [...selectedGenres],
-      page,
+      genres: [...selectedGenres].sort((a, b) => a - b),
+      page: pageNum,
     };
     loading = true;
     error = null;
@@ -60,47 +129,8 @@
     return () => ctrl.abort();
   });
 
-  function setKind(k: Kind): void {
-    if (k === kind) return;
-    kind = k;
-    selectedGenres = new Set();
-    page = 1;
-  }
-
-  function toggleGenre(id: number): void {
-    const next = new Set(selectedGenres);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    selectedGenres = next;
-    page = 1;
-  }
-
-  function clearGenres(): void {
-    selectedGenres = new Set();
-    page = 1;
-  }
-
-  function setSort(s: DiscoverSort): void {
-    sort = s;
-    page = 1;
-  }
-
-  function prevPage(): void {
-    if (page > 1) {
-      page--;
-      window.scrollTo({ top: 0 });
-    }
-  }
-  function nextPage(): void {
-    if (canGoNext) {
-      page++;
-      window.scrollTo({ top: 0 });
-    }
-  }
-
-  // TMDB caps discover pagination at 500.
   const totalPages = $derived(Math.min(result?.total_pages ?? 1, 500));
-  const canGoNext = $derived(!!result && page < totalPages);
+  const canGoNext = $derived(!!result && pageNum < totalPages);
   const totalResults = $derived(result?.total_results ?? 0);
 </script>
 
@@ -119,10 +149,9 @@
     </a>
   </div>
 
-  <!-- KIND + SORT -->
   <div class="flex flex-wrap items-center gap-2">
     <div class="flex gap-1 text-xs" role="tablist" aria-label="Media kind">
-      {#each ["tv", "movie"] as const as k (k)}
+      {#each VALID_KIND as k (k)}
         <button
           type="button"
           role="tab"
@@ -154,7 +183,6 @@
     </label>
   </div>
 
-  <!-- GENRES -->
   {#if availableGenres.length > 0}
     <div class="space-y-1.5">
       <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted">
@@ -183,7 +211,6 @@
     </div>
   {/if}
 
-  <!-- RESULT META -->
   {#if result}
     <p class="text-xs text-muted">
       {totalResults.toLocaleString()} result{totalResults === 1 ? "" : "s"}
@@ -195,7 +222,6 @@
     <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
   {/if}
 
-  <!-- RESULTS -->
   {#if !result && loading}
     <p class="text-sm text-muted">Loading...</p>
   {:else if result && result.results.length === 0}
@@ -216,21 +242,20 @@
       {/each}
     </div>
 
-    <!-- PAGINATION -->
     {#if totalPages > 1}
       <nav class="flex items-center justify-between gap-2 pt-2" aria-label="Pagination">
         <button
           type="button"
-          onclick={prevPage}
-          disabled={page <= 1}
+          onclick={() => goToPage(pageNum - 1)}
+          disabled={pageNum <= 1}
           class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           ← Prev
         </button>
-        <span class="text-xs tabular-nums text-muted">Page {page} of {totalPages.toLocaleString()}</span>
+        <span class="text-xs tabular-nums text-muted">Page {pageNum} of {totalPages.toLocaleString()}</span>
         <button
           type="button"
-          onclick={nextPage}
+          onclick={() => goToPage(pageNum + 1)}
           disabled={!canGoNext}
           class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
