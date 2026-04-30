@@ -56,7 +56,7 @@
 {:else}
   <a
     {href}
-    class="flex flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
+    class="flex h-full flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
   >
     <div class="relative aspect-[2/3] w-full bg-surface-2">
       {#if entry.poster}

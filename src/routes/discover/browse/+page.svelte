@@ -46,6 +46,15 @@
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   });
 
+  const hideAdded = $derived.by<boolean>(() => page.url.searchParams.get("hidden") === "1");
+
+  function toggleHideAdded(): void {
+    const url = new URL(page.url);
+    if (hideAdded) url.searchParams.delete("hidden");
+    else url.searchParams.set("hidden", "1");
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
   function updateParams(patch: Record<string, string | null>): void {
     const url = new URL(page.url);
     for (const [k, v] of Object.entries(patch)) {
@@ -138,6 +147,17 @@
   const totalPages = $derived(Math.min(result?.total_pages ?? 1, 500));
   const canGoNext = $derived(!!result && pageNum < totalPages);
   const totalResults = $derived(result?.total_results ?? 0);
+
+  // TMDB has no API param to exclude items already in library, so we filter client-side.
+  // The page count from TMDB is unaffected — this just hides items on the rendered page.
+  const visibleResults = $derived(
+    result
+      ? hideAdded
+        ? result.results.filter((r) => !store.has(r.media_type as "tv" | "movie", r.id))
+        : result.results
+      : []
+  );
+  const hiddenCount = $derived(result ? result.results.length - visibleResults.length : 0);
 </script>
 
 <svelte:head>
@@ -147,8 +167,18 @@
 <section class="space-y-5">
   <div class="flex flex-wrap items-center gap-2">
     <h1 class="mr-auto text-xl font-semibold">Browse</h1>
+    <button
+      type="button"
+      onclick={toggleHideAdded}
+      aria-pressed={hideAdded}
+      class="rounded-md border px-3 py-1.5 text-xs transition {hideAdded
+        ? 'border-accent bg-accent text-bg'
+        : 'border-border text-muted hover:border-accent'}"
+    >
+      {hideAdded ? "✓ Hiding added" : "Hide added"}
+    </button>
     <a
-      href="{base}/discover/"
+      href="{base}/discover/{hideAdded ? '?hidden=1' : ''}"
       class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
     >
       ← Curated
@@ -220,6 +250,7 @@
   {#if result}
     <p class="text-xs text-muted">
       {totalResults.toLocaleString()} result{totalResults === 1 ? "" : "s"}
+      {#if hideAdded && hiddenCount > 0}<span class="ml-2">· {hiddenCount} hidden on this page</span>{/if}
       {#if loading}<span class="ml-2">· Refreshing...</span>{/if}
     </p>
   {/if}
@@ -234,9 +265,13 @@
     <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
       No results match these filters.
     </p>
+  {:else if result && visibleResults.length === 0}
+    <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+      Every result on this page is already in your library. Try the next page.
+    </p>
   {:else if result}
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {#each result.results as r (r.media_type + ":" + r.id)}
+      {#each visibleResults as r (r.media_type + ":" + r.id)}
         <SearchResultCard
           result={r as SearchMultiResult}
           onAdd={async (item, status: Status) => {

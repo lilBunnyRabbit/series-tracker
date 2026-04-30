@@ -43,46 +43,59 @@
   }
 </script>
 
-<div class="flex gap-3 rounded-lg border border-border bg-surface p-3">
+<!-- Card-link pattern: the title <a> grows a ::before that overlays the whole
+     card, so clicking the poster, overview, or empty space follows the link.
+     Interactive children (buttons, status chip) get position:relative + z-10
+     so their clicks land on them instead of the overlay. -->
+<article
+  class="relative flex gap-3 rounded-lg border border-border bg-surface p-3 transition hover:border-accent focus-within:border-accent"
+>
   <div class="h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
     {#if poster}
       <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
   </div>
   <div class="flex min-w-0 flex-1 flex-col">
-    <div class="flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        {#if detailHref}
-          <a href={detailHref} class="block truncate font-medium hover:underline">{title}</a>
-        {:else}
-          <span class="block truncate font-medium">{title}</span>
-        {/if}
-        <div class="mt-0.5 text-xs text-muted">
-          <span class="rounded bg-surface-2 px-1.5 py-0.5 uppercase tracking-wider">{result.media_type}</span>
-          {#if date}<span class="ml-2">{date.slice(0, 4)}</span>{/if}
-        </div>
+    <div class="min-w-0">
+      {#if detailHref}
+        <a href={detailHref} class="card-link block line-clamp-3 font-medium leading-snug">{title}</a>
+      {:else}
+        <span class="block line-clamp-3 font-medium leading-snug">{title}</span>
+      {/if}
+      <div class="mt-1 text-xs text-muted">
+        <span class="rounded bg-surface-2 px-1.5 py-0.5 uppercase tracking-wider">{result.media_type}</span>
+        {#if date}<span class="ml-2">{date.slice(0, 4)}</span>{/if}
       </div>
-      {#if result.media_type !== "person"}
+    </div>
+    {#if result.media_type !== "person" && result.overview}
+      <p class="mt-2 line-clamp-2 text-xs text-muted">{result.overview}</p>
+    {/if}
+    {#if result.media_type !== "person"}
+      <div class="relative z-10 mt-auto flex justify-end pt-2">
         {#if existing}
           {@const c = STATUS_COLOR[existing.status]}
           <span
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium {c.chip}"
+            class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium {c.chip}"
           >
             <span class="h-2 w-2 rounded-full {c.dot}" aria-hidden="true"></span>
             {STATUS_LABEL[existing.status]}
           </span>
         {:else}
-          <div class="shrink-0">
-            <StatusMenu label="Add" {busy} size="sm" onSelect={handleStatusPick} title={`Add "${title}" as...`} />
-          </div>
+          <StatusMenu label="+ Add" {busy} size="sm" onSelect={handleStatusPick} title={`Add "${title}" as...`} />
         {/if}
-      {/if}
-    </div>
-    {#if result.media_type !== "person" && result.overview}
-      <p class="mt-2 line-clamp-3 text-xs text-muted">{result.overview}</p>
+      </div>
     {/if}
     {#if error}
-      <p class="mt-2 text-xs text-danger">{error}</p>
+      <p class="relative z-10 mt-2 text-xs text-danger">{error}</p>
     {/if}
   </div>
-</div>
+</article>
+
+<style>
+  .card-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+</style>

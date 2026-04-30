@@ -17,12 +17,25 @@
 
   type Window = "day" | "week";
   const trendingWindow = $derived.by<Window>(() => (page.url.searchParams.get("w") === "week" ? "week" : "day"));
+  const hideAdded = $derived.by<boolean>(() => page.url.searchParams.get("hidden") === "1");
 
   function setTrendingWindow(w: Window): void {
     const url = new URL(page.url);
     if (w === "day") url.searchParams.delete("w");
     else url.searchParams.set("w", w);
     void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  function toggleHideAdded(): void {
+    const url = new URL(page.url);
+    if (hideAdded) url.searchParams.delete("hidden");
+    else url.searchParams.set("hidden", "1");
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  function filterAdded<T extends { media_type: string; id: number }>(items: T[]): T[] {
+    if (!hideAdded) return items;
+    return items.filter((r) => !store.has(r.media_type as "tv" | "movie", r.id));
   }
 
   let trendingItems = $state<SearchMultiResult[]>([]);
@@ -32,6 +45,11 @@
 
   let loading = $state(false);
   let error = $state<string | null>(null);
+
+  const visibleTrending = $derived(filterAdded(trendingItems).slice(0, 12));
+  const visibleRecs = $derived(filterAdded(recItems));
+  const visiblePopularTv = $derived(filterAdded(popularTvItems).slice(0, 8));
+  const visiblePopularMovies = $derived(filterAdded(popularMovieItems).slice(0, 8));
 
   $effect(() => {
     void trendingWindow;
@@ -108,8 +126,18 @@
 <section class="space-y-8">
   <div class="flex flex-wrap items-center gap-2">
     <h1 class="mr-auto text-xl font-semibold">Discover</h1>
+    <button
+      type="button"
+      onclick={toggleHideAdded}
+      aria-pressed={hideAdded}
+      class="rounded-md border px-3 py-1.5 text-sm transition {hideAdded
+        ? 'border-accent bg-accent text-bg'
+        : 'border-border text-muted hover:border-accent'}"
+    >
+      {hideAdded ? "✓ Hiding added" : "Hide added"}
+    </button>
     <a
-      href="{base}/discover/browse/"
+      href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
       class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent"
     >
       Browse all →
@@ -141,49 +169,51 @@
     </div>
     {#if trendingItems.length === 0 && loading}
       <p class="text-sm text-muted">Loading...</p>
-    {:else if trendingItems.length > 0}
+    {:else if visibleTrending.length > 0}
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each trendingItems.slice(0, 12) as r (r.media_type + ":" + r.id)}
+        {#each visibleTrending as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r} onAdd={handleAdd} />
         {/each}
       </div>
+    {:else if hideAdded && trendingItems.length > 0}
+      <p class="text-sm text-muted">Everything trending is already in your library.</p>
     {/if}
   </div>
 
-  {#if recItems.length > 0}
+  {#if visibleRecs.length > 0}
     <div class="space-y-3">
       <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
         Recommended for you
         <span class="ml-2 font-normal normal-case text-muted/70">based on your library</span>
       </h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each recItems as r (r.media_type + ":" + r.id)}
+        {#each visibleRecs as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
         {/each}
       </div>
     </div>
-  {:else if store.entries.length === 0 && !loading}
+  {:else if recItems.length === 0 && store.entries.length === 0 && !loading}
     <div class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
       Add a few things to your library and we'll generate recommendations here.
     </div>
   {/if}
 
-  {#if popularTvItems.length > 0}
+  {#if visiblePopularTv.length > 0}
     <div class="space-y-3">
       <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular TV</h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each popularTvItems.slice(0, 8) as r (r.media_type + ":" + r.id)}
+        {#each visiblePopularTv as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
         {/each}
       </div>
     </div>
   {/if}
 
-  {#if popularMovieItems.length > 0}
+  {#if visiblePopularMovies.length > 0}
     <div class="space-y-3">
       <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular movies</h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each popularMovieItems.slice(0, 8) as r (r.media_type + ":" + r.id)}
+        {#each visiblePopularMovies as r (r.media_type + ":" + r.id)}
           <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
         {/each}
       </div>

@@ -25,9 +25,9 @@
     title = "Add as...",
   }: Props = $props();
 
-  // Order: in-progress first, then future, then abandoned, completed last
-  // (reversed from earlier, so the heaviest commitment lives at the bottom).
-  const ADD_ORDER: Status[] = ["watching", "plan", "dropped", "completed"];
+  // Order: plan → watching → dropped → completed
+  // (future intent first, completed last so the heaviest commitment lives at the bottom).
+  const ADD_ORDER: Status[] = ["plan", "watching", "dropped", "completed"];
 
   let dialog = $state<HTMLDialogElement>();
 
