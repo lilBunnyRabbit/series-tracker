@@ -2,10 +2,12 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import NotesEditor from "$lib/components/NotesEditor.svelte";
+  import RatingPicker from "$lib/components/RatingPicker.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
+  import StatusSegmented from "$lib/components/StatusSegmented.svelte";
   import { store } from "$lib/store.svelte";
   import { entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
-  import { STATUSES, STATUS_LABEL } from "$lib/types";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -99,35 +101,7 @@
           <p class="text-sm text-muted">{headerInfo.overview}</p>
         {/if}
 
-        {#if movieEntry}
-          <div class="flex flex-wrap items-center gap-3">
-            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm">
-              <input
-                type="checkbox"
-                checked={movieEntry.watched}
-                onchange={(e) => store.setMovieWatched(id, (e.currentTarget as HTMLInputElement).checked)}
-              />
-              Watched
-            </label>
-            <label class="text-xs uppercase tracking-wider text-muted" for="status">Status</label>
-            <select
-              id="status"
-              value={movieEntry.status}
-              onchange={(e) => store.setStatus("movie", id, (e.currentTarget as HTMLSelectElement).value as Status)}
-              class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
-            >
-              {#each STATUSES as s (s)}
-                <option value={s}>{STATUS_LABEL[s]}</option>
-              {/each}
-            </select>
-            <a
-              href="{base}/movie/{id}/info/"
-              class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
-            >
-              ⓘ More info
-            </a>
-          </div>
-        {:else}
+        {#if !movieEntry}
           <div class="flex flex-wrap gap-2">
             <StatusMenu
               label="+ Add to library"
@@ -141,11 +115,37 @@
               More info
             </a>
           </div>
+        {:else}
+          <a
+            href="{base}/movie/{id}/info/"
+            class="inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
+          >
+            ⓘ More info
+          </a>
         {/if}
       </div>
     </div>
 
     {#if movieEntry}
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Status</h2>
+        <StatusSegmented value={movieEntry.status} onChange={(s) => store.setStatus("movie", id, s)} />
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Your rating</h2>
+        <RatingPicker
+          value={movieEntry.rating ?? null}
+          onChange={(v) => store.setRating("movie", id, v)}
+        />
+      </div>
+
+      <NotesEditor
+        value={movieEntry.notes ?? ""}
+        onCommit={(v) => store.setNotes("movie", id, v)}
+        placeholder="e.g. xyz recommended it, watched in cinema..."
+      />
+
       <div class="flex justify-center border-t border-border pt-6">
         <button
           type="button"

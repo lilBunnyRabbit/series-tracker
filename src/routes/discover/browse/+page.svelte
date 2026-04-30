@@ -78,7 +78,13 @@
 
   function goToPage(n: number): void {
     updateParams({ page: n === 1 ? null : String(n) });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Force instant scroll-to-top so the user lands on a fresh top of grid;
+    // smooth scroll competed with content swap and sometimes left mid-page.
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   }
 
   // ---- Async data ----
@@ -243,7 +249,7 @@
     </div>
 
     {#if totalPages > 1}
-      <nav class="flex items-center justify-between gap-2 pt-2" aria-label="Pagination">
+      <nav class="flex items-center justify-between gap-2" aria-label="Pagination">
         <button
           type="button"
           onclick={() => goToPage(pageNum - 1)}

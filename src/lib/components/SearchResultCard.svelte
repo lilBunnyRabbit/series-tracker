@@ -3,6 +3,7 @@
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
   import { posterUrl } from "$lib/tmdb";
+  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { SearchMultiResult, Status } from "$lib/types";
 
   type Props = { result: SearchMultiResult; onAdd: (r: SearchMultiResult, status: Status) => Promise<void> | void };
@@ -11,7 +12,10 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
 
-  const inLibrary = $derived(result.media_type !== "person" && store.has(result.media_type, result.id));
+  const existing = $derived(
+    result.media_type !== "person" ? store.get(result.media_type, result.id) : undefined
+  );
+  const inLibrary = $derived(!!existing);
   const title = $derived(result.media_type === "movie" ? result.title : result.media_type === "tv" ? result.name : result.name);
   const date = $derived(
     result.media_type === "movie" ? result.release_date : result.media_type === "tv" ? result.first_air_date : ""
@@ -59,11 +63,13 @@
         </div>
       </div>
       {#if result.media_type !== "person"}
-        {#if inLibrary}
+        {#if existing}
+          {@const c = STATUS_COLOR[existing.status]}
           <span
-            class="shrink-0 rounded-md border border-primary px-3 py-1.5 text-xs font-medium text-primary"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium {c.chip}"
           >
-            Added
+            <span class="h-2 w-2 rounded-full {c.dot}" aria-hidden="true"></span>
+            {STATUS_LABEL[existing.status]}
           </span>
         {:else}
           <div class="shrink-0">

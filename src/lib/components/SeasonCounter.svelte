@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
   import { seasonDetail } from "$lib/tmdb";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
@@ -13,7 +14,35 @@
 
   const entry = $derived(store.get("tv", showId) as TvEntry | undefined);
   const current = $derived(entry?.progress[season] ?? 0);
+  const seasonRating = $derived(entry?.seasonRatings?.[season] ?? null);
   const currentEpisode = $derived(episodes && current > 0 ? (episodes.find((e) => e.episode_number === current) ?? null) : null);
+  const isComplete = $derived(current === total && total > 0);
+
+  function dec() {
+    vibrate("tick");
+    store.updateProgress(showId, season, -1);
+  }
+  function inc() {
+    vibrate("tick");
+    store.updateProgress(showId, season, +1);
+  }
+  function complete() {
+    vibrate("success");
+    store.completeSeason(showId, season);
+  }
+  function reset() {
+    vibrate("warn");
+    store.resetSeason(showId, season);
+  }
+
+  function setRating(value: number) {
+    if (seasonRating === value) {
+      store.setSeasonRating(showId, season, null);
+    } else {
+      store.setSeasonRating(showId, season, value);
+      vibrate("tap");
+    }
+  }
 
   async function toggleExpand() {
     expanded = !expanded;
@@ -33,7 +62,7 @@
 </script>
 
 <div class="rounded-md border border-border bg-surface">
-  <div class="flex items-center justify-between gap-3 px-3 py-2">
+  <div class="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
     <button
       type="button"
       onclick={toggleExpand}
@@ -42,7 +71,10 @@
     >
       <span class="text-xs text-muted transition-transform" style={expanded ? "transform: rotate(90deg)" : ""}>▶</span>
       <div class="min-w-0 flex-1">
-        <div class="truncate text-sm font-medium">{name}</div>
+        <div class="flex items-center gap-1.5">
+          <span class="truncate text-sm font-medium">{name}</span>
+          {#if isComplete}<span class="shrink-0 text-xs text-primary" aria-label="Season complete">✓</span>{/if}
+        </div>
         <div class="truncate text-xs text-muted">
           Season {season} · {total} ep{total === 1 ? "" : "s"}{currentEpisode ? ` · E${current} ${currentEpisode.name}` : ""}
         </div>
@@ -52,7 +84,7 @@
       <button
         type="button"
         class="h-9 w-9 rounded-md border border-border bg-surface-2 text-lg leading-none disabled:opacity-40"
-        onclick={() => store.updateProgress(showId, season, -1)}
+        onclick={dec}
         disabled={current === 0}
         aria-label="Decrement"
       >
@@ -70,17 +102,62 @@
       <button
         type="button"
         class="h-9 w-9 rounded-md border border-border bg-primary text-lg leading-none text-bg disabled:opacity-40"
-        onclick={() => store.updateProgress(showId, season, +1)}
+        onclick={inc}
         disabled={current >= total}
         aria-label="Increment"
       >
         +
       </button>
     </div>
+    <div class="flex w-full items-center justify-end gap-1.5 sm:w-auto">
+      {#if isComplete}
+        <button
+          type="button"
+          onclick={reset}
+          class="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted hover:border-danger hover:text-danger"
+        >
+          Reset
+        </button>
+      {:else}
+        <button
+          type="button"
+          onclick={complete}
+          class="rounded-md border border-primary px-2.5 py-1 text-[11px] text-primary hover:bg-primary hover:text-bg"
+        >
+          Mark complete
+        </button>
+      {/if}
+    </div>
   </div>
 
   {#if expanded}
-    <div class="border-t border-border px-3 py-2">
+    <div class="space-y-3 border-t border-border px-3 py-2">
+      <div class="flex flex-wrap items-center gap-1.5 text-xs">
+        <span class="mr-1 text-muted">Your rating</span>
+        {#each Array.from({ length: 10 }, (_, i) => i + 1) as v (v)}
+          <button
+            type="button"
+            onclick={() => setRating(v)}
+            aria-label="Rate {v}"
+            aria-pressed={seasonRating === v}
+            class="h-7 w-7 rounded-md border tabular-nums transition {seasonRating != null && v <= seasonRating
+              ? 'border-accent bg-accent text-bg'
+              : 'border-border text-muted hover:border-accent'}"
+          >
+            {v}
+          </button>
+        {/each}
+        {#if seasonRating != null}
+          <button
+            type="button"
+            onclick={() => store.setSeasonRating(showId, season, null)}
+            class="ml-1 rounded-md px-2 py-1 text-[11px] text-muted hover:text-danger"
+          >
+            Clear
+          </button>
+        {/if}
+      </div>
+
       {#if loading}
         <p class="text-xs text-muted">Loading episodes...</p>
       {:else if error}

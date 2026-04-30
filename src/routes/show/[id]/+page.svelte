@@ -2,11 +2,13 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import NotesEditor from "$lib/components/NotesEditor.svelte";
+  import RatingPicker from "$lib/components/RatingPicker.svelte";
   import SeasonCounter from "$lib/components/SeasonCounter.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
+  import StatusSegmented from "$lib/components/StatusSegmented.svelte";
   import { store } from "$lib/store.svelte";
   import { entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
-  import { STATUSES, STATUS_LABEL } from "$lib/types";
   import type { Status, TvDetail, TvEntry } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -101,27 +103,7 @@
           <p class="text-sm text-muted">{headerInfo.overview}</p>
         {/if}
 
-        {#if tvEntry}
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="text-xs uppercase tracking-wider text-muted" for="status">Status</label>
-            <select
-              id="status"
-              value={tvEntry.status}
-              onchange={(e) => store.setStatus("tv", id, (e.currentTarget as HTMLSelectElement).value as Status)}
-              class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
-            >
-              {#each STATUSES as s (s)}
-                <option value={s}>{STATUS_LABEL[s]}</option>
-              {/each}
-            </select>
-            <a
-              href="{base}/show/{id}/info/"
-              class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
-            >
-              ⓘ More info
-            </a>
-          </div>
-        {:else}
+        {#if !tvEntry}
           <div class="flex flex-wrap gap-2">
             <StatusMenu
               label="+ Add to library"
@@ -135,9 +117,38 @@
               More info
             </a>
           </div>
+        {:else}
+          <a
+            href="{base}/show/{id}/info/"
+            class="inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
+          >
+            ⓘ More info
+          </a>
         {/if}
       </div>
     </div>
+
+    {#if tvEntry}
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Status</h2>
+        <StatusSegmented value={tvEntry.status} onChange={(s) => store.setStatus("tv", id, s)} />
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Overall rating</h2>
+        <RatingPicker
+          value={tvEntry.rating ?? null}
+          onChange={(v) => store.setRating("tv", id, v)}
+          label="Your rating"
+        />
+      </div>
+
+      <NotesEditor
+        value={tvEntry.notes ?? ""}
+        onCommit={(v) => store.setNotes("tv", id, v)}
+        placeholder="e.g. xyz recommended it, watched on a flight..."
+      />
+    {/if}
 
     {#if seasons.length > 0}
       <div class="space-y-2">

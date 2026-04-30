@@ -223,6 +223,31 @@ function createStore() {
       if (!s) return;
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, Math.floor(value || 0)));
       withTimestamp(e);
+      const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      const anyProgress = Object.values(e.progress).some((v) => v > 0);
+      if (allDone) e.status = "completed";
+      else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
+    },
+
+    completeSeason(showId: number, season: number) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+      const s = e.seasons.find((x) => x.number === season);
+      if (!s) return;
+      e.progress[season] = s.episodeCount;
+      withTimestamp(e);
+      const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      if (allDone) e.status = "completed";
+      else if (e.status === "plan") e.status = "watching";
+    },
+
+    resetSeason(showId: number, season: number) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+      e.progress[season] = 0;
+      withTimestamp(e);
+      const anyProgress = Object.values(e.progress).some((v) => v > 0);
+      if (!anyProgress && e.status === "completed") e.status = "watching";
     },
 
     incrementCurrent(showId: number): boolean {
@@ -242,15 +267,36 @@ function createStore() {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
       e.status = status;
+      // For movies, "watched" mirrors status === "completed". Keep them aligned
+      // so any legacy export that still ships `watched` stays consistent.
+      if (e.kind === "movie") e.watched = status === "completed";
       withTimestamp(e);
     },
 
-    setMovieWatched(id: number, watched: boolean) {
-      const e = state.library[entryKey("movie", id)];
-      if (!e || e.kind !== "movie") return;
-      e.watched = watched;
-      if (watched && e.status !== "dropped") e.status = "completed";
-      else if (!watched && e.status === "completed") e.status = "watching";
+    setRating(kind: "tv" | "movie", id: number, rating: number | null) {
+      const e = state.library[entryKey(kind, id)];
+      if (!e) return;
+      if (rating === null) delete e.rating;
+      else e.rating = Math.max(0, Math.min(10, rating));
+      withTimestamp(e);
+    },
+
+    setNotes(kind: "tv" | "movie", id: number, notes: string) {
+      const e = state.library[entryKey(kind, id)];
+      if (!e) return;
+      const trimmed = notes.trim();
+      if (trimmed) e.notes = notes;
+      else delete e.notes;
+      withTimestamp(e);
+    },
+
+    setSeasonRating(showId: number, season: number, rating: number | null) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+      const ratings = e.seasonRatings ?? {};
+      if (rating === null) delete ratings[season];
+      else ratings[season] = Math.max(0, Math.min(10, rating));
+      e.seasonRatings = ratings;
       withTimestamp(e);
     },
 

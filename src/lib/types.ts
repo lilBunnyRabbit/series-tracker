@@ -9,6 +9,53 @@ export const STATUS_LABEL: Record<Status, string> = {
   dropped: "Dropped",
 };
 
+export const STATUS_DESCRIPTION: Record<Status, string> = {
+  watching: "Currently watching",
+  completed: "Finished — already watched it",
+  plan: "Plan to watch later",
+  dropped: "Started but won't finish",
+};
+
+// Tailwind class fragments mapping each status to a colour family.
+// Kept as a single source of truth so cards, dots, and the picker stay in sync.
+export const STATUS_COLOR: Record<
+  Status,
+  { dot: string; text: string; border: string; bg: string; chip: string; hoverBorder: string }
+> = {
+  watching: {
+    dot: "bg-primary",
+    text: "text-primary",
+    border: "border-primary",
+    bg: "bg-primary",
+    chip: "border-primary text-primary",
+    hoverBorder: "hover:border-primary",
+  },
+  completed: {
+    dot: "bg-secondary",
+    text: "text-secondary",
+    border: "border-secondary",
+    bg: "bg-secondary",
+    chip: "border-secondary text-secondary",
+    hoverBorder: "hover:border-secondary",
+  },
+  plan: {
+    dot: "bg-accent",
+    text: "text-accent",
+    border: "border-accent",
+    bg: "bg-accent",
+    chip: "border-accent text-accent",
+    hoverBorder: "hover:border-accent",
+  },
+  dropped: {
+    dot: "bg-muted",
+    text: "text-muted",
+    border: "border-muted",
+    bg: "bg-muted",
+    chip: "border-border text-muted",
+    hoverBorder: "hover:border-muted",
+  },
+};
+
 export type Season = {
   number: number;
   name: string;
@@ -25,6 +72,9 @@ export type TvEntry = {
   status: Status;
   year?: string;
   voteAverage?: number;
+  rating?: number;
+  notes?: string;
+  seasonRatings?: Record<number, number>;
   addedAt: string;
   updatedAt: string;
 };
@@ -38,6 +88,8 @@ export type MovieEntry = {
   status: Status;
   year?: string;
   voteAverage?: number;
+  rating?: number;
+  notes?: string;
   addedAt: string;
   updatedAt: string;
 };

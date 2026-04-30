@@ -3,6 +3,7 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
+  import { vibrate } from "$lib/haptics";
   import { onMount } from "svelte";
 
   let { children } = $props();
@@ -112,7 +113,7 @@
     </nav>
   </header>
 
-  <main class="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-24 sm:px-4 sm:py-6 sm:pb-6">
+  <main class="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-20 sm:px-4 sm:py-6 sm:pb-6">
     {#if isSettings}
       {@render children()}
     {:else}
@@ -131,6 +132,7 @@
       {#each items as item (item.path)}
         <a
           href={item.href}
+          onclick={() => vibrate("tick")}
           class="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] {isActive(item.path)
             ? 'text-accent'
             : 'text-muted'}"

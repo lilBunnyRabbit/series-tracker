@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { STATUS_LABEL } from "$lib/types";
+  import { vibrate } from "$lib/haptics";
+  import { STATUS_COLOR, STATUS_DESCRIPTION, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
   type Props = {
@@ -24,16 +25,9 @@
     title = "Add as...",
   }: Props = $props();
 
-  // Order optimized for "I'm logging something I've already engaged with":
-  // most common first (just finished), then in-progress, then future, then abandoned.
-  const ADD_ORDER: Status[] = ["completed", "watching", "plan", "dropped"];
-
-  const STATUS_DESCRIPTION: Record<Status, string> = {
-    completed: "Finished — already watched it",
-    watching: "Currently watching",
-    plan: "Plan to watch later",
-    dropped: "Started but won't finish",
-  };
+  // Order: in-progress first, then future, then abandoned, completed last
+  // (reversed from earlier, so the heaviest commitment lives at the bottom).
+  const ADD_ORDER: Status[] = ["watching", "plan", "dropped", "completed"];
 
   let dialog = $state<HTMLDialogElement>();
 
@@ -47,6 +41,7 @@
 
   function open(): void {
     if (disabled || busy) return;
+    vibrate("tap");
     dialog?.showModal();
   }
 
@@ -55,6 +50,7 @@
   }
 
   async function pick(s: Status): Promise<void> {
+    vibrate("success");
     close();
     await onSelect(s);
   }
@@ -71,20 +67,23 @@
 <dialog
   bind:this={dialog}
   onclick={onBackdropClick}
-  onclose={() => {}}
-  class="m-auto rounded-lg border border-border bg-surface p-0 text-text shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+  class="m-auto w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden rounded-lg border border-border bg-surface p-0 text-text shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
 >
-  <div class="w-[min(22rem,92vw)] p-5">
+  <div class="w-full p-5">
     <h2 class="mb-5 text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
     <div class="flex flex-col gap-3">
       {#each ADD_ORDER as s (s)}
+        {@const c = STATUS_COLOR[s]}
         <button
           type="button"
           onclick={() => pick(s)}
-          class="group w-full rounded-lg border border-border bg-surface-2 px-4 py-4 text-left transition hover:border-primary hover:bg-primary hover:text-bg"
+          class="group flex w-full items-center gap-3 overflow-hidden rounded-lg border border-border bg-surface-2 px-4 py-4 text-left transition {c.hoverBorder}"
         >
-          <div class="text-sm font-semibold">{STATUS_LABEL[s]}</div>
-          <div class="mt-0.5 text-xs text-muted transition group-hover:text-bg/75">{STATUS_DESCRIPTION[s]}</div>
+          <span class="h-3 w-3 shrink-0 rounded-full {c.dot}" aria-hidden="true"></span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold {c.text}">{STATUS_LABEL[s]}</span>
+            <span class="mt-0.5 block truncate text-xs text-muted">{STATUS_DESCRIPTION[s]}</span>
+          </span>
         </button>
       {/each}
     </div>
