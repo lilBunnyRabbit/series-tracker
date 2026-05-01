@@ -140,13 +140,17 @@ export type SearchMultiPage = {
 export type TvDetail = {
   id: number;
   name: string;
+  original_name?: string;
+  original_language?: string;
   poster_path: string | null;
   overview: string;
+  tagline?: string;
   number_of_seasons: number;
   number_of_episodes: number;
   status: string;
   first_air_date: string;
   vote_average?: number;
+  vote_count?: number;
   episode_run_time?: number[];
   genres?: { id: number; name: string }[];
   seasons: {
@@ -161,6 +165,8 @@ export type TvDetail = {
 export type MovieDetail = {
   id: number;
   title: string;
+  original_title?: string;
+  original_language?: string;
   poster_path: string | null;
   backdrop_path: string | null;
   overview: string;
@@ -203,8 +209,6 @@ export type Videos = { results: Video[] };
 
 export type TvDetailFull = TvDetail & {
   backdrop_path: string | null;
-  tagline?: string;
-  vote_count?: number;
   networks?: { id: number; name: string; logo_path: string | null }[];
   credits?: Credits;
   external_ids?: ExternalIds;

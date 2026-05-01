@@ -121,8 +121,46 @@
             <p class="mt-1 text-sm text-muted">
               {watchedEpisodes} / {totalEpisodes} episodes watched
             </p>
+          {:else if detail}
+            {#if detail.original_name && detail.original_name !== detail.name}
+              <p class="mt-0.5 text-sm italic text-muted">{detail.original_name}</p>
+            {/if}
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+              {#if detail.first_air_date}<span>{detail.first_air_date.slice(0, 4)}</span>{/if}
+              {#if detail.status}
+                <span aria-hidden="true">·</span>
+                <span>{detail.status}</span>
+              {/if}
+              {#if detail.number_of_seasons > 0}
+                <span aria-hidden="true">·</span>
+                <span
+                  >{detail.number_of_seasons} season{detail.number_of_seasons === 1 ? "" : "s"} ·
+                  {detail.number_of_episodes} ep{detail.number_of_episodes === 1 ? "" : "s"}</span
+                >
+              {/if}
+              {#if detail.genres && detail.genres.length > 0}
+                <span aria-hidden="true">·</span>
+                <span>{detail.genres.slice(0, 2).map((g) => g.name).join(", ")}</span>
+              {/if}
+            </div>
           {/if}
         </div>
+
+        {#if !tvEntry && detail}
+          {#if typeof detail.vote_average === "number" && detail.vote_average > 0 && (detail.vote_count ?? 0) >= 50}
+            <div class="flex items-center gap-2 text-xs">
+              <span class="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
+                <span class="text-accent">★</span>
+                <span class="tabular-nums">{Math.round(detail.vote_average * 10)}%</span>
+                <span class="text-muted">TMDB</span>
+              </span>
+            </div>
+          {/if}
+          {#if detail.tagline}
+            <p class="text-sm italic text-muted">"{detail.tagline}"</p>
+          {/if}
+        {/if}
+
         {#if headerInfo.overview}
           <p class="text-sm text-muted">{headerInfo.overview}</p>
         {/if}
