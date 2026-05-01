@@ -4,6 +4,20 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-01
+
+### Added
+- Picker — a tournament-style "what should I watch?" tool. Filter by status (any combination of Watching, Plan, Completed, Dropped) and type (TV / Movies / both), and pair things head-to-head until one's left. The winner gets a "More like this" rail powered by TMDB recommendations so you can keep going.
+
+### Changed
+- Cleaner iconography across the app — every page now uses the same set of crisp line icons, replacing the previous mix of emoji and unicode characters.
+- Page headers are unified across Watchlist, Upcoming, Discover, Search, Settings, and Stats for a consistent title + actions pattern.
+- Watchlist's "+ Add" header button has been replaced by a "Pick" button that opens the new picker. Use Search or Discover to add new titles.
+- Back-arrow navigation now follows your actual in-app history when possible — tapping back from a show you opened via Upcoming returns to Upcoming instead of jumping straight to Home.
+
+### Fixed
+- Press feedback is now applied to every button in Settings — Save, Test connection, Forget key, Clear cache, Export, and Import all behave like the rest of the app.
+
 ## [0.2.0] - 2026-05-01
 
 ### Added

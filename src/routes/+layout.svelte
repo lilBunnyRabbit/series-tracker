@@ -57,6 +57,7 @@
   const pageTitle = $derived.by(() => {
     if (relPath === "/" || relPath === "") return "Home";
     if (relPath.startsWith("/watchlist")) return "Watchlist";
+    if (relPath.startsWith("/picker")) return "Picker";
     if (relPath.startsWith("/upcoming")) return "Upcoming";
     if (relPath.startsWith("/search")) return "Search";
     if (relPath.startsWith("/discover/browse")) return "Browse";
@@ -81,6 +82,7 @@
     if (relPath.startsWith("/search")) return `${base}/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
     if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
+    if (relPath.startsWith("/picker")) return `${base}/watchlist/`;
     if (relPath.startsWith("/person/")) return `${base}/`;
     return null;
   });

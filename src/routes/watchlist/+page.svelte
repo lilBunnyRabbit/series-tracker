@@ -106,12 +106,12 @@
     <span>Upcoming</span>
   </a>
   <a
-    href="{base}/search/"
+    href="{base}/picker/"
     use:tactile={{ haptic: false }}
     class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
   >
-    <Icon name="plus" size={14} />
-    <span>Add</span>
+    <Icon name="trophy" size={14} />
+    <span>Pick</span>
   </a>
 {/snippet}
 
