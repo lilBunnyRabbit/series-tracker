@@ -25,21 +25,35 @@
     tvEntry ? tvEntry.seasons.reduce((a, s) => a + Math.min(tvEntry.progress[s.number] ?? 0, s.episodeCount), 0) : 0
   );
 
+  // Always pull fresh TMDB data so newly-aired episodes show up. When the show
+  // is already in the library we sync seasons in the background (no spinner) —
+  // store.syncTvSeasons preserves progress and demotes "completed" if new
+  // episodes arrived, surfacing them as unwatched.
   $effect(() => {
-    if (tvEntry || !store.apiKey || !id || Number.isNaN(id)) return;
-    loading = true;
-    error = null;
+    if (!store.apiKey || !id || Number.isNaN(id)) return;
+    const apiKey = store.apiKey;
+    const hasEntry = store.has("tv", id);
+    if (!hasEntry) {
+      loading = true;
+      error = null;
+    }
     const ctrl = new AbortController();
-    tvDetail(id, store.apiKey, ctrl.signal)
+    tvDetail(id, apiKey, ctrl.signal)
       .then((d) => {
-        if (!ctrl.signal.aborted) detail = d;
+        if (ctrl.signal.aborted) return;
+        detail = d;
+        const seasons = d.seasons
+          .filter((s) => s.season_number > 0 || s.episode_count > 0)
+          .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }));
+        store.syncTvSeasons(id, seasons);
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
-        error = e instanceof Error ? e.message : String(e);
+        if (!hasEntry) error = e instanceof Error ? e.message : String(e);
+        else console.warn("[show] background sync failed", e);
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) loading = false;
+        if (!ctrl.signal.aborted && !hasEntry) loading = false;
       });
     return () => ctrl.abort();
   });

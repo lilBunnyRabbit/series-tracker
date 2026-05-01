@@ -1,6 +1,6 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
-import type { Entry, Status, Store, TvEntry } from "./types";
+import type { Entry, Season, Status, Store, TvEntry } from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
@@ -270,6 +270,52 @@ function createStore() {
       // For movies, "watched" mirrors status === "completed". Keep them aligned
       // so any legacy export that still ships `watched` stays consistent.
       if (e.kind === "movie") e.watched = status === "completed";
+      // For TV, "completed" implies every episode watched — fill progress so
+      // the show page, library card, and per-season counters all agree.
+      if (e.kind === "tv" && status === "completed") {
+        for (const s of e.seasons) e.progress[s.number] = s.episodeCount;
+      }
+      withTimestamp(e);
+    },
+
+    // Reconciles a stored TV entry's seasons with a fresh TMDB snapshot. Preserves
+    // existing progress (capping any season's count if episodes were removed,
+    // dropping progress for seasons that no longer exist). When new episodes
+    // appear and the show was marked "completed", demote it to "watching" (or
+    // "plan" if nothing was actually watched) so the user notices unwatched eps.
+    syncTvSeasons(showId: number, freshSeasons: Season[]) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+
+      const sameShape =
+        e.seasons.length === freshSeasons.length &&
+        e.seasons.every(
+          (s, i) =>
+            s.number === freshSeasons[i].number &&
+            s.episodeCount === freshSeasons[i].episodeCount &&
+            s.name === freshSeasons[i].name
+        );
+      if (sameShape) return;
+
+      const prevTotal = e.seasons.reduce((a, s) => a + s.episodeCount, 0);
+      const newTotal = freshSeasons.reduce((a, s) => a + s.episodeCount, 0);
+
+      const nextProgress: Record<number, number> = {};
+      for (const s of freshSeasons) {
+        const prev = e.progress[s.number];
+        if (prev !== undefined) nextProgress[s.number] = Math.min(prev, s.episodeCount);
+      }
+      e.seasons = freshSeasons;
+      e.progress = nextProgress;
+
+      if (newTotal > prevTotal && e.status === "completed") {
+        const allDone = e.seasons.every((s) => (e.progress[s.number] ?? 0) === s.episodeCount);
+        if (!allDone) {
+          const anyProgress = Object.values(e.progress).some((v) => v > 0);
+          e.status = anyProgress ? "watching" : "plan";
+        }
+      }
+
       withTimestamp(e);
     },
 

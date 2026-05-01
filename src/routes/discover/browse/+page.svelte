@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import Pagination from "$lib/components/Pagination.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import { store } from "$lib/store.svelte";
   import { discover, entryFromSearchResult, genreList } from "$lib/tmdb";
@@ -284,25 +285,12 @@
     </div>
 
     {#if totalPages > 1}
-      <nav class="flex items-center justify-between gap-2" aria-label="Pagination">
-        <button
-          type="button"
-          onclick={() => goToPage(pageNum - 1)}
-          disabled={pageNum <= 1}
-          class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          ← Prev
-        </button>
-        <span class="text-xs tabular-nums text-muted">Page {pageNum} of {totalPages.toLocaleString()}</span>
-        <button
-          type="button"
-          onclick={() => goToPage(pageNum + 1)}
-          disabled={!canGoNext}
-          class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Next →
-        </button>
-      </nav>
+      <div class="space-y-2">
+        <Pagination current={pageNum} total={totalPages} onGoTo={goToPage} />
+        <p class="text-center text-xs tabular-nums text-muted">
+          Page {pageNum} of {totalPages.toLocaleString()}
+        </p>
+      </div>
     {/if}
   {/if}
 </section>

@@ -63,7 +63,7 @@
 
 <div class="flex min-h-[100dvh] flex-col">
   <header
-    class="sticky top-0 z-10 border-b border-border bg-bg/95 backdrop-blur"
+    class="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur"
     style="padding-top: env(safe-area-inset-top)"
   >
     <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
@@ -124,7 +124,7 @@
   </main>
 
   <nav
-    class="sticky bottom-0 z-10 border-t border-border bg-bg/95 backdrop-blur sm:hidden"
+    class="sticky bottom-0 z-30 border-t border-border bg-bg/95 backdrop-blur sm:hidden"
     style="padding-bottom: env(safe-area-inset-bottom)"
     aria-label="Primary"
   >

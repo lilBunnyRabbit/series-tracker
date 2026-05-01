@@ -277,6 +277,13 @@ export function clearCache(): void {
 
 export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): TvEntry {
   const now = new Date().toISOString();
+  const seasons = detail.seasons
+    .filter((s) => s.season_number > 0 || s.episode_count > 0)
+    .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }));
+  // Adding as "completed" means the user has already finished it — pre-fill
+  // every season's progress so episode counts and the show page line up.
+  const progress: Record<number, number> =
+    status === "completed" ? Object.fromEntries(seasons.map((s) => [s.number, s.episodeCount])) : {};
   return {
     kind: "tv",
     id: detail.id,
@@ -284,10 +291,8 @@ export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): Tv
     poster: posterUrl(detail.poster_path, "w342"),
     year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
     voteAverage: detail.vote_average,
-    seasons: detail.seasons
-      .filter((s) => s.season_number > 0 || s.episode_count > 0)
-      .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count })),
-    progress: {},
+    seasons,
+    progress,
     status,
     addedAt: now,
     updatedAt: now,
