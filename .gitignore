@@ -21,3 +21,7 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Build-generated (see scripts/gen-version.ts)
+/static/version.json
+/static/CHANGELOG.md

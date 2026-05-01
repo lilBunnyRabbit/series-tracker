@@ -3,15 +3,22 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
+  import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { vibrate } from "$lib/haptics";
+  import * as versionModule from "$lib/version.svelte";
   import { onMount } from "svelte";
 
   let { children } = $props();
 
   onMount(async () => {
+    versionModule.init();
     try {
       const { registerSW } = await import("virtual:pwa-register");
-      registerSW({ immediate: true });
+      const updateSW = registerSW({
+        immediate: true,
+        onNeedRefresh: () => versionModule.markSWReady(),
+      });
+      versionModule.wireSW(updateSW);
     } catch (e) {
       console.warn("[pwa] service worker registration failed", e);
     }
@@ -161,6 +168,8 @@
     </div>
   </nav>
   {/if}
+
+  <UpdateToast />
 </div>
 
 <style>

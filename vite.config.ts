@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { SvelteKitPWA } from "@vite-pwa/sveltekit";
@@ -6,12 +7,32 @@ import { defineConfig } from "vite";
 const BASE = process.env.BASE_PATH ?? "";
 const SCOPE = `${BASE}/`;
 
+// Read the manifest written by scripts/gen-version.ts (chained before `vite build`).
+// Bundled into the client so version.svelte.ts can know the *running* version
+// without needing to fetch — the network fetch only tells us what's *deployed*.
+const VERSION_MANIFEST = (() => {
+  const path = "./static/version.json";
+  if (existsSync(path)) {
+    try {
+      return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    } catch {
+      // fall through
+    }
+  }
+  return { version: "dev", commit: "dev", branch: "dev", buildTime: "", buildTimestamp: 0 };
+})();
+
 export default defineConfig({
+  define: {
+    __VERSION_MANIFEST__: JSON.stringify(VERSION_MANIFEST),
+  },
   plugins: [
     tailwindcss(),
     sveltekit(),
     SvelteKitPWA({
-      registerType: "autoUpdate",
+      // "prompt" — we surface updates via UpdateToast + Settings instead of
+      // silently swapping the SW under the user. See src/lib/version.svelte.ts.
+      registerType: "prompt",
       strategies: "generateSW",
       injectRegister: "auto",
       includeManifestIcons: true,

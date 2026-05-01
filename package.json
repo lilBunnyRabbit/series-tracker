@@ -5,14 +5,15 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "bun run scripts/gen-version.ts && vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check .",
 		"format": "prettier --write .",
-		"gen:icons": "bun run scripts/gen-icons.ts"
+		"gen:icons": "bun run scripts/gen-icons.ts",
+		"gen:version": "bun run scripts/gen-version.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
@@ -31,5 +32,8 @@
 		"typescript": "^6.0.2",
 		"vite": "^8.0.7",
 		"vite-plugin-pwa": "^1.2.0"
+	},
+	"dependencies": {
+		"marked": "^18.0.2"
 	}
 }

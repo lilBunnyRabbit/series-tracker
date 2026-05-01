@@ -2,12 +2,75 @@
   import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
   import { ping } from "$lib/tmdb";
+  import {
+    applyUpdate,
+    checkForUpdate,
+    isUpdateAvailable,
+    version,
+  } from "$lib/version.svelte";
 
   let keyDraft = $state(store.apiKey ?? "");
   let savedNote = $state<string | null>(null);
   let savedTimer: ReturnType<typeof setTimeout> | null = null;
   let testStatus = $state<"idle" | "testing" | "ok" | "fail">("idle");
   let testMessage = $state<string | null>(null);
+
+  let checkStatus = $state<"idle" | "checking" | "current" | "updated" | "error">("idle");
+  let updating = $state(false);
+
+  let changelogHtml = $state<string | null>(null);
+  let changelogLoading = $state(false);
+  let changelogError = $state<string | null>(null);
+  let changelogLoaded = false;
+
+  const updateAvailable = $derived(isUpdateAvailable());
+  const buildTimeFmt = $derived.by(() => {
+    if (!version.current.buildTime) return null;
+    const d = new Date(version.current.buildTime);
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
+  });
+
+  async function handleCheckForUpdate(): Promise<void> {
+    if (checkStatus === "checking") return;
+    checkStatus = "checking";
+    const result = await checkForUpdate();
+    checkStatus = result;
+  }
+
+  async function handleApplyUpdate(): Promise<void> {
+    if (updating) return;
+    updating = true;
+    try {
+      await applyUpdate();
+    } catch {
+      updating = false;
+    }
+  }
+
+  async function loadChangelog(): Promise<void> {
+    if (changelogLoaded || changelogLoading) return;
+    changelogLoading = true;
+    changelogError = null;
+    try {
+      const [{ marked }, res] = await Promise.all([
+        import("marked"),
+        fetch(`${base}/CHANGELOG.md?t=${Date.now()}`, { cache: "no-store" }),
+      ]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const md = await res.text();
+      changelogHtml = await marked.parse(md, { async: true });
+      changelogLoaded = true;
+    } catch (e) {
+      changelogError = e instanceof Error ? e.message : String(e);
+    } finally {
+      changelogLoading = false;
+    }
+  }
+
+  function onChangelogToggle(e: Event): void {
+    const el = e.currentTarget as HTMLDetailsElement;
+    if (el.open) void loadChangelog();
+  }
   let importMessage = $state<string | null>(null);
   let importMode = $state<"replace" | "merge">("merge");
   let exportApiKey = $state(false);
@@ -190,7 +253,117 @@
     {/if}
   </div>
 
+  <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
+    <h2 class="font-medium">About</h2>
+
+    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      <dt class="text-muted">Version</dt>
+      <dd class="font-mono tabular-nums">v{version.current.version}</dd>
+      <dt class="text-muted">Commit</dt>
+      <dd class="font-mono">
+        {version.current.commit}
+        {#if version.current.branch && version.current.branch !== "master"}
+          <span class="text-muted">· {version.current.branch}</span>
+        {/if}
+      </dd>
+      {#if buildTimeFmt}
+        <dt class="text-muted">Built</dt>
+        <dd>{buildTimeFmt}</dd>
+      {/if}
+    </dl>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onclick={handleCheckForUpdate}
+        disabled={checkStatus === "checking"}
+        class="rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {checkStatus === "checking" ? "Checking..." : "Check for updates"}
+      </button>
+      {#if updateAvailable}
+        <button
+          type="button"
+          onclick={handleApplyUpdate}
+          disabled={updating}
+          class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:opacity-60"
+        >
+          {updating ? "Updating..." : `Update to v${version.latest?.version ?? "latest"}`}
+        </button>
+      {/if}
+    </div>
+
+    {#if checkStatus === "current" && !updateAvailable}
+      <p class="text-xs text-primary">You're on the latest version.</p>
+    {:else if checkStatus === "updated" || updateAvailable}
+      <p class="text-xs text-accent">A new version is available.</p>
+    {:else if checkStatus === "error"}
+      <p class="text-xs text-danger">Couldn't check for updates. Try again.</p>
+    {/if}
+
+    <details class="group" ontoggle={onChangelogToggle}>
+      <summary class="cursor-pointer text-sm text-muted hover:text-text">
+        <span class="group-open:hidden">View changelog</span>
+        <span class="hidden group-open:inline">Hide changelog</span>
+      </summary>
+      <div class="mt-3 rounded-md border border-border bg-surface-2 p-3 text-sm">
+        {#if changelogLoading}
+          <p class="text-xs text-muted">Loading changelog...</p>
+        {:else if changelogError}
+          <p class="text-xs text-danger">Couldn't load changelog: {changelogError}</p>
+        {:else if changelogHtml}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          <div class="changelog-prose">{@html changelogHtml}</div>
+        {/if}
+      </div>
+    </details>
+  </div>
+
   <p class="text-xs text-muted">
     <a href="{base}/" class="underline">← Back to library</a>
   </p>
 </section>
+
+<style>
+  .changelog-prose :global(h1) {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .changelog-prose :global(h2) {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 1rem 0 0.5rem;
+    color: var(--color-text);
+  }
+  .changelog-prose :global(h3) {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+  }
+  .changelog-prose :global(ul) {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0.25rem 0;
+  }
+  .changelog-prose :global(li) {
+    margin: 0.25rem 0;
+  }
+  .changelog-prose :global(a) {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  .changelog-prose :global(p) {
+    margin: 0.5rem 0;
+  }
+  .changelog-prose :global(code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--color-surface);
+    padding: 0.05em 0.3em;
+    border-radius: 0.25rem;
+  }
+</style>
