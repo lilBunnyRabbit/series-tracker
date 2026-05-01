@@ -111,6 +111,36 @@ export type Preferences = {
   defaultAddStatus?: Status | null;
   /** Override for navigator.language-derived region used by Where to Watch. */
   region?: string | null;
+  /** Has the diary backfill prompt been answered (yes or dismissed)? Set after first /diary/ visit. */
+  diaryBackfilled?: boolean;
+};
+
+export type DiaryEntry = {
+  /** Locally-unique id; not a TMDB id. */
+  id: string;
+  kind: "tv" | "movie";
+  /** TMDB id of the show or movie. */
+  refId: number;
+  /** Snapshot of title at log time so the diary survives library deletes. */
+  title: string;
+  /** Poster path (TMDB w342) — same reason. */
+  poster?: string | null;
+  /** ISO date YYYY-MM-DD; date-only is enough for journaling. */
+  watchedAt: string;
+  /** TV-only: which season the episodes belong to. */
+  season?: number;
+  /** TV-only: episode-range — fromEp inclusive. */
+  fromEp?: number;
+  /** TV-only: episode-range — toEp inclusive (== fromEp for single-episode logs). */
+  toEp?: number;
+  /** Optional 0–10 rating for this viewing. */
+  rating?: number;
+  /** Free-text note. */
+  note?: string;
+  /** True if the user marked this as a rewatch. */
+  rewatch?: boolean;
+  /** ISO datetime when the entry was created in the journal. */
+  createdAt: string;
 };
 
 export type Store = {
@@ -118,6 +148,7 @@ export type Store = {
   library: Record<string, Entry>;
   searchHistory: string[];
   preferences: Preferences;
+  diary: DiaryEntry[];
   version: number;
 };
 

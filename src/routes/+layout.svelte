@@ -34,7 +34,9 @@
   const relPath = $derived(page.url.pathname.replace(base, ""));
   // Routes that don't need a TMDB key — they only read local state. The gate
   // would otherwise block users with imported libraries who haven't set a key.
-  const skipApiKeyGate = $derived(relPath.startsWith("/settings") || relPath.startsWith("/stats"));
+  const skipApiKeyGate = $derived(
+    relPath.startsWith("/settings") || relPath.startsWith("/stats") || relPath.startsWith("/diary")
+  );
   // Hide the floating nav on /search — the bottom-docked search input would
   // otherwise crowd it; users get a back button instead.
   const hideFloatingNav = $derived(relPath.startsWith("/search"));
@@ -63,6 +65,7 @@
     if (relPath.startsWith("/discover/browse")) return "Browse";
     if (relPath.startsWith("/discover")) return "Discover";
     if (relPath.startsWith("/stats")) return "Profile";
+    if (relPath.startsWith("/diary")) return "Diary";
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.includes("/info")) return "Info";
     if (relPath.startsWith("/show/")) return "Show";
@@ -81,6 +84,7 @@
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
+    if (relPath.startsWith("/diary")) return `${base}/stats/`;
     if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
     if (relPath.startsWith("/picker")) return `${base}/watchlist/`;
     if (relPath.startsWith("/person/")) return `${base}/`;

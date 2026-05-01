@@ -4,7 +4,17 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-05-01
+## [0.4.0] - 2026-05-01
+
+### Added
+- Diary — a per-viewing journal independent of episode progress. Tap the 📓 button on any show or movie info page to log when you watched, an optional rating and note, and (for TV) the episode range covered. Entries live in the new Profile → Diary feed.
+- "Watched on" section on movie and show info pages, listing every diary entry for that title with date, rating, and any note you wrote.
+- One-time backfill prompt on first Diary visit — synthesize one diary entry per completed library title so your history doesn't start empty.
+- "Surprise" button on Discover — opens a sheet that picks something at random from your plan-list and what's trending, with TV/Movies chips and a re-roll that doesn't repeat the last few picks.
+
+### Changed
+- Logging a viewing can optionally bump TV episode progress or mark a movie as completed — diary writes are decoupled by default but the form offers the side-effect when it makes sense.
+- Backups now include diary entries, and JSON imports merge diary by id without creating duplicates.
 
 ### Added
 - Picker — a tournament-style "what should I watch?" tool. Filter by status (any combination of Watching, Plan, Completed, Dropped) and type (TV / Movies / both), and pair things head-to-head until one's left. The winner gets a "More like this" rail powered by TMDB recommendations so you can keep going.

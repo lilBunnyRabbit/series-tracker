@@ -4,6 +4,7 @@
   import { page } from "$app/state";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
+  import RandomPickerSheet from "$lib/components/RandomPickerSheet.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
@@ -133,9 +134,45 @@
     const entry = await entryFromSearchResult(r, store.apiKey, status);
     if (entry) store.addToLibrary(entry);
   }
+
+  let surpriseOpen = $state(false);
+
+  // Pool for the random picker — combine trending, recommendations, and
+  // popular so the user gets variety regardless of which lists loaded.
+  const surprisePool = $derived.by<RecommendationItem[]>(() => {
+    const out: RecommendationItem[] = [];
+    const seen = new Set<string>();
+    const push = (items: RecommendationItem[] | SearchMultiResult[]): void => {
+      for (const item of items) {
+        if (item.media_type !== "tv" && item.media_type !== "movie") continue;
+        const key = `${item.media_type}:${item.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(item as RecommendationItem);
+      }
+    };
+    push(trendingItems);
+    push(recItems);
+    push(popularTvItems);
+    push(popularMovieItems);
+    push(topRatedTvItems);
+    push(topRatedMovieItems);
+    return out;
+  });
 </script>
 
 {#snippet headerActions()}
+  <button
+    type="button"
+    use:tactile
+    onclick={() => (surpriseOpen = true)}
+    aria-label="Surprise me"
+    title="Surprise me"
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm text-accent hover-border-accent"
+  >
+    <Icon name="sparkles" size={14} />
+    <span>Surprise</span>
+  </button>
   <button
     type="button"
     use:tactile
@@ -294,3 +331,9 @@
     </div>
   {/if}
 </section>
+
+<RandomPickerSheet
+  open={surpriseOpen}
+  onClose={() => (surpriseOpen = false)}
+  discoverPool={surprisePool}
+/>

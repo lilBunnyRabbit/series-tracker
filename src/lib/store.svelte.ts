@@ -1,10 +1,10 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
-import type { Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
+import type { DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const SEARCH_HISTORY_LIMIT = 8;
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -16,30 +16,40 @@ type PersistedV2 = PersistedV1 & {
 type PersistedV3 = PersistedV2 & {
   preferences?: Preferences;
 };
+type PersistedV4 = PersistedV3 & {
+  diary?: DiaryEntry[];
+};
 
 const empty: Store = {
   apiKey: null,
   library: {},
   searchHistory: [],
   preferences: {},
+  diary: [],
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV3): Store {
+function migrate(parsed: PersistedV4): Store {
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
     searchHistory: parsed.searchHistory ?? [],
     preferences: parsed.preferences ?? {},
+    diary: parsed.diary ?? [],
     version: SCHEMA_VERSION,
   };
+}
+
+function makeDiaryId(): string {
+  // Sortable-ish: timestamp-prefixed + 6 random base36 chars. Cheap, no deps.
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV2);
+    return migrate(JSON.parse(raw) as PersistedV4);
   } catch {
     return null;
   }
@@ -108,7 +118,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV3>(IDB_KEY);
+        let data = await idbGet<PersistedV4>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -127,6 +137,7 @@ function createStore() {
         state.library = next.library;
         state.searchHistory = next.searchHistory;
         state.preferences = next.preferences;
+        state.diary = next.diary;
         state.version = next.version;
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
@@ -189,6 +200,9 @@ function createStore() {
     get preferences(): Preferences {
       return state.preferences;
     },
+    get diary(): DiaryEntry[] {
+      return state.diary;
+    },
 
     setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
       if (value === null || value === undefined) {
@@ -196,6 +210,69 @@ function createStore() {
       } else {
         state.preferences[key] = value;
       }
+    },
+
+    /** Diary entries for a given title, newest first. */
+    diaryFor(kind: "tv" | "movie", id: number): DiaryEntry[] {
+      return state.diary
+        .filter((d) => d.kind === kind && d.refId === id)
+        .sort((a, b) => (b.watchedAt + b.createdAt).localeCompare(a.watchedAt + a.createdAt));
+    },
+
+    addDiary(input: Omit<DiaryEntry, "id" | "createdAt">): DiaryEntry {
+      const entry: DiaryEntry = {
+        ...input,
+        id: makeDiaryId(),
+        createdAt: new Date().toISOString(),
+      };
+      state.diary.push(entry);
+      return entry;
+    },
+
+    updateDiary(id: string, patch: Partial<Omit<DiaryEntry, "id" | "createdAt">>): void {
+      const idx = state.diary.findIndex((d) => d.id === id);
+      if (idx === -1) return;
+      state.diary[idx] = { ...state.diary[idx], ...patch };
+    },
+
+    removeDiary(id: string): void {
+      state.diary = state.diary.filter((d) => d.id !== id);
+    },
+
+    /** Synthesize one diary entry per completed entry, dated to its updatedAt.
+     *  Skip any title that already has at least one diary entry — backfill
+     *  shouldn't create duplicates. Returns the count of entries added. */
+    backfillDiary(): number {
+      const seen = new Set(state.diary.map((d) => `${d.kind}:${d.refId}`));
+      let added = 0;
+      const now = new Date().toISOString();
+      for (const e of Object.values(state.library)) {
+        if (e.status !== "completed") continue;
+        const key = `${e.kind}:${e.id}`;
+        if (seen.has(key)) continue;
+        const watchedAt = (e.updatedAt ?? now).slice(0, 10);
+        const entry: DiaryEntry = {
+          id: makeDiaryId(),
+          kind: e.kind,
+          refId: e.id,
+          title: e.title,
+          poster: e.poster,
+          watchedAt,
+          rating: e.rating,
+          createdAt: now,
+        };
+        // For TV, mark the full season range so the entry reads as "all of it".
+        if (e.kind === "tv" && e.seasons.length > 0) {
+          const totalEps = e.seasons.reduce((a, s) => a + s.episodeCount, 0);
+          entry.season = e.seasons[0].number;
+          entry.fromEp = 1;
+          entry.toEp = totalEps;
+        }
+        state.diary.push(entry);
+        seen.add(key);
+        added++;
+      }
+      return added;
     },
 
     has(kind: "tv" | "movie", id: number): boolean {
@@ -383,6 +460,7 @@ function createStore() {
           library: state.library,
           searchHistory: state.searchHistory,
           preferences: state.preferences,
+          diary: state.diary,
         },
         null,
         2
@@ -390,7 +468,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV3);
+      const parsed = migrate(JSON.parse(text) as PersistedV4);
       let added = 0;
       let merged = 0;
 
@@ -399,6 +477,7 @@ function createStore() {
         state.library = parsed.library;
         state.searchHistory = parsed.searchHistory;
         state.preferences = parsed.preferences;
+        state.diary = parsed.diary;
         added = Object.keys(parsed.library).length;
       } else {
         if (!state.apiKey && parsed.apiKey) state.apiKey = parsed.apiKey;
@@ -421,6 +500,14 @@ function createStore() {
         }
         state.searchHistory = state.searchHistory.slice(0, SEARCH_HISTORY_LIMIT);
         state.preferences = { ...parsed.preferences, ...state.preferences };
+        // Diary merge: dedupe by id, keep both sides' entries.
+        const haveIds = new Set(state.diary.map((d) => d.id));
+        for (const d of parsed.diary) {
+          if (!haveIds.has(d.id)) {
+            state.diary.push(d);
+            haveIds.add(d.id);
+          }
+        }
       }
 
       return { added, merged, total: Object.keys(state.library).length };
@@ -439,6 +526,7 @@ function createStore() {
       state.library = {};
       state.searchHistory = [];
       state.preferences = {};
+      state.diary = [];
       state.version = SCHEMA_VERSION;
       try {
         await idbDelete(IDB_KEY);

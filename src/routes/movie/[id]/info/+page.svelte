@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import DiaryLogSheet from "$lib/components/DiaryLogSheet.svelte";
   import Gallery from "$lib/components/Gallery.svelte";
   import PersonCard from "$lib/components/PersonCard.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
@@ -90,6 +91,9 @@
     if (!entry) return;
     store.setStatus("movie", id, entry.status === "completed" ? "plan" : "completed");
   }
+
+  let logOpen = $state(false);
+  const titleHistory = $derived(detail ? store.diaryFor("movie", id) : []);
 </script>
 
 <svelte:head>
@@ -199,6 +203,17 @@
           <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.title}" as...`} variant="outline" size="md" />
         {/if}
 
+        <button
+          type="button"
+          use:tactile
+          onclick={() => (logOpen = true)}
+          aria-label="Log a viewing"
+          title="Log a viewing"
+          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-secondary"
+        >
+          📓
+        </button>
+
         {#if hasTrailer}
           <button
             type="button"
@@ -237,6 +252,46 @@
       <section class="space-y-2">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Overview</h2>
         <p class="text-sm leading-relaxed text-text/90 sm:text-base">{detail.overview}</p>
+      </section>
+    {/if}
+
+    <!-- DIARY HISTORY -->
+    {#if titleHistory.length > 0}
+      <section class="space-y-2">
+        <h2 class="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted">
+          Watched on
+          <span class="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-normal tabular-nums text-muted">
+            {titleHistory.length}
+          </span>
+        </h2>
+        <div class="space-y-1.5">
+          {#each titleHistory as h (h.id)}
+            <a
+              href="{base}/diary/#entry-{h.id}"
+              use:tactile
+              class="tap-target tap-target--card flex items-start gap-3 rounded-md border border-border bg-surface p-2.5"
+            >
+              <div class="shrink-0 text-center">
+                <div class="text-[10px] uppercase tracking-wider text-muted">{h.watchedAt.slice(0, 7)}</div>
+                <div class="text-base font-semibold tabular-nums">{h.watchedAt.slice(8, 10)}</div>
+              </div>
+              <div class="min-w-0 flex-1 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-text">Logged</span>
+                  {#if h.rewatch}
+                    <span class="rounded-full border border-accent/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-accent">Rewatch</span>
+                  {/if}
+                  {#if typeof h.rating === "number" && h.rating > 0}
+                    <span class="ml-auto rounded-md bg-accent/15 px-1.5 py-0.5 font-semibold tabular-nums text-accent">♥ {h.rating}</span>
+                  {/if}
+                </div>
+                {#if h.note}
+                  <p class="mt-1 line-clamp-2 text-muted">{h.note}</p>
+                {/if}
+              </div>
+            </a>
+          {/each}
+        </div>
       </section>
     {/if}
 
@@ -319,4 +374,14 @@
       <Gallery title="Posters" images={detail.images.posters} aspect="2/3" size="w185" />
     {/if}
   </div>
+
+  <DiaryLogSheet
+    open={logOpen}
+    onClose={() => (logOpen = false)}
+    kind="movie"
+    refId={id}
+    title={detail.title}
+    poster={posterUrl(detail.poster_path, "w342")}
+    entry={entry}
+  />
 {/if}

@@ -111,6 +111,21 @@
 
 {#snippet headerActions()}
   <a
+    href="{base}/diary/"
+    use:tactile={{ haptic: false }}
+    aria-label="Diary"
+    title="Diary"
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
+  >
+    📓
+    <span>Diary</span>
+    {#if store.diary.length > 0}
+      <span class="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+        {store.diary.length}
+      </span>
+    {/if}
+  </a>
+  <a
     href="{base}/settings/"
     use:tactile={{ haptic: false }}
     aria-label="Settings"
