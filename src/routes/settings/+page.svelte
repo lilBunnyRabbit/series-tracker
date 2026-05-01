@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { clearCache, defaultRegion, ping, REGION_OPTIONS } from "$lib/tmdb";
   import { STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
@@ -218,25 +219,28 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
+          use:tactile
           onclick={save}
           disabled={!keyDraft.trim() || keyDraft.trim() === store.apiKey}
-          class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
+          class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
         >
           Save
         </button>
         <button
           type="button"
+          use:tactile
           onclick={test}
           disabled={!keyDraft.trim() || testStatus === "testing"}
-          class="rounded-md border border-border px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
         >
           {testStatus === "testing" ? "Testing..." : "Test connection"}
         </button>
         {#if store.apiKey}
           <button
             type="button"
+            use:tactile={{ haptic: "warn" }}
             onclick={clear}
-            class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
+            class="tap-target tap-target--btn ml-auto rounded-md border border-border px-3 py-2 text-xs text-muted hover-border-danger hover-text-danger"
           >
             Forget key
           </button>
@@ -261,8 +265,9 @@
       </div>
       <button
         type="button"
+        use:tactile={{ haptic: "success" }}
         onclick={handleClearCache}
-        class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
+        class="tap-target tap-target--btn rounded-md border border-border px-3 py-2 text-xs hover-border-accent"
       >
         {cacheCleared ? "Cleared ✓" : "Clear cache"}
       </button>
@@ -296,12 +301,16 @@
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
+        use:tactile
         onclick={exportData}
-        class="rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent"
+        class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-accent"
       >
         Export JSON
       </button>
-      <label class="cursor-pointer rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent">
+      <label
+        use:tactile
+        class="tap-target tap-target--btn cursor-pointer rounded-md border border-border px-4 py-2 text-sm hover-border-accent"
+      >
         Import JSON ({importMode})
         <input type="file" accept="application/json" onchange={importData} class="hidden" />
       </label>
@@ -396,18 +405,20 @@
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
+        use:tactile
         onclick={handleCheckForUpdate}
         disabled={checkStatus === "checking"}
-        class="rounded-md border border-border px-4 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
+        class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-accent disabled:cursor-not-allowed disabled:opacity-40"
       >
         {checkStatus === "checking" ? "Checking..." : "Check for updates"}
       </button>
       {#if updateAvailable}
         <button
           type="button"
+          use:tactile
           onclick={handleApplyUpdate}
           disabled={updating}
-          class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:opacity-60"
+          class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg disabled:opacity-60"
         >
           {updating ? "Updating..." : `Update to v${version.latest?.version ?? "latest"}`}
         </button>
@@ -423,7 +434,7 @@
     {/if}
 
     <details class="group" ontoggle={onChangelogToggle}>
-      <summary class="cursor-pointer text-sm text-muted hover:text-text">
+      <summary class="tap-target cursor-pointer rounded-md py-1 text-sm text-muted hover-text-text">
         <span class="group-open:hidden">View changelog</span>
         <span class="hidden group-open:inline">Hide changelog</span>
       </summary>
@@ -446,8 +457,9 @@
     <p class="text-sm text-muted">Wipes the API key, library, search history, and preferences. There is no undo.</p>
     <button
       type="button"
+      use:tactile={{ haptic: "warn" }}
       onclick={wipe}
-      class="rounded-md border border-danger/60 px-4 py-1.5 text-sm text-danger hover:bg-danger/10"
+      class="tap-target tap-target--btn rounded-md border border-danger/60 px-4 py-2 text-sm text-danger transition-colors duration-150 active:bg-danger/10"
     >
       Wipe everything
     </button>

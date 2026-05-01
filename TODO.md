@@ -31,6 +31,19 @@ Deep-dive backlog for series-tracker. Ordered by `simple × useful`.
 - [ ] **Keyword/theme browsing** — `/keyword/{id}/movies` for "more like this" via shared themes.
 - [x] **iCal export of upcoming** — `.ics` download from Upcoming page (~50 lines RFC-5545).
 
+## Tactile / mobile-feel — follow-ups to v0.2.0
+
+The press / haptic / sheet pass shipped in 0.2.0. These were scoped out and are worth their own commits.
+
+- [ ] **View Transitions API for navigation** — wrap SvelteKit nav in `document.startViewTransition`. Detail pages slide in from the right; back-navigation slides out. Pair with `view-transition-name: card-{kind}-{id}` on poster wrappers in `LibraryCard` / `PosterCard` / `EpisodeCard` and on the hero poster in detail pages → shared-element animation when a Continue Watching card opens its detail page. ~30 lines of glue + per-card style attribute. Ship as `0.3.0` since it's user-visible.
+- [ ] **Pull-to-refresh** on `/`, `/watchlist`, `/upcoming` — wraps `<main>`'s direct children with a touch-handler that translateY's on overdrag and fires a refresh on threshold cross. Spec: ~50 line action; haptic on threshold crossed; respects `prefers-reduced-motion`. Each route passes its own `onRefresh` (re-fetch upcoming buckets, re-warm new-episode signal, etc.).
+- [ ] **Counter flip animation in `SeasonCounter`** — when `current` changes, the displayed number pops from old to new with a quick translateY + fade. Requires keying the number span on `current` so Svelte re-mounts it; CSS `@starting-style` does the rest. Pure cosmetic but completes the "press feedback fires for every action" loop.
+- [ ] **Page-load stagger on rails** — when home / discover renders multiple rails at once, fade-and-rise each rail with a 30–50ms stagger. Single `@keyframes` + `animation-delay: calc(var(--i) * 40ms)` on each Rail wrapper. Skip when `prefers-reduced-motion`.
+- [ ] **44×44 hit-target audit** — most icon buttons were bumped from h-7/h-8 to h-9/h-10 in 0.2.0, but a sweep with the Chrome DevTools "Tap target" audit would catch the stragglers (e.g. inline IMDb chips on info pages, the tiny ⌕ icon in search history items).
+- [ ] **Long-press hint** — first-time users won't discover long-press. After ~3 sessions with library items, show a one-time toast on home: "Tip: long-press a card for quick actions." Persist `seenLongPressHint: true` in `preferences`.
+- [ ] **Haptics-on-toggle confirmation** — Settings → Preferences haptics toggle currently flips silently. Fire a "success" pattern on enable and a "warn" on disable so the user gets immediate feedback that the API works on their device.
+- [ ] **Card-actions sheet → status change should pulse the card** — when a status change happens via the long-press sheet, briefly highlight the card border in the new status colour so the user sees the change land before the sheet closes. Pure CSS via a transient class set in `LibraryCard.$effect`.
+
 ## Clunky-now fixes
 
 - [x] **Discover curated visual differentiation** — 4 near-identical grid sections blur together; add per-section icon/lead or rotate featured.

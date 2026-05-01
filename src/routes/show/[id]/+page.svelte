@@ -8,6 +8,7 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import StatusSegmented from "$lib/components/StatusSegmented.svelte";
+  import { smartBack } from "$lib/back.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
@@ -84,6 +85,8 @@
     store.removeFromLibrary("tv", id);
     void goto(`${base}/`);
   }
+
+  const onBack = smartBack();
 </script>
 
 <svelte:head>
@@ -91,7 +94,7 @@
 </svelte:head>
 
 <section class="space-y-6">
-  <a href="{base}/" class="hidden text-sm text-muted hover-text-text sm:inline-block">← Back</a>
+  <a href="{base}/" onclick={onBack} class="hidden text-sm text-muted hover-text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
     <div class="flex flex-col gap-6 md:flex-row">

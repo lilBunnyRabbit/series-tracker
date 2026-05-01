@@ -2,6 +2,7 @@
   import "./layout.css";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import { initBackTracker, smartBack } from "$lib/back.svelte";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { tactile } from "$lib/tactile";
@@ -9,6 +10,9 @@
   import { onMount } from "svelte";
 
   let { children } = $props();
+
+  initBackTracker();
+  const onBack = smartBack();
 
   onMount(async () => {
     versionModule.init();
@@ -98,6 +102,7 @@
       <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5">
         <a
           href={backHref}
+          onclick={onBack}
           use:tactile
           aria-label="Back"
           class="tap-target tap-target--icon flex h-10 w-10 items-center justify-center rounded-md border border-border text-lg"

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
 
   let { children } = $props();
 </script>
@@ -19,7 +20,8 @@
     </p>
     <a
       href="{base}/settings/"
-      class="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
     >
       Open settings
     </a>

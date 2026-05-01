@@ -8,37 +8,66 @@ type TactileOptions = {
 };
 
 /**
- * Press-feedback Svelte action. On pointerdown: fires the haptic + adds
- * `.is-pressed`. On release / cancel / leave: removes `.is-pressed`. Pair with
- * a `.tap-target--*` utility class for the visual scale-down.
+ * Press-feedback Svelte action. On pointerdown: adds `.is-pressed` for the
+ * scale-down. On pointerup: removes the class AND fires the haptic IF the
+ * pointer barely moved (treating it as a tap, not a scroll). Pair with a
+ * `.tap-target--*` utility class for the visual scale-down.
  *
- * Why a class and not :active alone — :active doesn't fire on a parent <a> when
- * the user taps a child, and on iOS sometimes sticks until you tap elsewhere.
- * pointerdown/up gives us deterministic feedback that fires the haptic at the
- * exact moment the user touches the screen (clicks fire ~100ms later, after
- * scroll-detection, which feels disconnected from the vibration).
+ * Why haptic on pointerup with movement check, not pointerdown — every touch
+ * starts with pointerdown including the start of a scroll gesture. Firing the
+ * haptic immediately means scrolling a list vibrates the phone for every card
+ * we cross. Waiting for pointerup and checking that the pointer didn't move
+ * means we only vibrate on real taps. The is-pressed class still fires on
+ * pointerdown so visual feedback stays instant; iOS does the same — the tile
+ * depresses on touch and only un-depresses (without firing the action) once
+ * the system decides the gesture was a scroll.
  */
+const TAP_MOVEMENT_THRESHOLD = 8;
+
 export function tactile(node: HTMLElement, options: TactileOptions = {}) {
   let opts = options;
   let pressed = false;
+  let startX = 0;
+  let startY = 0;
 
   function press(e: PointerEvent): void {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (pressed) return;
     pressed = true;
+    startX = e.clientX;
+    startY = e.clientY;
     node.classList.add("is-pressed");
-    if (opts.haptic !== false) vibrate(opts.haptic ?? "tap");
   }
-  function release(): void {
+  function release(e: PointerEvent): void {
+    if (!pressed) return;
+    pressed = false;
+    node.classList.remove("is-pressed");
+    if (opts.haptic === false) return;
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx > TAP_MOVEMENT_THRESHOLD || dy > TAP_MOVEMENT_THRESHOLD) return;
+    vibrate(opts.haptic ?? "tap");
+  }
+  function cancel(): void {
     if (!pressed) return;
     pressed = false;
     node.classList.remove("is-pressed");
   }
+  function move(e: PointerEvent): void {
+    if (!pressed) return;
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx > TAP_MOVEMENT_THRESHOLD || dy > TAP_MOVEMENT_THRESHOLD) {
+      pressed = false;
+      node.classList.remove("is-pressed");
+    }
+  }
 
   node.addEventListener("pointerdown", press);
+  node.addEventListener("pointermove", move);
   node.addEventListener("pointerup", release);
-  node.addEventListener("pointercancel", release);
-  node.addEventListener("pointerleave", release);
+  node.addEventListener("pointercancel", cancel);
+  node.addEventListener("pointerleave", cancel);
 
   return {
     update(next: TactileOptions) {
@@ -46,9 +75,10 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
     },
     destroy() {
       node.removeEventListener("pointerdown", press);
+      node.removeEventListener("pointermove", move);
       node.removeEventListener("pointerup", release);
-      node.removeEventListener("pointercancel", release);
-      node.removeEventListener("pointerleave", release);
+      node.removeEventListener("pointercancel", cancel);
+      node.removeEventListener("pointerleave", cancel);
     },
   };
 }

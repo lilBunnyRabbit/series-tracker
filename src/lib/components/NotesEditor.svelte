@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tactile } from "$lib/tactile";
+
   type Props = {
     value: string;
     onCommit: (v: string) => void;
@@ -25,7 +27,12 @@
   <div class="flex items-center justify-between text-xs">
     <span class="uppercase tracking-wider text-muted">{label}</span>
     {#if dirty}
-      <button type="button" onclick={save} class="text-[11px] text-accent hover:text-text">Save</button>
+      <button
+        type="button"
+        use:tactile={{ haptic: "success" }}
+        onclick={save}
+        class="tap-target rounded-md px-2 py-1 text-[11px] text-accent hover-text-text"
+      >Save</button>
     {/if}
   </div>
   <textarea

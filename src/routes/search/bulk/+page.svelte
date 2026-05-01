@@ -4,6 +4,7 @@
   import Rail from "$lib/components/Rail.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { entryFromSearchResult, posterUrl, searchMulti } from "$lib/tmdb";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { SearchMultiResult, Status } from "$lib/types";
@@ -139,7 +140,7 @@
   <div class="space-y-1">
     <div class="flex items-baseline gap-2">
       <h1 class="text-xl font-semibold">Bulk search</h1>
-      <a href="{base}/search/" class="text-xs text-muted hover:text-primary">← single search</a>
+      <a href="{base}/search/" class="text-xs text-muted hover-text-primary">← single search</a>
     </div>
     <p class="text-xs text-muted">
       Paste a list of titles — one per line or comma-separated. We'll fetch the top {PER_QUERY_LIMIT} TMDB matches for
@@ -160,17 +161,19 @@
     <div class="flex items-center gap-2">
       <button
         type="button"
+        use:tactile
         onclick={run}
         disabled={running || queryCount === 0 || !store.apiKey}
-        class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-50"
+        class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-50"
       >
         {running ? "Searching..." : `Search ${queryCount || ""} ${queryCount === 1 ? "title" : "titles"}`.trim()}
       </button>
       {#if input.trim()}
         <button
           type="button"
+          use:tactile={{ haptic: "warn" }}
           onclick={clearAll}
-          class="rounded-md border border-border px-3 py-2 text-sm text-muted hover:text-text"
+          class="tap-target tap-target--btn rounded-md border border-border px-3 py-2 text-sm text-muted hover-text-text"
         >
           Clear
         </button>
