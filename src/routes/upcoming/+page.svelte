@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import { buildIcs, downloadIcs, type IcsEvent } from "$lib/ics";
   import {
     getLatestSeasonNumber,
     getUpcomingEpisodes,
@@ -88,6 +89,29 @@
     const date = new Date(iso);
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
+
+  function exportCalendar(): void {
+    const items: UpcomingItem[] = buckets.flatMap((b) => b.items);
+    if (items.length === 0) return;
+    const events: IcsEvent[] = items
+      .filter((it) => it.episode.air_date)
+      .map((it) => {
+        const ep = it.episode;
+        const epLabel = `S${it.season}E${ep.episode_number}`;
+        const summary = ep.name ? `${it.entry.title} ${epLabel} — ${ep.name}` : `${it.entry.title} ${epLabel}`;
+        const url = `${location.origin}${base}/show/${it.entry.id}/`;
+        return {
+          uid: `series-tracker-${it.entry.id}-${it.season}-${ep.episode_number}@${location.host || "local"}`,
+          date: ep.air_date!,
+          summary,
+          description: ep.overview || undefined,
+          url,
+        };
+      });
+    if (events.length === 0) return;
+    const ics = buildIcs(events);
+    downloadIcs(`series-tracker-upcoming-${new Date().toISOString().slice(0, 10)}.ics`, ics);
+  }
 </script>
 
 <svelte:head>
@@ -97,6 +121,17 @@
 <section class="space-y-5">
   <div class="flex flex-wrap items-center gap-2">
     <h1 class="mr-auto text-xl font-semibold">Upcoming</h1>
+    {#if hasAnyData}
+      <button
+        type="button"
+        onclick={exportCalendar}
+        class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-text"
+        aria-label="Export upcoming episodes as iCal calendar"
+        title="Download .ics file for your calendar app"
+      >
+        ↓ Calendar
+      </button>
+    {/if}
     <a
       href="{base}/watchlist/?status=watching"
       class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-primary hover:text-text"

@@ -59,6 +59,7 @@
     if (relPath.includes("/info")) return "Info";
     if (relPath.startsWith("/show/")) return "Show";
     if (relPath.startsWith("/movie/")) return "Movie";
+    if (relPath.startsWith("/person/")) return "Person";
     return "Series Tracker";
   });
 
@@ -73,6 +74,7 @@
     if (relPath.startsWith("/search")) return `${base}/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
     if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
+    if (relPath.startsWith("/person/")) return `${base}/`;
     return null;
   });
 

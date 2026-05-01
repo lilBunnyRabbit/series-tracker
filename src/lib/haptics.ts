@@ -1,4 +1,5 @@
 import { browser } from "$app/environment";
+import { store } from "./store.svelte";
 
 type Pattern = "tap" | "tick" | "success" | "warn";
 
@@ -9,14 +10,16 @@ const PATTERNS: Record<Pattern, number | number[]> = {
   warn: [16, 30, 16],
 };
 
-let muted = false;
+let mutedOverride: boolean | null = null;
 
 export function setHapticsMuted(value: boolean): void {
-  muted = value;
+  mutedOverride = value;
 }
 
 export function vibrate(pattern: Pattern = "tap"): void {
-  if (!browser || muted) return;
+  if (!browser) return;
+  const muted = mutedOverride ?? store.preferences.hapticsMuted ?? false;
+  if (muted) return;
   const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
   if (typeof nav.vibrate !== "function") return;
   try {

@@ -24,7 +24,7 @@
   import type { Status, TvDetailFull, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
-  const region = defaultRegion();
+  const region = $derived(store.preferences.region ?? defaultRegion());
 
   let detail = $state<TvDetailFull | null>(null);
   let related = $state<RecommendationItem[]>([]);
@@ -97,6 +97,30 @@
     if (!entry || entry.kind !== "tv") return;
     store.setStatus("tv", id, entry.status === "completed" ? "watching" : "completed");
   }
+
+  // Next-episode label for the inline +ep button. Returns null when the show
+  // is fully watched (or not in library), which hides the button.
+  const nextEp = $derived.by<{ season: number; episode: number; total: number } | null>(() => {
+    if (!entry || entry.kind !== "tv") return null;
+    for (const s of entry.seasons) {
+      const cur = entry.progress[s.number] ?? 0;
+      if (cur < s.episodeCount) {
+        return { season: s.number, episode: cur + 1, total: s.episodeCount };
+      }
+    }
+    return null;
+  });
+
+  let bumpFlash = $state(false);
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function bumpNextEpisode(): void {
+    if (!entry || entry.kind !== "tv") return;
+    if (!store.incrementCurrent(id)) return;
+    bumpFlash = true;
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => (bumpFlash = false), 600);
+  }
 </script>
 
 <svelte:head>
@@ -149,7 +173,7 @@
           <p class="text-xs text-muted">
             Created by
             {#each creators as cr, i (cr.id)}
-              <a href="{base}/discover/browse/?kind=movie&with_people={cr.id}" class="text-text hover:text-accent">{cr.name}</a>{#if i < creators.length - 1},
+              <a href="{base}/person/{cr.id}/" class="text-text hover:text-accent">{cr.name}</a>{#if i < creators.length - 1},
               {/if}
             {/each}
           </p>
@@ -227,6 +251,24 @@
           ⋯
         </a>
       </div>
+
+      <!-- Inline track-next: bumps the next unwatched episode without leaving
+           the page. Only shown for in-library shows that still have episodes
+           left. -->
+      {#if inLibrary && nextEp}
+        <button
+          type="button"
+          onclick={bumpNextEpisode}
+          aria-label="Mark S{nextEp.season} E{nextEp.episode} watched"
+          class="flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition {bumpFlash
+            ? 'border-primary bg-primary text-bg'
+            : 'border-border bg-surface hover:border-primary hover:text-primary'}"
+        >
+          <span class="text-base leading-none">+</span>
+          <span>Watched S{nextEp.season} E{nextEp.episode}</span>
+          <span class="text-[10px] tabular-nums text-muted">{nextEp.episode}/{nextEp.total}</span>
+        </button>
+      {/if}
     </section>
 
     <!-- TRAILER (collapsible) -->
@@ -256,7 +298,6 @@
             name={c.name}
             role={c.character}
             profile={posterUrl(c.profile_path, "w185")}
-            searchKind="tv"
           />
         {/each}
       </Rail>

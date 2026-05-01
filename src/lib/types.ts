@@ -104,10 +104,20 @@ export type MovieEntry = {
 
 export type Entry = TvEntry | MovieEntry;
 
+export type Preferences = {
+  /** When true, vibration patterns are suppressed. */
+  hapticsMuted?: boolean;
+  /** Default status pre-selected when adding via "+ Add" — null means show the picker. */
+  defaultAddStatus?: Status | null;
+  /** Override for navigator.language-derived region used by Where to Watch. */
+  region?: string | null;
+};
+
 export type Store = {
   apiKey: string | null;
   library: Record<string, Entry>;
   searchHistory: string[];
+  preferences: Preferences;
   version: number;
 };
 
@@ -224,6 +234,56 @@ export type MovieDetailFull = MovieDetail & {
 };
 
 export type Genre = { id: number; name: string };
+
+export type PersonDetail = {
+  id: number;
+  name: string;
+  also_known_as?: string[];
+  biography?: string;
+  birthday?: string | null;
+  deathday?: string | null;
+  place_of_birth?: string | null;
+  profile_path: string | null;
+  known_for_department?: string;
+  homepage?: string | null;
+  imdb_id?: string | null;
+  popularity?: number;
+};
+
+export type PersonCreditMovie = {
+  id: number;
+  media_type: "movie";
+  title: string;
+  poster_path: string | null;
+  release_date?: string;
+  character?: string;
+  job?: string;
+  department?: string;
+  vote_average?: number;
+  popularity?: number;
+};
+
+export type PersonCreditTv = {
+  id: number;
+  media_type: "tv";
+  name: string;
+  poster_path: string | null;
+  first_air_date?: string;
+  character?: string;
+  job?: string;
+  department?: string;
+  episode_count?: number;
+  vote_average?: number;
+  popularity?: number;
+};
+
+export type PersonCredit = PersonCreditMovie | PersonCreditTv;
+
+export type PersonCombinedCredits = {
+  id: number;
+  cast: PersonCredit[];
+  crew: PersonCredit[];
+};
 
 export type WatchProvider = {
   provider_id: number;

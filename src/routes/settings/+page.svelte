@@ -1,7 +1,9 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
-  import { ping } from "$lib/tmdb";
+  import { clearCache, defaultRegion, ping, REGION_OPTIONS } from "$lib/tmdb";
+  import { STATUS_LABEL } from "$lib/types";
+  import type { Status } from "$lib/types";
   import {
     applyUpdate,
     checkForUpdate,
@@ -23,12 +25,21 @@
   let changelogError = $state<string | null>(null);
   let changelogLoaded = false;
 
+  let cacheCleared = $state(false);
+
   const updateAvailable = $derived(isUpdateAvailable());
   const buildTimeFmt = $derived.by(() => {
     if (!version.current.buildTime) return null;
     const d = new Date(version.current.buildTime);
     return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
   });
+
+  // Preferences-bound bindings. Mirroring into local $state lets bindings work
+  // with the store helper without each control reaching back into setPreference.
+  const hapticsMuted = $derived(store.preferences.hapticsMuted ?? false);
+  const defaultAddStatus = $derived<Status | "">(store.preferences.defaultAddStatus ?? "");
+  const regionPref = $derived(store.preferences.region ?? "");
+  const detectedRegion = defaultRegion();
 
   async function handleCheckForUpdate(): Promise<void> {
     if (checkStatus === "checking") return;
@@ -146,67 +157,121 @@
     await store.wipeAll();
     keyDraft = "";
   }
+
+  function handleClearCache(): void {
+    clearCache();
+    cacheCleared = true;
+    setTimeout(() => (cacheCleared = false), 1500);
+  }
+
+  function setHaptics(e: Event): void {
+    const checked = (e.currentTarget as HTMLInputElement).checked;
+    // Stored as muted=true when the toggle is OFF (haptics disabled).
+    store.setPreference("hapticsMuted", !checked || undefined);
+  }
+
+  function setDefaultStatus(e: Event): void {
+    const val = (e.currentTarget as HTMLSelectElement).value;
+    if (!val) {
+      store.setPreference("defaultAddStatus", null);
+    } else {
+      store.setPreference("defaultAddStatus", val as Status);
+    }
+  }
+
+  function setRegion(e: Event): void {
+    const val = (e.currentTarget as HTMLSelectElement).value;
+    if (!val) store.setPreference("region", null);
+    else store.setPreference("region", val);
+  }
+
+  const ADD_STATUSES: Status[] = ["plan", "watching", "completed", "dropped"];
 </script>
 
 <section class="mx-auto max-w-2xl space-y-8">
   <h1 class="text-xl font-semibold">Settings</h1>
 
+  <!-- API -->
   <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
-    <h2 class="font-medium">TMDB API key</h2>
-    <p class="text-sm text-muted">
-      Stored only in your browser (IndexedDB). Get a free key from
-      <a
-        href="https://www.themoviedb.org/settings/api"
-        target="_blank"
-        rel="noopener"
-        class="text-accent underline">themoviedb.org/settings/api</a
-      >.
-    </p>
-    <input
-      type="password"
-      bind:value={keyDraft}
-      placeholder="Paste your v3 API key"
-      autocomplete="off"
-      spellcheck="false"
-      class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
-    />
-    <div class="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onclick={save}
-        disabled={!keyDraft.trim() || keyDraft.trim() === store.apiKey}
-        class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Save
-      </button>
-      <button
-        type="button"
-        onclick={test}
-        disabled={!keyDraft.trim() || testStatus === "testing"}
-        class="rounded-md border border-border px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {testStatus === "testing" ? "Testing..." : "Test connection"}
-      </button>
-      {#if store.apiKey}
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">API</h2>
+    <div class="space-y-3">
+      <div>
+        <h3 class="text-sm font-medium">TMDB API key</h3>
+        <p class="mt-1 text-xs text-muted">
+          Stored only in your browser (IndexedDB). Get a free key from
+          <a
+            href="https://www.themoviedb.org/settings/api"
+            target="_blank"
+            rel="noopener"
+            class="text-accent underline">themoviedb.org/settings/api</a
+          >.
+        </p>
+      </div>
+      <input
+        type="password"
+        bind:value={keyDraft}
+        placeholder="Paste your v3 API key"
+        autocomplete="off"
+        spellcheck="false"
+        class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
+      />
+      <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onclick={clear}
-          class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
+          onclick={save}
+          disabled={!keyDraft.trim() || keyDraft.trim() === store.apiKey}
+          class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Forget key
+          Save
         </button>
+        <button
+          type="button"
+          onclick={test}
+          disabled={!keyDraft.trim() || testStatus === "testing"}
+          class="rounded-md border border-border px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {testStatus === "testing" ? "Testing..." : "Test connection"}
+        </button>
+        {#if store.apiKey}
+          <button
+            type="button"
+            onclick={clear}
+            class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
+          >
+            Forget key
+          </button>
+        {/if}
+      </div>
+      {#if savedNote}
+        <p class="text-xs text-primary">{savedNote}</p>
+      {/if}
+      {#if testMessage}
+        <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-danger'}">{testMessage}</p>
       {/if}
     </div>
-    {#if savedNote}
-      <p class="text-xs text-primary">{savedNote}</p>
-    {/if}
-    {#if testMessage}
-      <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-danger'}">{testMessage}</p>
-    {/if}
+
+    <hr class="border-border" />
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h3 class="text-sm font-medium">Cache</h3>
+        <p class="mt-0.5 text-xs text-muted">
+          In-memory TMDB responses. Drop them if results look stale.
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={handleClearCache}
+        class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
+      >
+        {cacheCleared ? "Cleared ✓" : "Clear cache"}
+      </button>
+    </div>
   </div>
 
+  <!-- Backup -->
   <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
-    <h2 class="font-medium">Backup</h2>
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Backup</h2>
     <p class="text-sm text-muted">
       Export your library as JSON, or restore from a previous export. <strong>Merge</strong> combines two backups (max season progress wins,
       newer metadata wins). <strong>Replace</strong> overwrites your current library.
@@ -240,21 +305,77 @@
         Import JSON ({importMode})
         <input type="file" accept="application/json" onchange={importData} class="hidden" />
       </label>
-      <button
-        type="button"
-        onclick={wipe}
-        class="ml-auto rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:border-danger hover:text-danger"
-      >
-        Wipe everything
-      </button>
     </div>
     {#if importMessage}
       <p class="text-xs text-muted">{importMessage}</p>
     {/if}
   </div>
 
+  <!-- Preferences -->
+  <div class="space-y-4 rounded-lg border border-border bg-surface p-5">
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Preferences</h2>
+
+    <label class="flex items-start justify-between gap-4">
+      <span class="min-w-0">
+        <span class="block text-sm font-medium">Haptics</span>
+        <span class="mt-0.5 block text-xs text-muted">
+          Vibrate on add / tab change. Browsers without the Vibration API ignore this.
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        checked={!hapticsMuted}
+        onchange={setHaptics}
+        class="mt-1 h-5 w-5 cursor-pointer accent-primary"
+      />
+    </label>
+
+    <hr class="border-border" />
+
+    <label class="flex items-start justify-between gap-4">
+      <span class="min-w-0">
+        <span class="block text-sm font-medium">Default add status</span>
+        <span class="mt-0.5 block text-xs text-muted">
+          Skip the picker — tapping "+ Add" goes straight to this status. Pick "Always ask" to keep the dialog.
+        </span>
+      </span>
+      <select
+        value={defaultAddStatus}
+        onchange={setDefaultStatus}
+        class="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
+      >
+        <option value="">Always ask</option>
+        {#each ADD_STATUSES as s (s)}
+          <option value={s}>{STATUS_LABEL[s]}</option>
+        {/each}
+      </select>
+    </label>
+
+    <hr class="border-border" />
+
+    <label class="flex items-start justify-between gap-4">
+      <span class="min-w-0">
+        <span class="block text-sm font-medium">Where to Watch region</span>
+        <span class="mt-0.5 block text-xs text-muted">
+          Country used for streaming-provider lookups. Detected: <span class="font-mono">{detectedRegion}</span>.
+        </span>
+      </span>
+      <select
+        value={regionPref}
+        onchange={setRegion}
+        class="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
+      >
+        <option value="">Auto ({detectedRegion})</option>
+        {#each REGION_OPTIONS as r (r.code)}
+          <option value={r.code}>{r.name}</option>
+        {/each}
+      </select>
+    </label>
+  </div>
+
+  <!-- About -->
   <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
-    <h2 class="font-medium">About</h2>
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">About</h2>
 
     <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       <dt class="text-muted">Version</dt>
@@ -319,9 +440,18 @@
     </details>
   </div>
 
-  <p class="text-xs text-muted">
-    <a href="{base}/" class="underline">← Back to library</a>
-  </p>
+  <!-- Danger zone -->
+  <div class="space-y-3 rounded-lg border border-danger/40 bg-surface p-5">
+    <h2 class="text-sm font-medium uppercase tracking-wider text-danger">Danger zone</h2>
+    <p class="text-sm text-muted">Wipes the API key, library, search history, and preferences. There is no undo.</p>
+    <button
+      type="button"
+      onclick={wipe}
+      class="rounded-md border border-danger/60 px-4 py-1.5 text-sm text-danger hover:bg-danger/10"
+    >
+      Wipe everything
+    </button>
+  </div>
 </section>
 
 <style>

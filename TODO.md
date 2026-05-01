@@ -17,25 +17,25 @@ Deep-dive backlog for series-tracker. Ordered by `simple × useful`.
 - [x] **Upcoming page `/upcoming/`** — fetch `seasonDetail` for shows in `status === "watching"` with un-aired episodes, group by air date (this week / next week / later). TMDB has the data; complexity is orchestration + caching.
 - [x] **"Mark caught up" button** — given today's date + season episode air dates, set `progress` to count of aired episodes. One button per season row. Pairs with Upcoming.
 - [x] **Where to watch** — `/tv/{id}/watch/providers` + `/movie/{id}/watch/providers` (JustWatch data, logos, region link). Region from `navigator.language`, manual override in settings.
-- [ ] **Clickable cast → person pages** — `/person/{id}` + `/person/{id}/combined_credits`. Lets users browse "what else is X in?". Supersedes the lightweight "Search by actor" item once built.
+- [x] **Clickable cast → person pages** — `/person/{id}` + `/person/{id}/combined_credits`. Lets users browse "what else is X in?". Supersedes the lightweight "Search by actor" item once built.
 
 ## Tier 3 — nice polish
 
-- [ ] **Settings improvements**
-  - [ ] Clear-cache button (drops in-memory TMDB cache)
-  - [ ] Haptics on/off toggle (wire to `setHapticsMuted`)
-  - [ ] Default add status (skip the picker if user has a preferred default)
-  - [ ] Region selector for watch providers
-  - [ ] Group settings into sections: API → Backup → Preferences → Danger zone
-- [ ] **Search by kind tabs** — TV / Movies / All filter on results page. Data already split by `media_type`.
+- [x] **Settings improvements**
+  - [x] Clear-cache button (drops in-memory TMDB cache)
+  - [x] Haptics on/off toggle (wire to `setHapticsMuted`)
+  - [x] Default add status (skip the picker if user has a preferred default)
+  - [x] Region selector for watch providers
+  - [x] Group settings into sections: API → Backup → Preferences → Danger zone
+- [x] **Search by kind tabs** — TV / Movies / All filter on results page. Data already split by `media_type`.
 - [ ] **Keyword/theme browsing** — `/keyword/{id}/movies` for "more like this" via shared themes.
-- [ ] **iCal export of upcoming** — `.ics` download from Upcoming page (~50 lines RFC-5545).
+- [x] **iCal export of upcoming** — `.ics` download from Upcoming page (~50 lines RFC-5545).
 
 ## Clunky-now fixes
 
 - [x] **Discover curated visual differentiation** — 4 near-identical grid sections blur together; add per-section icon/lead or rotate featured.
-- [ ] **Info page Track button** — for in-library entries, pair "Track" with an inline `+` next to it that bumps the next unaired episode without navigating.
-- [ ] **Search history dropdown** — currently shown only when query empty; turn into a typed-search suggestion list.
+- [x] **Info page Track button** — for in-library entries, pair "Track" with an inline `+` next to it that bumps the next unaired episode without navigating.
+- [x] **Search history dropdown** — currently shown only when query empty; turn into a typed-search suggestion list.
 
 ## Skip / defer
 

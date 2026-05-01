@@ -1,10 +1,10 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
-import type { Entry, Season, Status, Store, TvEntry } from "./types";
+import type { Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const SEARCH_HISTORY_LIMIT = 8;
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -13,19 +13,24 @@ type PersistedV2 = PersistedV1 & {
   version?: number;
   searchHistory?: string[];
 };
+type PersistedV3 = PersistedV2 & {
+  preferences?: Preferences;
+};
 
 const empty: Store = {
   apiKey: null,
   library: {},
   searchHistory: [],
+  preferences: {},
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV2): Store {
+function migrate(parsed: PersistedV3): Store {
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
     searchHistory: parsed.searchHistory ?? [],
+    preferences: parsed.preferences ?? {},
     version: SCHEMA_VERSION,
   };
 }
@@ -103,7 +108,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV2>(IDB_KEY);
+        let data = await idbGet<PersistedV3>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -121,6 +126,7 @@ function createStore() {
         state.apiKey = next.apiKey;
         state.library = next.library;
         state.searchHistory = next.searchHistory;
+        state.preferences = next.preferences;
         state.version = next.version;
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
@@ -179,6 +185,17 @@ function createStore() {
     },
     get searchHistory(): string[] {
       return state.searchHistory;
+    },
+    get preferences(): Preferences {
+      return state.preferences;
+    },
+
+    setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
+      if (value === null || value === undefined) {
+        delete state.preferences[key];
+      } else {
+        state.preferences[key] = value;
+      }
     },
 
     has(kind: "tv" | "movie", id: number): boolean {
@@ -365,6 +382,7 @@ function createStore() {
           ...(includeApiKey ? { apiKey: state.apiKey } : {}),
           library: state.library,
           searchHistory: state.searchHistory,
+          preferences: state.preferences,
         },
         null,
         2
@@ -372,7 +390,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV2);
+      const parsed = migrate(JSON.parse(text) as PersistedV3);
       let added = 0;
       let merged = 0;
 
@@ -380,6 +398,7 @@ function createStore() {
         if (parsed.apiKey !== null) state.apiKey = parsed.apiKey;
         state.library = parsed.library;
         state.searchHistory = parsed.searchHistory;
+        state.preferences = parsed.preferences;
         added = Object.keys(parsed.library).length;
       } else {
         if (!state.apiKey && parsed.apiKey) state.apiKey = parsed.apiKey;
@@ -401,6 +420,7 @@ function createStore() {
           }
         }
         state.searchHistory = state.searchHistory.slice(0, SEARCH_HISTORY_LIMIT);
+        state.preferences = { ...parsed.preferences, ...state.preferences };
       }
 
       return { added, merged, total: Object.keys(state.library).length };
@@ -418,6 +438,7 @@ function createStore() {
       state.apiKey = null;
       state.library = {};
       state.searchHistory = [];
+      state.preferences = {};
       state.version = SCHEMA_VERSION;
       try {
         await idbDelete(IDB_KEY);

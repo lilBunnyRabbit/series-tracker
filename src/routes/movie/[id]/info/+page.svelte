@@ -24,7 +24,7 @@
   import type { MovieDetailFull, Status, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
-  const region = defaultRegion();
+  const region = $derived(store.preferences.region ?? defaultRegion());
 
   let detail = $state<MovieDetailFull | null>(null);
   let related = $state<RecommendationItem[]>([]);
@@ -140,7 +140,7 @@
         {#if director}
           <p class="text-xs text-muted">
             Directed by
-            <a href="{base}/discover/browse/?kind=movie&with_people={director.id}" class="text-text hover:text-accent">{director.name}</a>
+            <a href="{base}/person/{director.id}/" class="text-text hover:text-accent">{director.name}</a>
           </p>
         {/if}
 
@@ -247,7 +247,6 @@
             name={c.name}
             role={c.character}
             profile={posterUrl(c.profile_path, "w185")}
-            searchKind="movie"
           />
         {/each}
       </Rail>

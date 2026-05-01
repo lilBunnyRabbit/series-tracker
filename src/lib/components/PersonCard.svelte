@@ -9,16 +9,11 @@
     profile: string | null;
     /** Episode count overlay for this title — clever way to show involvement. */
     episodeCount?: number;
-    /** Cosmetic only — TMDB has no person filter on TV discover, so all
-     *  person-bridge nav goes to the movie kind regardless. */
-    searchKind?: "tv" | "movie";
   };
 
   let { id, name, role, profile, episodeCount }: Props = $props();
 
-  // TMDB's /discover/tv has no person filter, so always bridge to movies for
-  // now. Forcing kind=movie ensures the with_people param actually applies.
-  const href = $derived(`${base}/discover/browse/?kind=movie&with_people=${id}`);
+  const href = $derived(`${base}/person/${id}/`);
 </script>
 
 <a href={href} class="group flex w-[100px] flex-col gap-1.5 sm:w-[112px]" aria-label={name}>

@@ -79,6 +79,17 @@ function onVisibility(): void {
 export function init(): void {
   if (!browser || state.initialized) return;
   state.initialized = true;
+  // Strip the cache-bust query param applyUpdate added on the previous load.
+  // Done with replaceState so the URL stays clean without re-fetching.
+  if (typeof location !== "undefined" && location.search.includes("__upd=")) {
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete("__upd");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch {
+      // ignore
+    }
+  }
   // In `vite dev`, the bundled manifest is the "dev" sentinel and there's no
   // deploy to detect — skip polling entirely so console isn't spammed with
   // 404s for /version.json.
@@ -97,12 +108,36 @@ export function markSWReady(): void {
 }
 
 export async function applyUpdate(): Promise<void> {
+  // Happy path: SW reported a waiting worker via onNeedRefresh. Let the
+  // plugin-pwa updater swap the SW and reload — it handles skipWaiting +
+  // controllerchange races correctly.
   if (updateSWFn && state.swReady) {
-    await updateSWFn(true);
-    return;
+    try {
+      await updateSWFn(true);
+      // updateSW(true) reloads on success; if we're still here after a beat,
+      // the controllerchange race lost — fall through to the hard-refresh path.
+      await new Promise((r) => setTimeout(r, 800));
+    } catch {
+      // fall through to hard refresh
+    }
   }
-  // Edge case: version.json reports a newer build than the SW has finished
-  // installing. Clear caches so the hard reload pulls fresh assets through.
+
+  // Hard-refresh fallback. Used when:
+  //   - version.json reports a new build but the SW hasn't installed it yet,
+  //     so updateSWFn would be a no-op; or
+  //   - updateSW(true) didn't reload for whatever reason (browser quirk,
+  //     blocked controllerchange event, etc.).
+  // Unregistering forces the next page load to bootstrap from the network
+  // and re-register a fresh SW, which is the only reliable way to escape
+  // a stale precache when the install cycle hasn't completed.
+  if ("serviceWorker" in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    } catch {
+      // best-effort
+    }
+  }
   if ("caches" in window) {
     try {
       const keys = await caches.keys();
@@ -111,7 +146,17 @@ export async function applyUpdate(): Promise<void> {
       // best-effort
     }
   }
-  location.reload();
+
+  // Cache-bust the navigation itself: some browsers will replay the old
+  // navigation request from disk cache on a vanilla reload, even with the SW
+  // gone. A query-param swap forces a fresh document fetch.
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("__upd", String(Date.now()));
+    location.replace(u.toString());
+  } catch {
+    location.reload();
+  }
 }
 
 export function dismiss(): void {

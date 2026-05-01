@@ -23,6 +23,30 @@
   let timer: ReturnType<typeof setTimeout> | null = null;
   let activeController: AbortController | null = null;
 
+  // Typed-search suggestions: history filtered by what's in the input. Hidden
+  // on blur so taps elsewhere don't suppress the click — the blur handler uses
+  // a short timeout to let the chip's click event fire first.
+  let inputFocused = $state(false);
+  let blurTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function onInputFocus(): void {
+    if (blurTimer) {
+      clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+    inputFocused = true;
+  }
+  function onInputBlur(): void {
+    blurTimer = setTimeout(() => {
+      inputFocused = false;
+      blurTimer = null;
+    }, 150);
+  }
+  function pickSuggestion(q: string): void {
+    query = q;
+    inputFocused = false;
+  }
+
   // Per-card add state — keyed by `${kind}:${id}` so multiple cards can run in parallel
   // without stomping each other's spinner.
   let busyKey = $state<string | null>(null);
@@ -124,6 +148,15 @@
   );
 
   const isQueryEmpty = $derived(!query.trim());
+
+  const matchingHistory = $derived.by<string[]>(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return store.searchHistory.filter((h) => {
+      const lh = h.toLowerCase();
+      return lh !== q && lh.includes(q);
+    });
+  });
 
   function titleOf(r: SearchMultiResult): string {
     if (r.media_type === "movie") return r.title;
@@ -272,6 +305,24 @@
      and as a regular block on desktop. -->
 <div class="search-dock">
   <div class="search-dock-inner">
+    <!-- Suggestion list — typed history matches that aren't exact. Hidden when
+         input loses focus or no matches exist. -->
+    {#if inputFocused && matchingHistory.length > 0}
+      <div class="-mx-1 mb-2 flex flex-wrap gap-1.5 px-1 text-xs">
+        {#each matchingHistory.slice(0, 5) as q (q)}
+          <button
+            type="button"
+            onmousedown={(e) => e.preventDefault()}
+            onclick={() => pickSuggestion(q)}
+            class="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover:border-accent hover:text-text"
+          >
+            <span class="text-[10px] text-muted/60">⌕</span>
+            <span class="truncate">{q}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+
     <!-- Filter chips above input -->
     <div class="-mx-1 mb-2 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 text-xs">
       {#each [["all", "Media"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
@@ -300,6 +351,8 @@
       <input
         type="search"
         bind:value={query}
+        onfocus={onInputFocus}
+        onblur={onInputBlur}
         placeholder="Search movies & TV..."
         autofocus
         autocomplete="off"

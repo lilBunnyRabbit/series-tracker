@@ -1,5 +1,6 @@
 <script lang="ts">
   import { vibrate } from "$lib/haptics";
+  import { store } from "$lib/store.svelte";
   import { STATUS_COLOR, STATUS_DESCRIPTION, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
@@ -14,6 +15,8 @@
     title?: string;
     /** Extra classes appended to the trigger button (e.g. "w-full" inside grids). */
     class?: string;
+    /** When true, ignore stored default-status preference and always show picker. */
+    forcePicker?: boolean;
   };
 
   let {
@@ -26,6 +29,7 @@
     size = "md",
     title = "Add as...",
     class: extraClass = "",
+    forcePicker = false,
   }: Props = $props();
 
   // Order: plan → watching → dropped → completed
@@ -48,6 +52,11 @@
   function open(): void {
     if (disabled || busy) return;
     vibrate("tap");
+    const preset = !forcePicker ? store.preferences.defaultAddStatus : null;
+    if (preset) {
+      void pick(preset);
+      return;
+    }
     dialog?.showModal();
   }
 

@@ -4,6 +4,9 @@ import type {
   MovieDetail,
   MovieDetailFull,
   MovieEntry,
+  PersonCombinedCredits,
+  PersonCredit,
+  PersonDetail,
   SearchMultiPage,
   SearchMultiResult,
   SeasonDetail,
@@ -297,6 +300,84 @@ export async function genreList(kind: "tv" | "movie", apiKey: string, signal?: A
   return data.genres;
 }
 
+// ---- Person ----
+
+export const personDetail = (id: number, key: string, signal?: AbortSignal) =>
+  get<PersonDetail>(`/person/${id}`, key, {}, { signal, ttlMs: 60 * 60 * 1000 });
+
+type PersonCombinedCreditsRaw = {
+  id: number;
+  cast: ({
+    id: number;
+    media_type: "movie" | "tv";
+    title?: string;
+    name?: string;
+    poster_path: string | null;
+    release_date?: string;
+    first_air_date?: string;
+    character?: string;
+    episode_count?: number;
+    vote_average?: number;
+    popularity?: number;
+  })[];
+  crew: ({
+    id: number;
+    media_type: "movie" | "tv";
+    title?: string;
+    name?: string;
+    poster_path: string | null;
+    release_date?: string;
+    first_air_date?: string;
+    job?: string;
+    department?: string;
+    episode_count?: number;
+    vote_average?: number;
+    popularity?: number;
+  })[];
+};
+
+function normalisePersonCredit<T extends PersonCombinedCreditsRaw["cast"][number] | PersonCombinedCreditsRaw["crew"][number]>(c: T): PersonCredit | null {
+  if (c.media_type === "movie") {
+    return {
+      id: c.id,
+      media_type: "movie",
+      title: c.title ?? "",
+      poster_path: c.poster_path,
+      release_date: c.release_date,
+      character: "character" in c ? c.character : undefined,
+      job: "job" in c ? c.job : undefined,
+      department: "department" in c ? c.department : undefined,
+      vote_average: c.vote_average,
+      popularity: c.popularity,
+    };
+  }
+  if (c.media_type === "tv") {
+    return {
+      id: c.id,
+      media_type: "tv",
+      name: c.name ?? "",
+      poster_path: c.poster_path,
+      first_air_date: c.first_air_date,
+      character: "character" in c ? c.character : undefined,
+      job: "job" in c ? c.job : undefined,
+      department: "department" in c ? c.department : undefined,
+      episode_count: c.episode_count,
+      vote_average: c.vote_average,
+      popularity: c.popularity,
+    };
+  }
+  return null;
+}
+
+export async function personCombinedCredits(id: number, key: string, signal?: AbortSignal): Promise<PersonCombinedCredits> {
+  const data = await get<PersonCombinedCreditsRaw>(`/person/${id}/combined_credits`, key, {}, { signal, ttlMs: 60 * 60 * 1000 });
+  return {
+    id: data.id,
+    cast: data.cast.map(normalisePersonCredit).filter((x): x is PersonCredit => x !== null),
+    crew: data.crew.map(normalisePersonCredit).filter((x): x is PersonCredit => x !== null),
+  };
+}
+
 // ---- Watch providers (JustWatch data via TMDB) ----
 
 export const watchProviders = (kind: "tv" | "movie", id: number, apiKey: string, signal?: AbortSignal) =>
@@ -315,6 +396,56 @@ export function defaultRegion(): string {
   const region = parts[1]?.toUpperCase();
   return region && region.length === 2 ? region : "US";
 }
+
+/** Two-letter ISO 3166-1 region codes TMDB has watch-provider data for (curated subset, alpha by name). */
+export const REGION_OPTIONS: { code: string; name: string }[] = [
+  { code: "AR", name: "Argentina" },
+  { code: "AU", name: "Australia" },
+  { code: "AT", name: "Austria" },
+  { code: "BE", name: "Belgium" },
+  { code: "BR", name: "Brazil" },
+  { code: "CA", name: "Canada" },
+  { code: "CL", name: "Chile" },
+  { code: "CO", name: "Colombia" },
+  { code: "CZ", name: "Czechia" },
+  { code: "DK", name: "Denmark" },
+  { code: "FI", name: "Finland" },
+  { code: "FR", name: "France" },
+  { code: "DE", name: "Germany" },
+  { code: "GR", name: "Greece" },
+  { code: "HK", name: "Hong Kong" },
+  { code: "HU", name: "Hungary" },
+  { code: "IN", name: "India" },
+  { code: "ID", name: "Indonesia" },
+  { code: "IE", name: "Ireland" },
+  { code: "IL", name: "Israel" },
+  { code: "IT", name: "Italy" },
+  { code: "JP", name: "Japan" },
+  { code: "MX", name: "Mexico" },
+  { code: "NL", name: "Netherlands" },
+  { code: "NZ", name: "New Zealand" },
+  { code: "NO", name: "Norway" },
+  { code: "PH", name: "Philippines" },
+  { code: "PL", name: "Poland" },
+  { code: "PT", name: "Portugal" },
+  { code: "RO", name: "Romania" },
+  { code: "RU", name: "Russia" },
+  { code: "SG", name: "Singapore" },
+  { code: "SK", name: "Slovakia" },
+  { code: "SI", name: "Slovenia" },
+  { code: "ZA", name: "South Africa" },
+  { code: "KR", name: "South Korea" },
+  { code: "ES", name: "Spain" },
+  { code: "SE", name: "Sweden" },
+  { code: "CH", name: "Switzerland" },
+  { code: "TW", name: "Taiwan" },
+  { code: "TH", name: "Thailand" },
+  { code: "TR", name: "Turkey" },
+  { code: "UA", name: "Ukraine" },
+  { code: "AE", name: "United Arab Emirates" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "US", name: "United States" },
+];
 
 export function clearCache(): void {
   cache.clear();
