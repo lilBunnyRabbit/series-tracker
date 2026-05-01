@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tactile } from "$lib/tactile";
   import { applyUpdate, dismiss, isUpdateAvailable, version } from "$lib/version.svelte";
 
   let updating = $state(false);
@@ -30,16 +31,18 @@
       <div class="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
+          use:tactile={{ haptic: false }}
           onclick={dismiss}
-          class="rounded-md px-2.5 py-1.5 text-xs text-muted hover:text-text"
+          class="tap-target tap-target--btn rounded-md px-2.5 py-1.5 text-xs text-muted hover-text-text"
         >
           Later
         </button>
         <button
           type="button"
+          use:tactile={{ haptic: "tap" }}
           onclick={onUpdate}
           disabled={updating}
-          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg disabled:opacity-60"
+          class="tap-target tap-target--btn rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg disabled:opacity-60"
         >
           {updating ? "Updating..." : "Update now"}
         </button>
@@ -60,7 +63,7 @@
     justify-content: center;
     padding: 0 0.75rem;
     pointer-events: none;
-    animation: toast-in 220ms ease-out;
+    animation: toast-in 280ms var(--ease-spring);
   }
 
   @media (min-width: 640px) {
@@ -95,7 +98,7 @@
   @keyframes toast-in {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(16px);
     }
     to {
       opacity: 1;

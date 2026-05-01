@@ -8,6 +8,7 @@
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import StatusSegmented from "$lib/components/StatusSegmented.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
@@ -76,7 +77,7 @@
 </svelte:head>
 
 <section class="space-y-6">
-  <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
+  <a href="{base}/" class="hidden text-sm text-muted hover-text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
     <div class="flex flex-col gap-6 md:flex-row">
@@ -154,7 +155,8 @@
             />
             <a
               href="{base}/movie/{id}/info/"
-              class="rounded-md border border-border px-4 py-2 text-sm hover:border-accent"
+              use:tactile={{ haptic: false }}
+              class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-accent"
             >
               More info
             </a>
@@ -162,7 +164,8 @@
         {:else}
           <a
             href="{base}/movie/{id}/info/"
-            class="inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover:border-accent"
+            use:tactile={{ haptic: false }}
+            class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
           >
             ⓘ More info
           </a>
@@ -193,8 +196,9 @@
       <div class="flex justify-center border-t border-border pt-6">
         <button
           type="button"
+          use:tactile={{ haptic: "warn" }}
           onclick={remove}
-          class="rounded-md border border-border px-4 py-2 text-sm text-muted hover:border-danger hover:text-danger"
+          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm text-muted hover-border-danger hover-text-danger"
         >
           Remove from library
         </button>

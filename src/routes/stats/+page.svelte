@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status, TvEntry } from "$lib/types";
 
@@ -115,7 +116,8 @@
     <h1 class="mr-auto text-xl font-semibold">Your stats</h1>
     <a
       href="{base}/settings/"
-      class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-primary hover:text-text"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-primary hover-text-text"
     >
       Settings →
     </a>
@@ -127,13 +129,15 @@
       <div class="flex justify-center gap-2">
         <a
           href="{base}/discover/"
-          class="rounded-md border border-border px-4 py-2 text-sm hover:border-primary"
+          use:tactile={{ haptic: false }}
+          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-primary"
         >
           Discover
         </a>
         <a
           href="{base}/search/"
-          class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
+          use:tactile={{ haptic: false }}
+          class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
         >
           Search
         </a>
@@ -170,7 +174,8 @@
           {@const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0}
           <a
             href="{base}/watchlist/?status={s}"
-            class="flex items-center gap-3 rounded-md border border-border bg-surface p-3 transition hover:border-primary"
+            use:tactile
+            class="tap-target tap-target--card flex items-center gap-3 rounded-md border border-border bg-surface p-3 hover-border-primary"
           >
             <span class="h-2 w-2 shrink-0 rounded-full {c.dot}" aria-hidden="true"></span>
             <span class="w-28 shrink-0 text-sm {c.text}">{STATUS_LABEL[s]}</span>
@@ -246,7 +251,8 @@
           {#each topRated as e, i (e.kind + ":" + e.id)}
             <a
               href={e.kind === "tv" ? `${base}/show/${e.id}/` : `${base}/movie/${e.id}/`}
-              class="flex items-center gap-3 rounded-md border border-border bg-surface p-2.5 transition hover:border-accent"
+              use:tactile
+              class="tap-target tap-target--card flex items-center gap-3 rounded-md border border-border bg-surface p-2.5 hover-border-accent"
             >
               <span class="w-5 shrink-0 text-center text-sm tabular-nums text-muted">#{i + 1}</span>
               <div class="h-12 w-9 shrink-0 overflow-hidden rounded bg-surface-2">

@@ -6,6 +6,7 @@
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { discover, entryFromSearchResult, genreList } from "$lib/tmdb";
   import type { DiscoverPage, DiscoverSort } from "$lib/tmdb";
   import type { Genre, SearchMultiResult, Status } from "$lib/types";
@@ -188,17 +189,19 @@
     <h1 class="mr-auto text-xl font-semibold">Browse</h1>
     <button
       type="button"
+      use:tactile
       onclick={toggleHideAdded}
       aria-pressed={hideAdded}
-      class="rounded-md border px-3 py-1.5 text-xs transition {hideAdded
+      class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
         ? 'border-primary bg-primary text-bg'
-        : 'border-border text-muted hover:border-primary'}"
+        : 'border-border text-muted hover-border-primary'}"
     >
       {hideAdded ? "✓ Hiding added" : "Hide added"}
     </button>
     <a
       href="{base}/discover/{hideAdded ? '?hidden=1' : ''}"
-      class="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
     >
       ← Curated
     </a>
@@ -211,10 +214,11 @@
           type="button"
           role="tab"
           aria-selected={kind === k}
+          use:tactile
           onclick={() => setKind(k)}
-          class="rounded-full border px-3 py-1 transition {kind === k
+          class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kind === k
             ? 'border-primary bg-primary text-bg'
-            : 'border-border text-muted hover:text-text'}"
+            : 'border-border text-muted hover-text-text'}"
         >
           {k === "tv" ? "TV shows" : "Movies"}
         </button>
@@ -247,8 +251,9 @@
         <span class="text-muted">·</span>
         <button
           type="button"
+          use:tactile
           onclick={() => setKind("movie")}
-          class="rounded-full border border-accent px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent hover:text-bg"
+          class="tap-target tap-target--chip rounded-full border border-accent px-2 py-1 text-[11px] font-medium text-accent transition-colors duration-150 active:bg-accent active:text-bg"
         >
           Switch to Movies
         </button>
@@ -256,8 +261,9 @@
       {/if}
       <button
         type="button"
+        use:tactile={{ haptic: "warn" }}
         onclick={clearPeople}
-        class="ml-auto rounded-full border border-border px-2 py-0.5 text-[11px] text-muted hover:border-danger hover:text-danger"
+        class="tap-target tap-target--chip ml-auto rounded-full border border-border px-2 py-1 text-[11px] text-muted hover-border-danger hover-text-danger"
       >
         × Clear
       </button>
@@ -269,7 +275,12 @@
       <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted">
         Genres
         {#if selectedGenres.size > 0}
-          <button type="button" onclick={clearGenres} class="rounded px-1 text-muted hover:text-danger">
+          <button
+            type="button"
+            use:tactile={{ haptic: "warn" }}
+            onclick={clearGenres}
+            class="tap-target rounded px-1 text-muted hover-text-danger"
+          >
             Clear · {selectedGenres.size}
           </button>
         {/if}
@@ -279,11 +290,12 @@
           {@const on = selectedGenres.has(g.id)}
           <button
             type="button"
+            use:tactile
             onclick={() => toggleGenre(g.id)}
             aria-pressed={on}
-            class="rounded-full border px-3 py-1 transition {on
+            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {on
               ? 'border-primary bg-primary text-bg'
-              : 'border-border text-muted hover:text-text'}"
+              : 'border-border text-muted hover-text-text'}"
           >
             {g.name}
           </button>

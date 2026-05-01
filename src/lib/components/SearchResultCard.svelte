@@ -2,6 +2,7 @@
   import { base } from "$app/paths";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { posterUrl } from "$lib/tmdb";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { SearchMultiResult, Status } from "$lib/types";
@@ -48,7 +49,8 @@
      Interactive children (buttons, status chip) get position:relative + z-10
      so their clicks land on them instead of the overlay. -->
 <article
-  class="relative flex gap-3 rounded-lg border border-border bg-surface p-3 transition hover:border-primary focus-within:border-primary"
+  use:tactile={{ haptic: false }}
+  class="tap-target tap-target--card relative flex gap-3 rounded-lg border border-border bg-surface p-3 hover-border-primary focus-within:border-primary"
 >
   <div class="h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
     {#if poster}

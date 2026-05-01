@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import { tactile } from "$lib/tactile";
 
   type Props = {
     id: number;
@@ -16,15 +17,15 @@
   const href = $derived(`${base}/person/${id}/`);
 </script>
 
-<a href={href} class="group flex w-[100px] flex-col gap-1.5 sm:w-[112px]" aria-label={name}>
+<a
+  href={href}
+  use:tactile
+  class="tap-target tap-target--card hover-zoom group flex w-[100px] flex-col gap-1.5 sm:w-[112px]"
+  aria-label={name}
+>
   <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm">
     {#if profile}
-      <img
-        src={profile}
-        alt=""
-        class="h-full w-full object-cover transition group-hover:scale-[1.02]"
-        loading="lazy"
-      />
+      <img src={profile} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
     {#if typeof episodeCount === "number" && episodeCount > 0}
       <span class="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm">

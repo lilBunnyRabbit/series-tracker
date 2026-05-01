@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tactile } from "$lib/tactile";
   import type { ImageItem } from "$lib/types";
 
   type Props = { title: string; images: ImageItem[]; aspect: "16/9" | "2/3"; size: "w300" | "w185" };
@@ -20,8 +21,9 @@
       {#each items as img (img.file_path)}
         <button
           type="button"
+          use:tactile={{ haptic: "tick" }}
           onclick={() => (zoomed = img.file_path)}
-          class="overflow-hidden rounded-md bg-surface-2 transition hover:opacity-80"
+          class="tap-target tap-target--card overflow-hidden rounded-md bg-surface-2"
           style="aspect-ratio: {aspect}"
         >
           <img

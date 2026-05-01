@@ -5,6 +5,7 @@
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import {
     entryFromSearchResult,
     popularMovies,
@@ -137,17 +138,19 @@
     <h1 class="mr-auto text-xl font-semibold">Discover</h1>
     <button
       type="button"
+      use:tactile
       onclick={toggleHideAdded}
       aria-pressed={hideAdded}
-      class="rounded-md border px-3 py-1.5 text-sm transition {hideAdded
+      class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 {hideAdded
         ? 'border-primary bg-primary text-bg'
-        : 'border-border text-muted hover:border-primary'}"
+        : 'border-border text-muted hover-border-primary'}"
     >
       {hideAdded ? "✓ Hiding added" : "Hide added"}
     </button>
     <a
       href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
-      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"
     >
       Browse all →
     </a>
@@ -170,8 +173,9 @@
         {#each ["day", "week"] as const as w (w)}
           <button
             type="button"
+            use:tactile
             onclick={() => setTrendingWindow(w)}
-            class="rounded-full border px-3 py-1 transition {trendingWindow === w
+            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {trendingWindow === w
               ? 'border-primary bg-primary text-bg'
               : 'border-border text-muted'}"
           >

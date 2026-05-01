@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tactile } from "$lib/tactile";
+
   type Props = {
     current: number;
     total: number;
@@ -47,10 +49,11 @@
 <nav class="flex flex-wrap items-center justify-center gap-1.5" aria-label="Pagination">
   <button
     type="button"
+    use:tactile
     onclick={() => jump(-1)}
     disabled={current <= 1}
     aria-label="Previous page"
-    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     ←
   </button>
@@ -60,12 +63,13 @@
       {@const active = item === current}
       <button
         type="button"
+        use:tactile
         onclick={() => onGoTo(item)}
         aria-current={active ? "page" : undefined}
         aria-label={`Page ${item}`}
-        class="min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition {active
+        class="tap-target tap-target--btn min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors duration-150 {active
           ? 'border-primary bg-primary text-bg'
-          : 'border-border hover:border-primary'}"
+          : 'border-border hover-border-primary'}"
       >
         {item}
       </button>
@@ -76,10 +80,11 @@
 
   <button
     type="button"
+    use:tactile
     onclick={() => jump(1)}
     disabled={current >= total}
     aria-label="Next page"
-    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     →
   </button>

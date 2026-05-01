@@ -1,5 +1,6 @@
 <script lang="ts">
   import { vibrate } from "$lib/haptics";
+  import { tactile } from "$lib/tactile";
 
   type Props = { value: number | null; onChange: (v: number | null) => void; label?: string };
   let { value, onChange, label = "Your rating" }: Props = $props();
@@ -11,7 +12,6 @@
       vibrate("warn");
       onChange(null);
     } else {
-      vibrate("tap");
       onChange(v);
     }
   }
@@ -45,12 +45,13 @@
       {@const active = value != null && v <= value}
       <button
         type="button"
+        use:tactile={{ haptic: value === v ? "warn" : "tap" }}
         onclick={() => pick(v)}
         aria-label="Rate {v}"
         aria-pressed={value === v}
-        class="flex-1 border-r border-border py-2 text-xs tabular-nums transition last:border-r-0 {active
+        class="tap-target tap-target--chip flex-1 border-r border-border py-2.5 text-xs tabular-nums transition-colors duration-150 last:border-r-0 {active
           ? 'bg-accent text-bg'
-          : 'text-muted hover:text-text'}"
+          : 'text-muted hover-text-text'}"
       >
         {v}
       </button>

@@ -14,6 +14,15 @@
 
   --font-sans:
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Tactile motion tokens. Asymmetric press/release durations are the
+     trick that makes a button feel springy: snap down fast, ease back. */
+  --ease-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-press: 80ms;
+  --dur-release: 200ms;
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
 }
 
 @layer base {
@@ -39,5 +48,143 @@
   ::selection {
     background: var(--color-primary);
     color: var(--color-bg);
+  }
+
+  /* Tactile defaults on every interactive element. Kills the 300ms tap delay,
+     suppresses the gray iOS tap highlight, and prevents text selection on UI
+     chrome so long-press feels like a press, not a drag-to-select. Inputs &
+     contenteditable get selection back below. */
+  button,
+  a,
+  [role="button"],
+  [role="radio"],
+  [role="tab"],
+  [role="menuitem"],
+  summary,
+  label[for] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
+@layer utilities {
+  /* Press feedback. The `.is-pressed` class is added by the `tactile` action
+     on pointerdown and removed on release/cancel. We use a class (not :active
+     alone) because :active is unreliable on a parent <a> when the user taps
+     a child, and on iOS sometimes sticks until you tap elsewhere. */
+  .tap-target {
+    transition:
+      transform var(--dur-release) var(--ease-spring),
+      filter var(--dur-release) var(--ease-spring);
+    will-change: transform;
+  }
+  .tap-target:active,
+  .tap-target.is-pressed {
+    transition:
+      transform var(--dur-press) var(--ease-out),
+      filter var(--dur-press) var(--ease-out);
+  }
+
+  .tap-target--card:active,
+  .tap-target--card.is-pressed {
+    transform: scale(0.985);
+    filter: brightness(0.92);
+  }
+  .tap-target--btn:active,
+  .tap-target--btn.is-pressed {
+    transform: scale(0.96);
+    filter: brightness(0.88);
+  }
+  .tap-target--icon:active,
+  .tap-target--icon.is-pressed {
+    transform: scale(0.9);
+    filter: brightness(0.85);
+  }
+  .tap-target--chip:active,
+  .tap-target--chip.is-pressed {
+    transform: scale(0.94);
+  }
+
+  /* Hover-only utilities — the `transition` above already handles tween, these
+     just gate hover styles to devices that actually have a hover capability so
+     touch users don't get the sticky-hover-after-tap problem. Use as
+     `class="... hover-border-primary"` instead of `hover:border-primary`. */
+  @media (hover: hover) {
+    .hover-border-primary:hover {
+      border-color: var(--color-primary);
+    }
+    .hover-text-primary:hover {
+      color: var(--color-primary);
+    }
+    .hover-text-text:hover {
+      color: var(--color-text);
+    }
+    .hover-text-danger:hover {
+      color: var(--color-danger);
+    }
+    .hover-border-danger:hover {
+      border-color: var(--color-danger);
+    }
+    .hover-border-accent:hover {
+      border-color: var(--color-accent);
+    }
+    .hover-bg-surface:hover {
+      background-color: var(--color-surface);
+    }
+    .hover-zoom > img {
+      transition: transform var(--dur-base) var(--ease-out);
+    }
+    .hover-zoom:hover > img {
+      transform: scale(1.02);
+    }
+  }
+}
+
+/* Sheet & dialog enter animations. Kept outside @layer so component @keyframes
+   imports stay simple. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Optional reduce — keep state changes instant but spare opacity/colour. */
+  .tap-target,
+  .tap-target:active,
+  .tap-target.is-pressed {
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
   }
 }

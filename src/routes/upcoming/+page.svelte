@@ -8,6 +8,7 @@
     warmUpForWatching,
   } from "$lib/newEpisodes.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
 
   type UpcomingItem = {
@@ -124,8 +125,9 @@
     {#if hasAnyData}
       <button
         type="button"
+        use:tactile
         onclick={exportCalendar}
-        class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-text"
+        class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
         aria-label="Export upcoming episodes as iCal calendar"
         title="Download .ics file for your calendar app"
       >
@@ -134,7 +136,8 @@
     {/if}
     <a
       href="{base}/watchlist/?status=watching"
-      class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-primary hover:text-text"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-primary hover-text-text"
     >
       Watching list →
     </a>
@@ -170,7 +173,8 @@
           {#each bucket.items as item (item.entry.id + ":" + item.season + ":" + item.episode.id)}
             <a
               href="{base}/show/{item.entry.id}/"
-              class="flex items-stretch gap-3 rounded-lg border border-border bg-surface p-2 transition hover:border-accent"
+              use:tactile
+              class="tap-target tap-target--card flex items-stretch gap-3 rounded-lg border border-border bg-surface p-2 hover-border-accent"
             >
               <div class="h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-surface-2">
                 {#if item.entry.poster}

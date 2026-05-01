@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import { tactile } from "$lib/tactile";
 
   type Props = {
     kind: "tv" | "movie";
@@ -47,16 +48,12 @@
 <div class="group relative flex flex-col gap-1.5 {widthClass}">
   <a
     href={finalHref}
-    class="relative block aspect-video w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm"
+    use:tactile
+    class="tap-target tap-target--card hover-zoom relative block aspect-video w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm"
     aria-label={title}
   >
     {#if image}
-      <img
-        src={image}
-        alt=""
-        class="h-full w-full object-cover transition group-hover:scale-[1.02]"
-        loading="lazy"
-      />
+      <img src={image} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
     <!-- Subtle bottom gradient so the bottom-left strip stays readable on bright stills. -->
     <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
@@ -83,13 +80,14 @@
   {#if onMenu}
     <button
       type="button"
+      use:tactile={{ haptic: "tap" }}
       onclick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onMenu?.();
       }}
       aria-label="Quick actions for {title}"
-      class="absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-base leading-none text-text backdrop-blur-sm transition hover:bg-black/75"
+      class="tap-target tap-target--icon absolute right-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-lg leading-none text-text backdrop-blur-sm"
     >
       ⋯
     </button>

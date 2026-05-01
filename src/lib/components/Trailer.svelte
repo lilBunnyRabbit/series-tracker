@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tactile } from "$lib/tactile";
   import type { Video } from "$lib/types";
 
   type Props = { videos: Video[] };
@@ -43,20 +44,14 @@
           {:else}
             <button
               type="button"
+              use:tactile={{ haptic: "tick" }}
               onclick={() => (playing = v.key)}
-              class="group relative block aspect-video w-full overflow-hidden"
+              class="tap-target tap-target--card hover-zoom group relative block aspect-video w-full overflow-hidden"
               aria-label="Play {v.name}"
             >
-              <img
-                src="https://img.youtube.com/vi/{v.key}/hqdefault.jpg"
-                alt=""
-                class="h-full w-full object-cover transition group-hover:scale-105"
-                loading="lazy"
-              />
-              <div class="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/15">
-                <div
-                  class="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-bg shadow-lg"
-                >
+              <img src="https://img.youtube.com/vi/{v.key}/hqdefault.jpg" alt="" class="h-full w-full object-cover" loading="lazy" />
+              <div class="absolute inset-0 flex items-center justify-center bg-black/30">
+                <div class="trailer-play flex h-14 w-14 items-center justify-center rounded-full bg-primary text-bg shadow-lg">
                   <span class="ml-0.5 text-lg leading-none">▶</span>
                 </div>
               </div>
@@ -71,3 +66,14 @@
     </div>
   </div>
 {/if}
+
+<style>
+  :global(.tap-target--card.is-pressed) .trailer-play,
+  :global(.tap-target--card:active) .trailer-play {
+    transform: scale(0.92);
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .trailer-play {
+    transition: transform var(--dur-release) var(--ease-spring);
+  }
+</style>

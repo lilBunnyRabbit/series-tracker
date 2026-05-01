@@ -5,6 +5,7 @@
   import LibraryCard from "$lib/components/LibraryCard.svelte";
   import ListCard from "$lib/components/ListCard.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
@@ -98,19 +99,22 @@
     <h1 class="mr-auto text-xl font-semibold">Watchlist</h1>
     <a
       href="{base}/upcoming/"
-      class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-text"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
     >
       📅 Upcoming
     </a>
     <a
       href="{base}/discover/"
-      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"
     >
       Discover
     </a>
     <a
       href="{base}/search/"
-      class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
     >
       + Add
     </a>
@@ -143,12 +147,13 @@
             {@const c = f === "all" ? null : STATUS_COLOR[f as Status]}
             <button
               type="button"
+              use:tactile
               onclick={() => setFilter(f)}
-              class="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition {active
+              class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
                 ? c
                   ? `${c.border} ${c.bg} text-bg`
                   : 'border-primary bg-primary text-bg'
-                : 'border-border text-muted hover:text-text'}"
+                : 'border-border text-muted hover-text-text'}"
             >
               {#if c}
                 <span class="h-1.5 w-1.5 rounded-full {active ? 'bg-bg' : c.dot}"></span>
@@ -165,10 +170,11 @@
           {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
             <button
               type="button"
+              use:tactile
               onclick={() => setKind(k)}
-              class="rounded-full border px-3 py-1.5 transition {kindFilter === k
+              class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
                 ? 'border-secondary bg-secondary text-bg'
-                : 'border-border text-muted hover:text-text'}"
+                : 'border-border text-muted hover-text-text'}"
             >
               {label}
             </button>
@@ -194,23 +200,25 @@
         <div class="flex gap-1 text-xs" role="group" aria-label="View density">
           <button
             type="button"
+            use:tactile
             onclick={() => setView("list")}
             aria-pressed={view === "list"}
             aria-label="List view"
-            class="flex h-8 w-8 items-center justify-center rounded-md border transition {view === 'list'
+            class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border transition-colors duration-150 {view === 'list'
               ? 'border-primary bg-primary text-bg'
-              : 'border-border text-muted hover:border-primary'}"
+              : 'border-border text-muted hover-border-primary'}"
           >
             ☰
           </button>
           <button
             type="button"
+            use:tactile
             onclick={() => setView("grid")}
             aria-pressed={view === "grid"}
             aria-label="Grid view"
-            class="flex h-8 w-8 items-center justify-center rounded-md border transition {view === 'grid'
+            class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border transition-colors duration-150 {view === 'grid'
               ? 'border-primary bg-primary text-bg'
-              : 'border-border text-muted hover:border-primary'}"
+              : 'border-border text-muted hover-border-primary'}"
           >
             ▦
           </button>

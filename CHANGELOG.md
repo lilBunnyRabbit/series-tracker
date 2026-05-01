@@ -4,6 +4,20 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-01
+
+### Added
+- Mobile-first tactile feel. Buttons, cards, tabs, and chips now press down with a quick scale-and-spring on tap, and fire haptics on press-down (not click) so the vibration lines up with what you see.
+- Long-press any library card to open a quick-actions sheet — change status, mark next episode watched (TV), or remove from library without navigating to the detail page. A three-dot button on each card opens the same sheet for discoverability.
+- Status menu and card actions slide up from the bottom edge as a sheet on mobile, with a centered pop-in on desktop.
+- Bottom navigation now has a sliding pill that animates between tabs as you switch routes.
+- Reduced-motion users get instant state changes — scale and spring animations are skipped automatically when the OS preference is set.
+
+### Changed
+- Hover styles only apply on devices that actually have a hover capability, fixing the sticky-hover-after-tap glitch on phones.
+- Tap delay is gone — every button now has `touch-action: manipulation` so taps register without the 300ms double-tap-zoom wait.
+- The gray iOS tap highlight no longer flashes on every press; press feedback is the scale animation instead.
+
 ## [0.1.0] - 2026-05-01
 
 ### Added

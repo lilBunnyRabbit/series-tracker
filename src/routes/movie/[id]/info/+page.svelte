@@ -10,6 +10,7 @@
   import Trailer from "$lib/components/Trailer.svelte";
   import WatchProviders from "$lib/components/WatchProviders.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import {
     defaultRegion,
     entryFromMovieDetail,
@@ -169,13 +170,14 @@
       <div class="flex items-center gap-2">
         <button
           type="button"
+          use:tactile={{ haptic: "success" }}
           onclick={inLibrary ? toggleWatched : () => addAs("completed")}
           aria-pressed={status === "completed"}
           aria-label={status === "completed" ? "Mark unwatched" : "Mark watched"}
-          class="flex h-12 w-12 items-center justify-center rounded-full border text-xl transition {status ===
+          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-xl transition-colors duration-150 {status ===
           'completed'
             ? 'border-primary bg-primary text-bg'
-            : 'border-border bg-surface text-text hover:border-primary hover:text-primary'}"
+            : 'border-border bg-surface text-text hover-border-primary hover-text-primary'}"
         >
           ✓
         </button>
@@ -183,12 +185,13 @@
         {#if inLibrary && status}
           <button
             type="button"
+            use:tactile
             onclick={() => setExistingStatus(status === "plan" ? "watching" : "plan")}
             aria-label={status === "plan" ? "Move to watching" : "Save for later"}
-            class="flex h-12 w-12 items-center justify-center rounded-full border text-lg transition {status ===
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {status ===
             'plan'
               ? 'border-accent bg-accent text-bg'
-              : 'border-border bg-surface text-text hover:border-accent hover:text-accent'}"
+              : 'border-border bg-surface text-text hover-border-accent'}"
           >
             🔖
           </button>
@@ -199,12 +202,13 @@
         {#if hasTrailer}
           <button
             type="button"
+            use:tactile
             onclick={() => (trailerOpen = !trailerOpen)}
             aria-pressed={trailerOpen}
             aria-label="Trailer"
-            class="flex h-12 w-12 items-center justify-center rounded-full border text-lg transition {trailerOpen
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {trailerOpen
               ? 'border-accent bg-accent text-bg'
-              : 'border-border bg-surface text-text hover:border-accent hover:text-accent'}"
+              : 'border-border bg-surface text-text hover-border-accent'}"
           >
             ▶
           </button>
@@ -212,8 +216,9 @@
 
         <a
           href="{base}/movie/{id}/"
+          use:tactile={{ haptic: false }}
           aria-label="More tracking options"
-          class="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text transition hover:border-accent hover:text-accent"
+          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-accent"
         >
           ⋯
         </a>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { seasonDetail } from "$lib/tmdb";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
   import RatingPicker from "./RatingPicker.svelte";
@@ -34,11 +35,9 @@
   const canCatchUp = $derived(airedCount !== null && airedCount > current && airedCount < total);
 
   function dec() {
-    vibrate("tick");
     store.updateProgress(showId, season, -1);
   }
   function inc() {
-    vibrate("tick");
     store.updateProgress(showId, season, +1);
   }
   function complete() {
@@ -77,11 +76,15 @@
   <div class="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
     <button
       type="button"
+      use:tactile={{ haptic: false }}
       onclick={toggleExpand}
-      class="flex min-w-0 flex-1 items-center gap-2 text-left"
+      class="tap-target flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 -my-1 -ml-1 pl-1 pr-2 text-left active:bg-surface-2/60"
       aria-expanded={expanded}
     >
-      <span class="text-xs text-muted transition-transform" style={expanded ? "transform: rotate(90deg)" : ""}>▶</span>
+      <span
+        class="text-xs text-muted"
+        style="transition: transform var(--dur-base) var(--ease-spring); {expanded ? 'transform: rotate(90deg)' : ''}"
+      >▶</span>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5">
           <span class="truncate text-sm font-medium">{name}</span>
@@ -95,7 +98,8 @@
     <div class="flex flex-shrink-0 items-center gap-2">
       <button
         type="button"
-        class="h-9 w-9 rounded-md border border-border bg-surface-2 text-lg leading-none disabled:opacity-40"
+        use:tactile={{ haptic: "tick" }}
+        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border bg-surface-2 text-lg leading-none disabled:opacity-40"
         onclick={dec}
         disabled={current === 0}
         aria-label="Decrement"
@@ -113,7 +117,8 @@
       <span class="inline-block w-10 text-left text-sm tabular-nums text-muted">/ {total}</span>
       <button
         type="button"
-        class="h-9 w-9 rounded-md border border-border bg-primary text-lg leading-none text-bg disabled:opacity-40"
+        use:tactile={{ haptic: "tick" }}
+        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border bg-primary text-lg leading-none text-bg disabled:opacity-40"
         onclick={inc}
         disabled={current >= total}
         aria-label="Increment"
@@ -125,9 +130,10 @@
       {#if canCatchUp}
         <button
           type="button"
+          use:tactile={{ haptic: "success" }}
           onclick={catchUp}
           title="Set progress to the latest aired episode ({airedCount} of {total})"
-          class="rounded-md border border-accent px-2.5 py-1 text-[11px] text-accent hover:bg-accent hover:text-bg"
+          class="tap-target tap-target--btn rounded-md border border-accent px-2.5 py-1.5 text-[11px] text-accent transition-colors duration-150 active:bg-accent active:text-bg"
         >
           Catch up · E{airedCount}
         </button>
@@ -135,16 +141,18 @@
       {#if isComplete}
         <button
           type="button"
+          use:tactile={{ haptic: "warn" }}
           onclick={reset}
-          class="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted hover:border-danger hover:text-danger"
+          class="tap-target tap-target--btn rounded-md border border-border px-2.5 py-1.5 text-[11px] text-muted hover-border-danger hover-text-danger"
         >
           Reset
         </button>
       {:else}
         <button
           type="button"
+          use:tactile={{ haptic: "success" }}
           onclick={complete}
-          class="rounded-md border border-primary px-2.5 py-1 text-[11px] text-primary hover:bg-primary hover:text-bg"
+          class="tap-target tap-target--btn rounded-md border border-primary px-2.5 py-1.5 text-[11px] text-primary transition-colors duration-150 active:bg-primary active:text-bg"
         >
           Mark complete
         </button>

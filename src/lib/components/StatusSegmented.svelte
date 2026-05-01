@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { vibrate } from "$lib/haptics";
+  import { tactile } from "$lib/tactile";
   import { STATUSES, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
@@ -8,7 +8,6 @@
 
   function pick(s: Status): void {
     if (s === value) return;
-    vibrate("tap");
     onChange(s);
   }
 </script>
@@ -21,10 +20,11 @@
       type="button"
       role="radio"
       aria-checked={active}
+      use:tactile
       onclick={() => pick(s)}
-      class="flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 text-sm font-medium transition {active
+      class="tap-target tap-target--btn flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {active
         ? `${c.border} ${c.bg} text-bg`
-        : `border-border ${c.text} ${c.hoverBorder}`}"
+        : `border-border ${c.text}`}"
     >
       <span class="h-2 w-2 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
       {STATUS_LABEL[s]}

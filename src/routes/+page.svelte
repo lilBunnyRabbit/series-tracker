@@ -3,6 +3,7 @@
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import type { Entry, TvEntry } from "$lib/types";
 
   type ContinueItem = {
@@ -74,13 +75,15 @@
       <div class="flex justify-center gap-2">
         <a
           href="{base}/discover/"
-          class="rounded-md border border-border px-4 py-2 text-sm hover:border-primary"
+          use:tactile={{ haptic: false }}
+          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-primary"
         >
           Browse discover
         </a>
         <a
           href="{base}/search/"
-          class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
+          use:tactile={{ haptic: false }}
+          class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
         >
           Search TMDB
         </a>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import { tactile } from "$lib/tactile";
   import { STATUS_COLOR } from "$lib/types";
   import type { Status } from "$lib/types";
 
@@ -55,17 +56,13 @@
 
 <a
   href={finalHref}
-  class="group flex flex-col gap-1.5 {widthClass}"
+  use:tactile
+  class="tap-target tap-target--card hover-zoom group flex flex-col gap-1.5 {widthClass}"
   aria-label={title}
 >
   <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm">
     {#if poster}
-      <img
-        src={poster}
-        alt=""
-        class="h-full w-full object-cover transition group-hover:scale-[1.02]"
-        loading="lazy"
-      />
+      <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
 
     {#if typeof voteAverage === "number" && voteAverage > 0}

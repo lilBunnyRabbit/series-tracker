@@ -4,7 +4,7 @@
   import { page } from "$app/state";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
-  import { vibrate } from "$lib/haptics";
+  import { tactile } from "$lib/tactile";
   import * as versionModule from "$lib/version.svelte";
   import { onMount } from "svelte";
 
@@ -98,8 +98,9 @@
       <nav class="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5">
         <a
           href={backHref}
+          use:tactile
           aria-label="Back"
-          class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-lg"
+          class="tap-target tap-target--icon flex h-10 w-10 items-center justify-center rounded-md border border-border text-lg"
         >
           ←
         </a>
@@ -122,7 +123,8 @@
         {#each items as item (item.path)}
           <a
             href={item.href}
-            class="rounded-md px-3 py-2 transition hover:bg-surface {isActive(item.path)
+            use:tactile={{ haptic: false }}
+            class="tap-target tap-target--btn rounded-md px-3 py-2 hover-bg-surface {isActive(item.path)
               ? 'bg-surface text-primary'
               : 'text-muted'}"
           >
@@ -147,28 +149,35 @@
        blur backdrop matches header. Hidden ≥ sm where the top nav has all tabs.
        Also hidden on /search where the bottom search dock owns the footer space. -->
   {#if !hideFloatingNav}
-  <nav
-    class="floating-nav sm:hidden"
-    style="padding-bottom: max(env(safe-area-inset-bottom), 0.5rem)"
-    aria-label="Primary"
-  >
-    <div class="floating-nav-pill">
-      {#each items as item (item.path)}
-        {@const active = isActive(item.path)}
-        <a
-          href={item.href}
-          onclick={() => vibrate("tick")}
-          class="flex flex-1 flex-col items-center justify-center gap-1 rounded-full px-1 py-1.5 text-[10px] transition {active
-            ? 'text-primary'
-            : 'text-muted'}"
-          aria-current={active ? "page" : undefined}
-        >
-          <span class="text-base leading-none" aria-hidden="true">{item.icon}</span>
-          <span class="leading-none">{item.label}</span>
-        </a>
-      {/each}
-    </div>
-  </nav>
+    {@const activeIndex = items.findIndex((i) => isActive(i.path))}
+    <nav
+      class="floating-nav sm:hidden"
+      style="padding-bottom: max(env(safe-area-inset-bottom), 0.5rem)"
+      aria-label="Primary"
+    >
+      <div class="floating-nav-pill">
+        <!-- Sliding active-tab indicator. Width = 1/items, translateX = index. -->
+        {#if activeIndex >= 0}
+          <span
+            class="floating-nav-indicator"
+            style="width: calc((100% - 0.5rem) / {items.length}); transform: translateX(calc(100% * {activeIndex}));"
+            aria-hidden="true"
+          ></span>
+        {/if}
+        {#each items as item (item.path)}
+          {@const active = isActive(item.path)}
+          <a
+            href={item.href}
+            use:tactile={{ haptic: "tick" }}
+            class="tap-target tap-target--icon relative z-10 flex flex-1 flex-col items-center justify-center gap-1 rounded-full px-1 py-2 text-[10px] {active ? 'text-primary' : 'text-muted'}"
+            aria-current={active ? "page" : undefined}
+          >
+            <span class="text-lg leading-none" aria-hidden="true">{item.icon}</span>
+            <span class="leading-none">{item.label}</span>
+          </a>
+        {/each}
+      </div>
+    </nav>
   {/if}
 
   <UpdateToast />
@@ -197,6 +206,7 @@
     max-width: 28rem;
     padding: 0.25rem;
     border-radius: 9999px;
+    position: relative;
     /* Layered fallbacks so older Samsung Internet (no color-mix / no oklch)
        still gets a visible translucent fill. Newer engines pick the
        color-mix line; older engines fall back to the rgba above. */
@@ -214,6 +224,27 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .floating-nav-pill {
       background: rgba(36, 43, 51, 0.96);
+    }
+  }
+
+  /* Sliding active-tab indicator. Width matches one tab; translateX by N×100%
+     moves it across. Inset matches the pill's 0.25rem padding so the indicator
+     aligns with the visible tab area. */
+  .floating-nav-indicator {
+    position: absolute;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    left: 0.25rem;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-primary) 16%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-primary) 35%, transparent);
+    transition: transform var(--dur-base) var(--ease-spring);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .floating-nav-indicator {
+      transition: none;
     }
   }
 </style>

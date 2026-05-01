@@ -5,6 +5,7 @@
   import PosterCard from "$lib/components/PosterCard.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
   import { entryFromSearchResult, popularMovies, popularTv, posterUrl, searchMulti } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
@@ -185,8 +186,9 @@
           <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Recent searches</h2>
           <button
             type="button"
+            use:tactile={{ haptic: "warn" }}
             onclick={() => store.clearSearchHistory()}
-            class="text-xs text-muted hover:text-text"
+            class="tap-target rounded-md px-2 py-1 text-xs text-muted hover-text-text"
           >
             Clear
           </button>
@@ -195,8 +197,9 @@
           {#each store.searchHistory as q (q)}
             <button
               type="button"
+              use:tactile
               onclick={() => (query = q)}
-              class="rounded-full border border-border px-3 py-1.5 hover:border-accent"
+              class="tap-target tap-target--chip rounded-full border border-border px-3 py-1.5 hover-border-accent"
             >
               {q}
             </button>
@@ -312,9 +315,10 @@
         {#each matchingHistory.slice(0, 5) as q (q)}
           <button
             type="button"
+            use:tactile
             onmousedown={(e) => e.preventDefault()}
             onclick={() => pickSuggestion(q)}
-            class="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover:border-accent hover:text-text"
+            class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover-border-accent hover-text-text"
           >
             <span class="text-[10px] text-muted/60">⌕</span>
             <span class="truncate">{q}</span>
@@ -328,17 +332,19 @@
       {#each [["all", "Media"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
         <button
           type="button"
+          use:tactile
           onclick={() => (kindFilter = k)}
-          class="shrink-0 rounded-full border px-3 py-1.5 transition {kindFilter === k
+          class="tap-target tap-target--chip shrink-0 rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
             ? 'border-primary bg-primary text-bg'
-            : 'border-border text-muted hover:border-primary'}"
+            : 'border-border text-muted hover-border-primary'}"
         >
           {label}
         </button>
       {/each}
       <a
         href="{base}/search/bulk/"
-        class="ml-auto shrink-0 rounded-full border border-border px-3 py-1.5 text-muted transition hover:border-primary hover:text-primary"
+        use:tactile={{ haptic: false }}
+        class="tap-target tap-target--chip ml-auto shrink-0 rounded-full border border-border px-3 py-1.5 text-muted hover-border-primary hover-text-primary"
       >
         Bulk ⇉
       </a>
@@ -357,7 +363,7 @@
         autofocus
         autocomplete="off"
         spellcheck="false"
-        class="w-full rounded-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none transition focus:border-primary"
+        class="w-full rounded-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none transition-colors duration-150 focus:border-primary"
       />
     </label>
   </div>

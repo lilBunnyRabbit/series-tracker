@@ -1,5 +1,6 @@
 <script lang="ts">
   import Rail from "$lib/components/Rail.svelte";
+  import { tactile } from "$lib/tactile";
   import { posterUrl } from "$lib/tmdb";
   import type { WatchProvider, WatchProviderRegion } from "$lib/types";
 
@@ -53,7 +54,8 @@
         href={link ?? "#"}
         target={link ? "_blank" : undefined}
         rel={link ? "noopener" : undefined}
-        class="group flex w-[112px] flex-col items-center gap-1.5 rounded-lg border border-border bg-surface p-2 transition hover:border-primary"
+        use:tactile
+        class="tap-target tap-target--card group flex w-[112px] flex-col items-center gap-1.5 rounded-lg border border-border bg-surface p-2 hover-border-primary"
       >
         <div class="aspect-square w-full overflow-hidden rounded-md bg-surface-2">
           {#if item.provider.logo_path}
