@@ -4,6 +4,24 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-01
+
+### Added
+- Type label (TV / Movie) on every card so the kind is visible at a glance.
+- Status-tinted soft border on cards that are in your library; cards not yet added keep a neutral border, and dropped titles fade so they recede in mixed lists.
+- Backdrop bleed behind watchlist list rows and discover/browse/search result cards for visual context. New library adds capture the backdrop automatically; existing entries lazy-fill on the next detail-page visit.
+- Swipe right on a discover, browse, or search-result card to open the status picker — no need to aim for the small "+ Add" button. The card follows your finger with rubber-banding past the trigger threshold.
+- Drag the status picker sheet down to dismiss it.
+
+### Changed
+- Card design refresh: progress bars now adopt the status color (purple when completed, green when watching, grey when dropped), and status appears inline in the meta line as a coloured dot + label across grid and list views.
+- Search-result and discover cards show your library status inline in the meta line instead of a separate chip at the bottom.
+
+### Fixed
+- Bulk search now keeps your pasted list and results when you open a result and come back, instead of resetting to an empty textarea.
+- Opening the status picker no longer scrolls the page underneath or causes a horizontal layout shift.
+- The status picker locks page scroll while it's open so the content behind doesn't scroll independently.
+
 ## [0.4.0] - 2026-05-01
 
 ### Added

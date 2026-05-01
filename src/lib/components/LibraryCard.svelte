@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
+  import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { longPress, tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
@@ -17,14 +18,10 @@
   const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
 
   const c = $derived(STATUS_COLOR[entry.status]);
-  // Border kept at 1px for layout stability; colour is the signal.
-  // Completed gets a coloured border; dropped fades; others stay neutral.
+  // Soft status-tinted border on every in-library item; dropped fades the
+  // whole card so it recedes in mixed lists.
   const borderClass = $derived(
-    entry.status === "completed"
-      ? c.border
-      : entry.status === "dropped"
-        ? "border-border opacity-60"
-        : "border-border"
+    entry.status === "dropped" ? `${c.borderSoft} opacity-60` : c.borderSoft
   );
 
   let actionsOpen = $state(false);
@@ -42,39 +39,49 @@
       {href}
       use:tactile
       use:longPress={{ onLongPress: openActions }}
-      class="tap-target tap-target--card flex items-center gap-3 rounded-md border bg-surface p-2 hover-border-primary {borderClass}"
+      class="tap-target tap-target--card flex items-stretch gap-3 rounded-md border bg-surface p-2 {borderClass}"
     >
-      <div class="h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
+      <div class="relative h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
         {#if entry.poster}
           <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
         {/if}
       </div>
-      <div class="min-w-0 flex-1">
-        <div class="line-clamp-2 text-sm font-medium leading-snug">{entry.title}</div>
-        <div class="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted">
-          <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
-          <span class={c.text}>{STATUS_LABEL[entry.status]}</span>
-          {#if entry.year}<span>· {entry.year}</span>{/if}
+      <div class="flex min-w-0 flex-1 flex-col">
+        <div class="min-w-0 pr-28">
+          <div class="line-clamp-2 text-sm font-medium leading-snug">{entry.title}</div>
+          <div class="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted">
+            <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
+            <span class={c.text}>{STATUS_LABEL[entry.status]}</span>
+            {#if entry.year}<span>· {entry.year}</span>{/if}
+            {#if entry.kind === "tv" && totalEpisodes > 0}
+              <span class="tabular-nums">· {watchedEpisodes}/{totalEpisodes}</span>
+            {/if}
+          </div>
         </div>
         {#if entry.kind === "tv" && totalEpisodes > 0}
-          <div class="mt-1 flex items-center gap-2">
-            <div class="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
-              <div class="h-full bg-primary transition-all" style="width: {pct}%"></div>
-            </div>
-            <span class="shrink-0 text-[10px] tabular-nums text-muted">{watchedEpisodes}/{totalEpisodes}</span>
+          <div class="mt-auto h-1 w-full overflow-hidden rounded-full bg-surface-2">
+            <div class="h-full transition-all {c.bg}" style="width: {pct}%"></div>
           </div>
         {/if}
       </div>
     </a>
-    <button
-      type="button"
-      use:tactile
-      onclick={openActions}
-      aria-label="Quick actions for {entry.title}"
-      class="tap-target tap-target--icon absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-full text-base leading-none text-muted hover-text-text"
-    >
-      ⋯
-    </button>
+    <div class="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1.5">
+      <TypeBadge kind={entry.kind} variant="chip" />
+      {#if typeof entry.rating === "number" && entry.rating > 0}
+        <span class="rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-accent">
+          ★ {entry.rating}
+        </span>
+      {/if}
+      <button
+        type="button"
+        use:tactile
+        onclick={openActions}
+        aria-label="Quick actions for {entry.title}"
+        class="tap-target tap-target--icon pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-muted hover-text-text"
+      >
+        ⋯
+      </button>
+    </div>
   </div>
 {:else}
   <div class="relative h-full">
@@ -82,7 +89,7 @@
       {href}
       use:tactile
       use:longPress={{ onLongPress: openActions }}
-      class="tap-target tap-target--card flex h-full flex-col overflow-hidden rounded-lg border bg-surface hover-border-primary {borderClass}"
+      class="tap-target tap-target--card flex h-full flex-col overflow-hidden rounded-lg border bg-surface {borderClass}"
     >
       <div class="relative aspect-[2/3] w-full bg-surface-2">
         {#if entry.poster}
@@ -102,6 +109,9 @@
             ♥ {entry.rating}
           </div>
         {/if}
+        <span class="absolute bottom-1.5 left-1.5">
+          <TypeBadge kind={entry.kind} variant="overlay" />
+        </span>
       </div>
       <div class="flex flex-1 flex-col gap-1 p-2.5">
         <div class="line-clamp-3 text-sm font-medium leading-snug">{entry.title}</div>
@@ -116,7 +126,7 @@
         </div>
         {#if entry.kind === "tv" && totalEpisodes > 0}
           <div class="h-1 w-full overflow-hidden rounded-full bg-surface-2">
-            <div class="h-full bg-primary transition-all" style="width: {pct}%"></div>
+            <div class="h-full transition-all {c.bg}" style="width: {pct}%"></div>
           </div>
         {/if}
       </div>

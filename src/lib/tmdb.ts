@@ -25,6 +25,12 @@ export type ImageSize = "w92" | "w154" | "w185" | "w342" | "w500" | "w780" | "or
 export const posterUrl = (path: string | null, size: ImageSize = "w185"): string | null =>
   path ? `${IMG}/${size}${path}` : null;
 
+// TMDB backdrop sizes: w300, w780, w1280, original. ImageSize includes w780 so
+// we reuse it; other ImageSize values fall back to the closest TMDB backdrop on
+// the CDN side.
+export const backdropUrl = (path: string | null | undefined, size: ImageSize = "w780"): string | null =>
+  path ? `${IMG}/${size}${path}` : null;
+
 type CacheEntry = { data: unknown; expiresAt: number };
 
 const CACHE_MAX = 200;
@@ -144,8 +150,8 @@ type RecommendationPage<K extends "movie" | "tv"> = {
   total_pages: number;
   total_results: number;
   results: (K extends "movie"
-    ? { id: number; title: string; poster_path: string | null; release_date?: string; overview?: string; vote_average?: number }
-    : { id: number; name: string; poster_path: string | null; first_air_date?: string; overview?: string; vote_average?: number })[];
+    ? { id: number; title: string; poster_path: string | null; backdrop_path: string | null; release_date?: string; overview?: string; vote_average?: number }
+    : { id: number; name: string; poster_path: string | null; backdrop_path: string | null; first_air_date?: string; overview?: string; vote_average?: number })[];
 };
 
 export async function recommendations(
@@ -179,10 +185,10 @@ export const trending = (window: "day" | "week", key: string, signal?: AbortSign
   get<TrendingPage>(`/trending/all/${window}`, key, {}, { signal });
 
 type PopularMoviesPage = {
-  results: { id: number; title: string; poster_path: string | null; release_date?: string; overview?: string; vote_average?: number }[];
+  results: { id: number; title: string; poster_path: string | null; backdrop_path: string | null; release_date?: string; overview?: string; vote_average?: number }[];
 };
 type PopularTvPage = {
-  results: { id: number; name: string; poster_path: string | null; first_air_date?: string; overview?: string; vote_average?: number }[];
+  results: { id: number; name: string; poster_path: string | null; backdrop_path: string | null; first_air_date?: string; overview?: string; vote_average?: number }[];
 };
 
 export async function popularMovies(key: string, signal?: AbortSignal): Promise<RecommendationItem[]> {
@@ -281,8 +287,8 @@ export async function discover(
     params.with_people = filters.withPeople.join(",");
   }
 
-  type RawTv = { id: number; name: string; poster_path: string | null; first_air_date?: string; overview?: string; vote_average?: number };
-  type RawMovie = { id: number; title: string; poster_path: string | null; release_date?: string; overview?: string; vote_average?: number };
+  type RawTv = { id: number; name: string; poster_path: string | null; backdrop_path: string | null; first_air_date?: string; overview?: string; vote_average?: number };
+  type RawMovie = { id: number; title: string; poster_path: string | null; backdrop_path: string | null; release_date?: string; overview?: string; vote_average?: number };
   type Raw = { page: number; total_pages: number; total_results: number; results: (RawTv | RawMovie)[] };
 
   const data = await get<Raw>(`/discover/${kind}`, apiKey, params, { signal, ttlMs: 5 * 60 * 1000 });
@@ -468,6 +474,7 @@ export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): Tv
     id: detail.id,
     title: detail.name,
     poster: posterUrl(detail.poster_path, "w342"),
+    backdrop: backdropUrl(detail.backdrop_path, "w780"),
     year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
     voteAverage: detail.vote_average,
     runtime: detail.episode_run_time && detail.episode_run_time.length > 0 ? detail.episode_run_time[0] : undefined,
@@ -487,6 +494,7 @@ export function entryFromMovieDetail(detail: MovieDetail, status: Status = "plan
     id: detail.id,
     title: detail.title,
     poster: posterUrl(detail.poster_path, "w342"),
+    backdrop: backdropUrl(detail.backdrop_path, "w780"),
     year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
     voteAverage: detail.vote_average,
     runtime: detail.runtime || undefined,

@@ -31,6 +31,13 @@
     height: 100%;
   }
 
+  /* Reserve the scrollbar gutter at all times so toggling `overflow: hidden`
+     on the documentElement (e.g. when locking scroll for an open modal sheet)
+     doesn't reflow the page width. Modern browsers; falls back to no-op. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     background: var(--color-bg);
     color: var(--color-text);

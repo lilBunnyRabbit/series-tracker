@@ -413,6 +413,17 @@ function createStore() {
       withTimestamp(e);
     },
 
+    /** Lazy-fill the backdrop URL on an existing entry. Skips if already set
+     *  (we trust the captured URL — TMDB images are stable per id) so this is
+     *  a no-op for fresh adds. Does NOT bump updatedAt: backfill is a metadata
+     *  detail, not a user edit, and bumping would reorder the watchlist when
+     *  users open detail pages. */
+    setBackdrop(kind: "tv" | "movie", id: number, url: string | null) {
+      const e = state.library[entryKey(kind, id)];
+      if (!e || e.backdrop) return;
+      e.backdrop = url;
+    },
+
     setRating(kind: "tv" | "movie", id: number, rating: number | null) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;

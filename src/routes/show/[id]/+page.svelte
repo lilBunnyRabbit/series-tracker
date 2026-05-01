@@ -11,7 +11,7 @@
   import { smartBack } from "$lib/back.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
+  import { backdropUrl, entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
   import type { Status, TvDetail, TvEntry } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -49,6 +49,7 @@
           .filter((s) => s.season_number > 0 || s.episode_count > 0)
           .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }));
         store.syncTvSeasons(id, seasons);
+        if (hasEntry) store.setBackdrop("tv", id, backdropUrl(d.backdrop_path, "w780"));
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;

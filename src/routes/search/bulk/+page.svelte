@@ -1,15 +1,5 @@
-<script lang="ts">
-  import { base } from "$app/paths";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageHeader from "$lib/components/PageHeader.svelte";
-  import PosterCard from "$lib/components/PosterCard.svelte";
-  import Rail from "$lib/components/Rail.svelte";
-  import StatusMenu from "$lib/components/StatusMenu.svelte";
-  import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
-  import { entryFromSearchResult, posterUrl, searchMulti } from "$lib/tmdb";
-  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
-  import type { SearchMultiResult, Status } from "$lib/types";
+<script module lang="ts">
+  import type { SearchMultiResult } from "$lib/types";
 
   // Person results are filtered out before display, so the rendered list only
   // ever contains tv/movie variants. Narrowing the type here saves a runtime
@@ -23,13 +13,29 @@
     error?: string;
   };
 
-  const PER_QUERY_LIMIT = 5;
-  const MAX_QUERIES = 30;
-
+  // Module-scoped so the textarea + results survive navigating into a detail
+  // page and back. Resets on full reload, which matches the user's intent.
   let input = $state("");
   let groups = $state<GroupResult[]>([]);
   let running = $state(false);
   let busyKey = $state<string | null>(null);
+</script>
+
+<script lang="ts">
+  import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import PosterCard from "$lib/components/PosterCard.svelte";
+  import Rail from "$lib/components/Rail.svelte";
+  import StatusMenu from "$lib/components/StatusMenu.svelte";
+  import { store } from "$lib/store.svelte";
+  import { tactile } from "$lib/tactile";
+  import { entryFromSearchResult, posterUrl, searchMulti } from "$lib/tmdb";
+  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
+  import type { Status } from "$lib/types";
+
+  const PER_QUERY_LIMIT = 5;
+  const MAX_QUERIES = 30;
 
   function parseQueries(raw: string): string[] {
     // Accept newline OR comma-separated; tolerate markdown/list bullets, numbering,

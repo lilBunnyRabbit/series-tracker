@@ -13,6 +13,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import {
+    backdropUrl,
     defaultRegion,
     entryFromMovieDetail,
     movieDetail,
@@ -55,6 +56,7 @@
         const seen = new Set(r.map((x) => `${x.media_type}:${x.id}`));
         similarItems = s.filter((x) => !seen.has(`${x.media_type}:${x.id}`)).slice(0, 16);
         providers = p?.results?.[region] ?? null;
+        if (store.has("movie", id)) store.setBackdrop("movie", id, backdropUrl(d.backdrop_path, "w780"));
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;

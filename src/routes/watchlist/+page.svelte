@@ -232,7 +232,7 @@
       <div class="space-y-1.5">
         {#each filtered as entry (entry.kind + ":" + entry.id)}
           <div class="cv-row">
-            <ListCard {entry} />
+            <ListCard {entry} backdrop={entry.backdrop ?? null} />
           </div>
         {/each}
       </div>

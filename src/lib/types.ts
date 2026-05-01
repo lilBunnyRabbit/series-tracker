@@ -20,12 +20,13 @@ export const STATUS_DESCRIPTION: Record<Status, string> = {
 // Kept as a single source of truth so cards, dots, and the picker stay in sync.
 export const STATUS_COLOR: Record<
   Status,
-  { dot: string; text: string; border: string; bg: string; chip: string; hoverBorder: string }
+  { dot: string; text: string; border: string; borderSoft: string; bg: string; chip: string; hoverBorder: string }
 > = {
   watching: {
     dot: "bg-primary",
     text: "text-primary",
     border: "border-primary",
+    borderSoft: "border-primary/60",
     bg: "bg-primary",
     chip: "border-primary text-primary",
     hoverBorder: "hover:border-primary",
@@ -34,6 +35,7 @@ export const STATUS_COLOR: Record<
     dot: "bg-secondary",
     text: "text-secondary",
     border: "border-secondary",
+    borderSoft: "border-secondary/60",
     bg: "bg-secondary",
     chip: "border-secondary text-secondary",
     hoverBorder: "hover:border-secondary",
@@ -42,6 +44,7 @@ export const STATUS_COLOR: Record<
     dot: "bg-accent",
     text: "text-accent",
     border: "border-accent",
+    borderSoft: "border-accent/60",
     bg: "bg-accent",
     chip: "border-accent text-accent",
     hoverBorder: "hover:border-accent",
@@ -50,6 +53,7 @@ export const STATUS_COLOR: Record<
     dot: "bg-muted",
     text: "text-muted",
     border: "border-muted",
+    borderSoft: "border-muted/60",
     bg: "bg-muted",
     chip: "border-border text-muted",
     hoverBorder: "hover:border-muted",
@@ -67,6 +71,9 @@ export type TvEntry = {
   id: number;
   title: string;
   poster: string | null;
+  /** Wide backdrop URL captured at add time; absent on entries added before
+   *  the field existed — those backfill lazily on detail-page visits. */
+  backdrop?: string | null;
   seasons: Season[];
   progress: Record<number, number>;
   status: Status;
@@ -89,6 +96,8 @@ export type MovieEntry = {
   id: number;
   title: string;
   poster: string | null;
+  /** Wide backdrop URL captured at add time; same lazy backfill story as TvEntry. */
+  backdrop?: string | null;
   watched: boolean;
   status: Status;
   year?: string;
@@ -158,6 +167,7 @@ export type SearchMultiResult =
       id: number;
       title: string;
       poster_path: string | null;
+      backdrop_path?: string | null;
       release_date?: string;
       overview?: string;
     }
@@ -166,6 +176,7 @@ export type SearchMultiResult =
       id: number;
       name: string;
       poster_path: string | null;
+      backdrop_path?: string | null;
       first_air_date?: string;
       overview?: string;
     }
@@ -184,6 +195,7 @@ export type TvDetail = {
   original_name?: string;
   original_language?: string;
   poster_path: string | null;
+  backdrop_path: string | null;
   overview: string;
   tagline?: string;
   number_of_seasons: number;
@@ -249,7 +261,6 @@ export type Video = {
 export type Videos = { results: Video[] };
 
 export type TvDetailFull = TvDetail & {
-  backdrop_path: string | null;
   networks?: { id: number; name: string; logo_path: string | null }[];
   credits?: Credits;
   external_ids?: ExternalIds;

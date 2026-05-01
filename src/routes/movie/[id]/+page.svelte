@@ -10,7 +10,7 @@
   import { smartBack } from "$lib/back.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
+  import { backdropUrl, entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -23,20 +23,31 @@
   const movieEntry = $derived(entry?.kind === "movie" ? (entry as MovieEntry) : null);
 
   $effect(() => {
-    if (movieEntry || !store.apiKey || !id || Number.isNaN(id)) return;
-    loading = true;
-    error = null;
+    if (!store.apiKey || !id || Number.isNaN(id)) return;
+    const apiKey = store.apiKey;
+    const hasEntry = !!movieEntry;
+    // Already-in-library: fetch silently in the background to backfill
+    // backdrop on entries added before the field existed. Cached, so on repeat
+    // visits this resolves instantly.
+    if (hasEntry && movieEntry?.backdrop) return;
+    if (!hasEntry) {
+      loading = true;
+      error = null;
+    }
     const ctrl = new AbortController();
-    movieDetail(id, store.apiKey, ctrl.signal)
+    movieDetail(id, apiKey, ctrl.signal)
       .then((d) => {
-        if (!ctrl.signal.aborted) detail = d;
+        if (ctrl.signal.aborted) return;
+        detail = d;
+        if (hasEntry) store.setBackdrop("movie", id, backdropUrl(d.backdrop_path, "w780"));
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
-        error = e instanceof Error ? e.message : String(e);
+        if (!hasEntry) error = e instanceof Error ? e.message : String(e);
+        else console.warn("[movie] background backdrop backfill failed", e);
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) loading = false;
+        if (!ctrl.signal.aborted && !hasEntry) loading = false;
       });
     return () => ctrl.abort();
   });

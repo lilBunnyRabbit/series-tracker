@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { tactile } from "$lib/tactile";
   import { STATUS_COLOR } from "$lib/types";
   import type { Status } from "$lib/types";
@@ -52,6 +53,8 @@
           : "w-[132px] sm:w-[148px]"
   );
   const c = $derived(status ? STATUS_COLOR[status] : null);
+  // In-library posters get a soft status-tinted border; unfiled cards stay neutral.
+  const posterBorder = $derived(c ? c.borderSoft : "border-border/60");
 </script>
 
 <a
@@ -60,7 +63,7 @@
   class="tap-target tap-target--card hover-zoom group flex flex-col gap-1.5 {widthClass}"
   aria-label={title}
 >
-  <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm">
+  <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-surface-2 shadow-sm {posterBorder}">
     {#if poster}
       <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
@@ -83,14 +86,14 @@
       </div>
     {/if}
 
-    {#if c}
-      <span
-        class="absolute bottom-1.5 left-1.5 flex h-5 items-center gap-1 rounded-full bg-black/65 px-1.5 text-[10px] backdrop-blur-sm"
-        aria-hidden="true"
-      >
-        <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
-      </span>
-    {/if}
+    <span class="absolute bottom-1.5 left-1.5 flex items-center gap-1.5">
+      <TypeBadge {kind} variant="overlay" />
+      {#if c}
+        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-black/65 backdrop-blur-sm" aria-hidden="true">
+          <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
+        </span>
+      {/if}
+    </span>
   </div>
 
   <div class="min-w-0 px-0.5">
