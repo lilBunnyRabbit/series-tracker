@@ -29,7 +29,7 @@
 {#if compact}
   <a
     {href}
-    class="flex items-center gap-3 rounded-md border bg-surface p-2 transition hover:border-accent {borderClass}"
+    class="flex items-center gap-3 rounded-md border bg-surface p-2 transition hover:border-primary {borderClass}"
   >
     <div class="h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
       {#if entry.poster}
@@ -56,7 +56,7 @@
 {:else}
   <a
     {href}
-    class="flex h-full flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-accent {borderClass}"
+    class="flex h-full flex-col overflow-hidden rounded-lg border bg-surface transition hover:border-primary {borderClass}"
   >
     <div class="relative aspect-[2/3] w-full bg-surface-2">
       {#if entry.poster}

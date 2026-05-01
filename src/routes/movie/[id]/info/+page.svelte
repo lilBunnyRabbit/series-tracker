@@ -1,28 +1,52 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { page } from "$app/state";
-  import CastList from "$lib/components/CastList.svelte";
   import Gallery from "$lib/components/Gallery.svelte";
-  import InfoStat from "$lib/components/InfoStat.svelte";
+  import PersonCard from "$lib/components/PersonCard.svelte";
+  import PosterCard from "$lib/components/PosterCard.svelte";
+  import Rail from "$lib/components/Rail.svelte";
+  import StatusMenu from "$lib/components/StatusMenu.svelte";
   import Trailer from "$lib/components/Trailer.svelte";
+  import WatchProviders from "$lib/components/WatchProviders.svelte";
   import { store } from "$lib/store.svelte";
-  import { movieDetailFull, posterUrl } from "$lib/tmdb";
-  import type { MovieDetailFull } from "$lib/types";
+  import {
+    defaultRegion,
+    entryFromMovieDetail,
+    movieDetail,
+    movieDetailFull,
+    posterUrl,
+    recommendations,
+    watchProviders,
+  } from "$lib/tmdb";
+  import type { RecommendationItem } from "$lib/tmdb";
+  import type { MovieDetailFull, Status, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
+  const region = defaultRegion();
 
   let detail = $state<MovieDetailFull | null>(null);
+  let related = $state<RecommendationItem[]>([]);
+  let providers = $state<WatchProviderRegion | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
+  let trailerOpen = $state(false);
 
   $effect(() => {
     if (!store.apiKey || !id || Number.isNaN(id)) return;
     loading = true;
     error = null;
     const ctrl = new AbortController();
-    movieDetailFull(id, store.apiKey, ctrl.signal)
-      .then((d) => {
-        if (!ctrl.signal.aborted) detail = d;
+    const apiKey = store.apiKey;
+    Promise.all([
+      movieDetailFull(id, apiKey, ctrl.signal),
+      recommendations("movie", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
+      watchProviders("movie", id, apiKey, ctrl.signal).catch(() => null),
+    ])
+      .then(([d, r, p]) => {
+        if (ctrl.signal.aborted) return;
+        detail = d;
+        related = r.slice(0, 16);
+        providers = p?.results?.[region] ?? null;
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
@@ -34,18 +58,35 @@
     return () => ctrl.abort();
   });
 
-  const backdrop = $derived(
-    detail?.backdrop_path ? `https://image.tmdb.org/t/p/w1280${detail.backdrop_path}` : null
-  );
-  const inLibrary = $derived(store.has("movie", id));
+  const entry = $derived(store.get("movie", id));
+  const inLibrary = $derived(!!entry);
+  const status = $derived(entry?.status ?? null);
+
   const director = $derived(detail?.credits?.crew.find((c) => c.job === "Director"));
-  const writers = $derived(
-    detail?.credits?.crew.filter((c) => c.department === "Writing").slice(0, 3) ?? []
+  const cast = $derived(detail?.credits?.cast?.slice(0, 16) ?? []);
+  const trailers = $derived(detail?.videos?.results ?? []);
+  const hasTrailer = $derived(
+    trailers.some((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"))
   );
+
+  async function addAs(s: Status): Promise<void> {
+    if (!store.apiKey || !detail) return;
+    const d = await movieDetail(id, store.apiKey);
+    store.addToLibrary(entryFromMovieDetail(d, s));
+  }
+
+  function setExistingStatus(s: Status): void {
+    store.setStatus("movie", id, s);
+  }
+
+  function toggleWatched(): void {
+    if (!entry) return;
+    store.setStatus("movie", id, entry.status === "completed" ? "plan" : "completed");
+  }
 </script>
 
 <svelte:head>
-  <title>{detail ? `${detail.title} · Info · Series Tracker` : "Info · Series Tracker"}</title>
+  <title>{detail ? `${detail.title} · Series Tracker` : "Movie · Series Tracker"}</title>
 </svelte:head>
 
 {#if loading && !detail}
@@ -54,136 +95,191 @@
   <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
 {:else if detail}
   <div class="space-y-8">
-    <!-- HERO -->
-    <div class="relative -mx-3 sm:-mx-4">
-      {#if backdrop}
-        <div class="relative h-44 w-full overflow-hidden sm:h-72 md:h-[28rem]">
-          <img src={backdrop} alt="" class="h-full w-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-bg/20"></div>
-        </div>
-      {/if}
-
-      <div class="px-3 sm:px-4">
-        <div class="flex gap-4 md:items-start md:gap-6">
-          <div class="w-24 flex-shrink-0 sm:w-32 md:w-44">
-            <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-2 shadow-lg">
-              {#if detail.poster_path}
-                <img src={posterUrl(detail.poster_path, "w342")} alt="" class="h-full w-full object-cover" />
-              {/if}
-            </div>
-          </div>
-
-          <div class="min-w-0 flex-1 space-y-2 sm:space-y-3">
-            <div>
-              <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{detail.title}</h1>
-              {#if detail.tagline}
-                <p class="mt-1 text-sm italic text-muted">"{detail.tagline}"</p>
-              {/if}
-            </div>
-
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-              {#if typeof detail.vote_average === "number" && detail.vote_average > 0}
-                <span class="rounded bg-surface px-2 py-0.5 font-medium text-text">
-                  ★ {detail.vote_average.toFixed(1)}
-                </span>
-              {/if}
-              {#if detail.release_date}<span>{detail.release_date.slice(0, 4)}</span>{/if}
-              {#if detail.runtime}<span>· {detail.runtime} min</span>{/if}
-              {#if detail.status}<span>· {detail.status}</span>{/if}
-            </div>
-
-            {#if detail.genres && detail.genres.length > 0}
-              <div class="flex flex-wrap gap-1.5">
-                {#each detail.genres as g (g.id)}
-                  <span class="rounded-full bg-surface px-2.5 py-0.5 text-xs">{g.name}</span>
-                {/each}
-              </div>
-            {/if}
-
-            <div class="flex flex-wrap gap-2 pt-1">
-              <a
-                href="{base}/movie/{id}/"
-                class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
-              >
-                {inLibrary ? "Track" : "Add to library"}
-              </a>
-              {#if detail.external_ids?.imdb_id}
-                <a
-                  href="https://www.imdb.com/title/{detail.external_ids.imdb_id}/"
-                  target="_blank"
-                  rel="noopener"
-                  class="rounded-md border border-secondary/40 px-4 py-2 text-sm text-secondary transition hover:bg-secondary hover:text-bg"
-                >
-                  IMDb ↗
-                </a>
-              {/if}
-              <a
-                href="https://www.themoviedb.org/movie/{detail.id}"
-                target="_blank"
-                rel="noopener"
-                class="rounded-md border border-secondary/40 px-4 py-2 text-sm text-secondary transition hover:bg-secondary hover:text-bg"
-              >
-                TMDB ↗
-              </a>
-            </div>
-          </div>
+    <!-- HERO: poster-only, centered, drop-shadow -->
+    <section class="flex flex-col items-center gap-4 pt-2 text-center">
+      <div class="w-44 sm:w-52 md:w-60">
+        <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border border-border/60 bg-surface-2 shadow-2xl">
+          {#if detail.poster_path}
+            <img src={posterUrl(detail.poster_path, "w500")} alt="" class="h-full w-full object-cover" />
+          {/if}
         </div>
       </div>
-    </div>
+
+      <!-- Multi-source rating row -->
+      <div class="flex items-center gap-3 text-xs">
+        {#if typeof detail.vote_average === "number" && detail.vote_average > 0}
+          <span class="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
+            <span class="text-accent">★</span>
+            <span class="tabular-nums">{Math.round(detail.vote_average * 10)}%</span>
+            <span class="text-muted">TMDB</span>
+          </span>
+        {/if}
+        {#if detail.external_ids?.imdb_id}
+          <a
+            href="https://www.imdb.com/title/{detail.external_ids.imdb_id}/"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 font-medium text-muted transition hover:border-accent hover:text-text"
+          >
+            <span class="font-bold">IMDb</span>
+            <span class="text-[10px]">↗</span>
+          </a>
+        {/if}
+      </div>
+
+      <!-- Title block -->
+      <div class="max-w-prose space-y-1.5">
+        <h1 class="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{detail.title}</h1>
+
+        {#if director}
+          <p class="text-xs text-muted">
+            Directed by
+            <a href="{base}/discover/browse/?with_cast={director.id}" class="text-text hover:text-accent">{director.name}</a>
+          </p>
+        {/if}
+
+        <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted">
+          {#if detail.release_date}<span>{detail.release_date.slice(0, 4)}</span>{/if}
+          {#if detail.runtime}
+            <span aria-hidden="true">·</span>
+            <span>{detail.runtime}m</span>
+          {/if}
+          {#if detail.genres && detail.genres.length > 0}
+            <span aria-hidden="true">·</span>
+            <span class="truncate">{detail.genres.slice(0, 2).map((g) => g.name).join(", ")}</span>
+          {/if}
+        </div>
+
+        {#if detail.status && detail.status !== "Released"}
+          <p class="text-xs font-medium uppercase tracking-wider text-accent">{detail.status}</p>
+        {/if}
+
+        {#if detail.tagline}
+          <p class="text-sm italic text-muted">"{detail.tagline}"</p>
+        {/if}
+      </div>
+
+      <!-- Action bar: icon pill row -->
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          onclick={inLibrary ? toggleWatched : () => addAs("completed")}
+          aria-pressed={status === "completed"}
+          aria-label={status === "completed" ? "Mark unwatched" : "Mark watched"}
+          class="flex h-12 w-12 items-center justify-center rounded-full border text-xl transition {status ===
+          'completed'
+            ? 'border-primary bg-primary text-bg'
+            : 'border-border bg-surface text-text hover:border-primary hover:text-primary'}"
+        >
+          ✓
+        </button>
+
+        {#if inLibrary && status}
+          <button
+            type="button"
+            onclick={() => setExistingStatus(status === "plan" ? "watching" : "plan")}
+            aria-label={status === "plan" ? "Move to watching" : "Save for later"}
+            class="flex h-12 w-12 items-center justify-center rounded-full border text-lg transition {status ===
+            'plan'
+              ? 'border-accent bg-accent text-bg'
+              : 'border-border bg-surface text-text hover:border-accent hover:text-accent'}"
+          >
+            🔖
+          </button>
+        {:else}
+          <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.title}" as...`} variant="outline" size="md" />
+        {/if}
+
+        {#if hasTrailer}
+          <button
+            type="button"
+            onclick={() => (trailerOpen = !trailerOpen)}
+            aria-pressed={trailerOpen}
+            aria-label="Trailer"
+            class="flex h-12 w-12 items-center justify-center rounded-full border text-lg transition {trailerOpen
+              ? 'border-accent bg-accent text-bg'
+              : 'border-border bg-surface text-text hover:border-accent hover:text-accent'}"
+          >
+            ▶
+          </button>
+        {/if}
+
+        <a
+          href="{base}/movie/{id}/"
+          aria-label="More tracking options"
+          class="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text transition hover:border-accent hover:text-accent"
+        >
+          ⋯
+        </a>
+      </div>
+    </section>
+
+    <!-- TRAILER (collapsible) -->
+    {#if trailerOpen && trailers.length > 0}
+      <section>
+        <Trailer videos={trailers} />
+      </section>
+    {/if}
 
     <!-- OVERVIEW -->
     {#if detail.overview}
       <section class="space-y-2">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Overview</h2>
-        <p class="max-w-prose text-sm leading-relaxed text-text/90 sm:text-base">{detail.overview}</p>
+        <p class="text-sm leading-relaxed text-text/90 sm:text-base">{detail.overview}</p>
       </section>
     {/if}
 
-    <!-- DETAILS GRID -->
-    <section class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-      {#if detail.release_date}<InfoStat label="Released" value={detail.release_date} />{/if}
-      {#if detail.runtime}<InfoStat label="Runtime" value={`${detail.runtime} min`} />{/if}
-      {#if detail.status}<InfoStat label="Status" value={detail.status} />{/if}
-      {#if director}<InfoStat label="Director" value={director.name} />{/if}
-      {#if writers.length > 0}<InfoStat label="Writers" value={writers.map((w) => w.name).join(", ")} />{/if}
-      {#if detail.production_companies && detail.production_companies.length > 0}
-        <InfoStat label="Studios" value={detail.production_companies.map((c) => c.name).slice(0, 2).join(", ")} />
-      {/if}
-      {#if typeof detail.vote_average === "number" && detail.vote_average > 0}
-        <InfoStat
-          label="TMDB rating"
-          value={`${detail.vote_average.toFixed(1)}${detail.vote_count ? ` (${detail.vote_count.toLocaleString()})` : ""}`}
-        />
-      {/if}
-    </section>
+    <!-- WHERE TO WATCH -->
+    <WatchProviders region={providers} regionCode={region} />
 
-    <!-- CAST -->
-    {#if detail.credits?.cast && detail.credits.cast.length > 0}
-      <section class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Cast</h2>
-        <CastList cast={detail.credits.cast} />
-      </section>
+    <!-- ACTORS RAIL -->
+    {#if cast.length > 0}
+      <Rail title="Actors" subtitle="{detail.credits?.cast?.length ?? cast.length} in cast">
+        {#each cast as c (c.id)}
+          <PersonCard
+            id={c.id}
+            name={c.name}
+            role={c.character}
+            profile={posterUrl(c.profile_path, "w185")}
+            searchKind="movie"
+          />
+        {/each}
+      </Rail>
     {/if}
 
-    <!-- TRAILERS -->
-    {#if detail.videos?.results && detail.videos.results.length > 0}
-      <section>
-        <Trailer videos={detail.videos.results} />
-      </section>
+    <!-- RELATED RAIL -->
+    {#if related.length > 0}
+      <Rail title="Related Movies" subtitle="You might also like">
+        {#each related as r (r.media_type + ":" + r.id)}
+          {#if r.media_type === "tv"}
+            <PosterCard
+              kind="tv"
+              id={r.id}
+              title={r.name}
+              poster={posterUrl(r.poster_path, "w342")}
+              year={r.first_air_date ? r.first_air_date.slice(0, 4) : undefined}
+              voteAverage={r.vote_average}
+            />
+          {:else if r.media_type === "movie"}
+            <PosterCard
+              kind="movie"
+              id={r.id}
+              title={r.title}
+              poster={posterUrl(r.poster_path, "w342")}
+              year={r.release_date ? r.release_date.slice(0, 4) : undefined}
+              voteAverage={r.vote_average}
+            />
+          {/if}
+        {/each}
+      </Rail>
     {/if}
 
-    <!-- BACKDROPS -->
+    <!-- IMAGES -->
     {#if detail.images?.backdrops && detail.images.backdrops.length > 0}
-      <section>
-        <Gallery title="Backdrops" images={detail.images.backdrops} aspect="16/9" size="w300" />
-      </section>
+      <Gallery title="Backdrops" images={detail.images.backdrops} aspect="16/9" size="w300" />
     {/if}
-
-    <!-- POSTERS -->
     {#if detail.images?.posters && detail.images.posters.length > 0}
-      <section>
-        <Gallery title="Posters" images={detail.images.posters} aspect="2/3" size="w185" />
-      </section>
+      <Gallery title="Posters" images={detail.images.posters} aspect="2/3" size="w185" />
     {/if}
   </div>
 {/if}

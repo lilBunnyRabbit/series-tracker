@@ -48,7 +48,7 @@
      Interactive children (buttons, status chip) get position:relative + z-10
      so their clicks land on them instead of the overlay. -->
 <article
-  class="relative flex gap-3 rounded-lg border border-border bg-surface p-3 transition hover:border-accent focus-within:border-accent"
+  class="relative flex gap-3 rounded-lg border border-border bg-surface p-3 transition hover:border-primary focus-within:border-primary"
 >
   <div class="h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
     {#if poster}

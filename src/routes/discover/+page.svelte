@@ -131,14 +131,14 @@
       onclick={toggleHideAdded}
       aria-pressed={hideAdded}
       class="rounded-md border px-3 py-1.5 text-sm transition {hideAdded
-        ? 'border-accent bg-accent text-bg'
-        : 'border-border text-muted hover:border-accent'}"
+        ? 'border-primary bg-primary text-bg'
+        : 'border-border text-muted hover:border-primary'}"
     >
       {hideAdded ? "✓ Hiding added" : "Hide added"}
     </button>
     <a
       href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
-      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent"
+      class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary"
     >
       Browse all →
     </a>

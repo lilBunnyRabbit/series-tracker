@@ -12,6 +12,8 @@
     variant?: "primary" | "outline";
     size?: "sm" | "md";
     title?: string;
+    /** Extra classes appended to the trigger button (e.g. "w-full" inside grids). */
+    class?: string;
   };
 
   let {
@@ -23,6 +25,7 @@
     variant = "primary",
     size = "md",
     title = "Add as...",
+    class: extraClass = "",
   }: Props = $props();
 
   // Order: plan → watching → dropped → completed
@@ -36,7 +39,10 @@
       "rounded-md font-medium disabled:cursor-not-allowed disabled:opacity-50",
       size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
       variant === "primary" ? "bg-primary text-bg" : "border border-border",
-    ].join(" ")
+      extraClass,
+    ]
+      .filter(Boolean)
+      .join(" ")
   );
 
   function open(): void {

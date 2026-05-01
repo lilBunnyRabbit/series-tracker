@@ -11,6 +11,7 @@ import type {
   TvDetail,
   TvDetailFull,
   TvEntry,
+  WatchProvidersResponse,
 } from "./types";
 
 const BASE = "https://api.themoviedb.org/3";
@@ -266,6 +267,25 @@ export async function discover(
 export async function genreList(kind: "tv" | "movie", apiKey: string, signal?: AbortSignal): Promise<Genre[]> {
   const data = await get<{ genres: Genre[] }>(`/genre/${kind}/list`, apiKey, {}, { signal, ttlMs: 24 * 60 * 60 * 1000 });
   return data.genres;
+}
+
+// ---- Watch providers (JustWatch data via TMDB) ----
+
+export const watchProviders = (kind: "tv" | "movie", id: number, apiKey: string, signal?: AbortSignal) =>
+  get<WatchProvidersResponse>(
+    `/${kind}/${id}/watch/providers`,
+    apiKey,
+    {},
+    { signal, ttlMs: 12 * 60 * 60 * 1000 }
+  );
+
+/** Best-effort country code derived from navigator.language ("en-US" → "US"). Falls back to "US". */
+export function defaultRegion(): string {
+  if (typeof navigator === "undefined") return "US";
+  const lang = navigator.language || "en-US";
+  const parts = lang.split("-");
+  const region = parts[1]?.toUpperCase();
+  return region && region.length === 2 ? region : "US";
 }
 
 export function clearCache(): void {

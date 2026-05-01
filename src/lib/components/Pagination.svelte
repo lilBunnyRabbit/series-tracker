@@ -50,7 +50,7 @@
     onclick={() => jump(-1)}
     disabled={current <= 1}
     aria-label="Previous page"
-    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
+    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     ←
   </button>
@@ -65,7 +65,7 @@
         aria-label={`Page ${item}`}
         class="min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition {active
           ? 'border-primary bg-primary text-bg'
-          : 'border-border hover:border-accent'}"
+          : 'border-border hover:border-primary'}"
       >
         {item}
       </button>
@@ -79,7 +79,7 @@
     onclick={() => jump(1)}
     disabled={current >= total}
     aria-label="Next page"
-    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
+    class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     →
   </button>

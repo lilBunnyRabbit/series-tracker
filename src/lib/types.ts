@@ -213,6 +213,27 @@ export type MovieDetailFull = MovieDetail & {
 
 export type Genre = { id: number; name: string };
 
+export type WatchProvider = {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority?: number;
+};
+
+export type WatchProviderRegion = {
+  link?: string;
+  flatrate?: WatchProvider[];
+  free?: WatchProvider[];
+  ads?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+};
+
+export type WatchProvidersResponse = {
+  id: number;
+  results: Record<string, WatchProviderRegion>;
+};
+
 export type EpisodeBrief = {
   id: number;
   episode_number: number;
