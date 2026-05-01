@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "$lib/components/Icon.svelte";
   import { tactile } from "$lib/tactile";
 
   type Props = {
@@ -53,9 +54,9 @@
     onclick={() => jump(-1)}
     disabled={current <= 1}
     aria-label="Previous page"
-    class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn flex items-center rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
-    ←
+    <Icon name="arrow-left" size={14} />
   </button>
 
   {#each pages as item, i (i + ":" + item)}
@@ -84,8 +85,8 @@
     onclick={() => jump(1)}
     disabled={current >= total}
     aria-label="Next page"
-    class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn flex items-center rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
-    →
+    <Icon name="arrow-right" size={14} />
   </button>
 </nav>

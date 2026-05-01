@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
@@ -171,9 +173,9 @@
   }
 </script>
 
-<section class="space-y-4 pb-28">
-  <h1 class="sr-only">Search</h1>
+<PageHeader title="Search" srOnly />
 
+<section class="space-y-4 pb-28">
   {#if !store.apiKey}
     <p class="text-sm text-muted">Set your TMDB API key in settings first.</p>
   {/if}
@@ -320,7 +322,7 @@
             onclick={() => pickSuggestion(q)}
             class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover-border-accent hover-text-text"
           >
-            <span class="text-[10px] text-muted/60">⌕</span>
+            <Icon name="search" size={11} class="text-muted/60" />
             <span class="truncate">{q}</span>
           </button>
         {/each}
@@ -344,15 +346,18 @@
       <a
         href="{base}/search/bulk/"
         use:tactile={{ haptic: false }}
-        class="tap-target tap-target--chip ml-auto shrink-0 rounded-full border border-border px-3 py-1.5 text-muted hover-border-primary hover-text-primary"
+        class="tap-target tap-target--chip ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-muted hover-border-primary hover-text-primary"
       >
-        Bulk ⇉
+        <span>Bulk</span>
+        <Icon name="arrow-right" size={12} />
       </a>
     </div>
 
     <label class="relative block">
       <span class="sr-only">Search</span>
-      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">⌕</span>
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+        <Icon name="search" size={16} />
+      </span>
       <!-- svelte-ignore a11y_autofocus -->
       <input
         type="search"

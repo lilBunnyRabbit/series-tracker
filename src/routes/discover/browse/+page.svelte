@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
@@ -184,28 +186,31 @@
   <title>Browse · Series Tracker</title>
 </svelte:head>
 
+{#snippet headerActions()}
+  <button
+    type="button"
+    use:tactile
+    onclick={toggleHideAdded}
+    aria-pressed={hideAdded}
+    class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
+      ? 'border-primary bg-primary text-bg'
+      : 'border-border text-muted hover-border-primary'}"
+  >
+    {hideAdded ? "✓ Hiding added" : "Hide added"}
+  </button>
+  <a
+    href="{base}/discover/{hideAdded ? '?hidden=1' : ''}"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+  >
+    <Icon name="arrow-left" size={12} />
+    <span>Curated</span>
+  </a>
+{/snippet}
+
+<PageHeader title="Browse" actions={headerActions} />
+
 <section class="space-y-5">
-  <div class="flex flex-wrap items-center gap-2">
-    <h1 class="mr-auto text-xl font-semibold">Browse</h1>
-    <button
-      type="button"
-      use:tactile
-      onclick={toggleHideAdded}
-      aria-pressed={hideAdded}
-      class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
-        ? 'border-primary bg-primary text-bg'
-        : 'border-border text-muted hover-border-primary'}"
-    >
-      {hideAdded ? "✓ Hiding added" : "Hide added"}
-    </button>
-    <a
-      href="{base}/discover/{hideAdded ? '?hidden=1' : ''}"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
-    >
-      ← Curated
-    </a>
-  </div>
 
   <div class="flex flex-wrap items-center gap-2">
     <div class="flex gap-1 text-xs" role="tablist" aria-label="Media kind">

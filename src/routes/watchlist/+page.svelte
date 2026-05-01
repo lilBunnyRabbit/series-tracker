@@ -2,8 +2,10 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import Icon from "$lib/components/Icon.svelte";
   import LibraryCard from "$lib/components/LibraryCard.svelte";
   import ListCard from "$lib/components/ListCard.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
@@ -94,32 +96,28 @@
   });
 </script>
 
-<section class="space-y-4">
-  <div class="flex flex-wrap items-center gap-2">
-    <h1 class="mr-auto text-xl font-semibold">Watchlist</h1>
-    <a
-      href="{base}/upcoming/"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
-    >
-      📅 Upcoming
-    </a>
-    <a
-      href="{base}/discover/"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"
-    >
-      Discover
-    </a>
-    <a
-      href="{base}/search/"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
-    >
-      + Add
-    </a>
-  </div>
+{#snippet headerActions()}
+  <a
+    href="{base}/upcoming/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
+  >
+    <Icon name="calendar" size={14} />
+    <span>Upcoming</span>
+  </a>
+  <a
+    href="{base}/search/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
+  >
+    <Icon name="plus" size={14} />
+    <span>Add</span>
+  </a>
+{/snippet}
 
+<PageHeader title="Watchlist" actions={headerActions} />
+
+<section class="space-y-4">
   {#if store.entries.length === 0}
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-muted">
       <p class="mb-4">Your library is empty.</p>
@@ -208,7 +206,7 @@
               ? 'border-primary bg-primary text-bg'
               : 'border-border text-muted hover-border-primary'}"
           >
-            ☰
+            <Icon name="list" size={16} />
           </button>
           <button
             type="button"
@@ -220,7 +218,7 @@
               ? 'border-primary bg-primary text-bg'
               : 'border-border text-muted hover-border-primary'}"
           >
-            ▦
+            <Icon name="grid" size={16} />
           </button>
         </div>
       </div>

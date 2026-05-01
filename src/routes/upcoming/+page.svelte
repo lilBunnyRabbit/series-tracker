@@ -1,5 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { buildIcs, downloadIcs, type IcsEvent } from "$lib/ics";
   import {
@@ -119,30 +121,25 @@
   <title>Upcoming · Series Tracker</title>
 </svelte:head>
 
-<section class="space-y-5">
-  <div class="flex flex-wrap items-center gap-2">
-    <h1 class="mr-auto text-xl font-semibold">Upcoming</h1>
-    {#if hasAnyData}
-      <button
-        type="button"
-        use:tactile
-        onclick={exportCalendar}
-        class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
-        aria-label="Export upcoming episodes as iCal calendar"
-        title="Download .ics file for your calendar app"
-      >
-        ↓ Calendar
-      </button>
-    {/if}
-    <a
-      href="{base}/watchlist/?status=watching"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-primary hover-text-text"
+{#snippet headerActions()}
+  {#if hasAnyData}
+    <button
+      type="button"
+      use:tactile
+      onclick={exportCalendar}
+      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
+      aria-label="Export upcoming episodes as iCal calendar"
+      title="Download .ics file for your calendar app"
     >
-      Watching list →
-    </a>
-  </div>
+      <Icon name="download" size={14} />
+      <span>Calendar</span>
+    </button>
+  {/if}
+{/snippet}
 
+<PageHeader title="Upcoming" actions={headerActions} />
+
+<section class="space-y-5">
   {#if watchingEntries.length === 0}
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-muted">
       <p class="mb-4">No shows currently in your watching list.</p>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
   import { store } from "$lib/store.svelte";
@@ -67,9 +69,21 @@
   }
 </script>
 
+{#snippet headerActions()}
+  <a
+    href="{base}/search/"
+    use:tactile={{ haptic: false }}
+    aria-label="Search"
+    class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted hover-border-primary hover-text-text"
+  >
+    <Icon name="search" size={16} />
+  </a>
+{/snippet}
+
+<PageHeader title="Home" actions={headerActions} />
+
 {#if store.entries.length === 0}
   <section class="space-y-4">
-    <h1 class="text-xl font-semibold">Welcome</h1>
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-muted">
       <p class="mb-4">Your library is empty.</p>
       <div class="flex justify-center gap-2">

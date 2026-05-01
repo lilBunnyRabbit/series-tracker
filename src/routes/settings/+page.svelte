@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { clearCache, defaultRegion, ping, REGION_OPTIONS } from "$lib/tmdb";
@@ -189,9 +190,11 @@
   const ADD_STATUSES: Status[] = ["plan", "watching", "completed", "dropped"];
 </script>
 
-<section class="mx-auto max-w-2xl space-y-8">
-  <h1 class="text-xl font-semibold">Settings</h1>
+<div class="mx-auto max-w-2xl">
+  <PageHeader title="Settings" />
+</div>
 
+<section class="mx-auto max-w-2xl space-y-8">
   <!-- API -->
   <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
     <h2 class="text-sm font-medium uppercase tracking-wider text-muted">API</h2>

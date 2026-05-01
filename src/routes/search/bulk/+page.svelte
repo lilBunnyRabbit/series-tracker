@@ -1,5 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
@@ -136,17 +138,24 @@
   const queryCount = $derived(parseQueries(input).length);
 </script>
 
+{#snippet headerActions()}
+  <a
+    href="{base}/search/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted hover-border-primary hover-text-text"
+  >
+    <Icon name="arrow-left" size={12} />
+    <span>Single search</span>
+  </a>
+{/snippet}
+
+<PageHeader
+  title="Bulk search"
+  subtitle="Paste a list of titles — one per line or comma-separated. Up to {MAX_QUERIES} per run."
+  actions={headerActions}
+/>
+
 <section class="space-y-5">
-  <div class="space-y-1">
-    <div class="flex items-baseline gap-2">
-      <h1 class="text-xl font-semibold">Bulk search</h1>
-      <a href="{base}/search/" class="text-xs text-muted hover-text-primary">← single search</a>
-    </div>
-    <p class="text-xs text-muted">
-      Paste a list of titles — one per line or comma-separated. We'll fetch the top {PER_QUERY_LIMIT} TMDB matches for
-      each so you can add several in one pass. Up to {MAX_QUERIES} titles per run.
-    </p>
-  </div>
 
   <div class="space-y-2">
     <textarea

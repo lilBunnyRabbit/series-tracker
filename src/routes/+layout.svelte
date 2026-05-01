@@ -4,8 +4,11 @@
   import { page } from "$app/state";
   import { initBackTracker, smartBack } from "$lib/back.svelte";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { tactile } from "$lib/tactile";
+
+  type IconName = "home" | "compass" | "bookmark" | "search" | "user";
   import * as versionModule from "$lib/version.svelte";
   import { onMount } from "svelte";
 
@@ -37,12 +40,12 @@
   const hideFloatingNav = $derived(relPath.startsWith("/search"));
 
   // Order: Home, Discover, Watchlist, Search, Profile (stats hub, links to settings).
-  const items: { href: string; label: string; path: string; icon: string }[] = [
-    { href: `${base}/`, label: "Home", path: "/", icon: "⌂" },
-    { href: `${base}/discover/`, label: "Discover", path: "/discover/", icon: "✨" },
-    { href: `${base}/watchlist/`, label: "Watchlist", path: "/watchlist/", icon: "☰" },
-    { href: `${base}/search/`, label: "Search", path: "/search/", icon: "⌕" },
-    { href: `${base}/stats/`, label: "Profile", path: "/stats/", icon: "◉" },
+  const items: { href: string; label: string; path: string; icon: IconName }[] = [
+    { href: `${base}/`, label: "Home", path: "/", icon: "home" },
+    { href: `${base}/discover/`, label: "Discover", path: "/discover/", icon: "compass" },
+    { href: `${base}/watchlist/`, label: "Watchlist", path: "/watchlist/", icon: "bookmark" },
+    { href: `${base}/search/`, label: "Search", path: "/search/", icon: "search" },
+    { href: `${base}/stats/`, label: "Profile", path: "/stats/", icon: "user" },
   ];
 
   function isActive(path: string): boolean {
@@ -105,9 +108,9 @@
           onclick={onBack}
           use:tactile
           aria-label="Back"
-          class="tap-target tap-target--icon flex h-10 w-10 items-center justify-center rounded-md border border-border text-lg"
+          class="tap-target tap-target--icon flex h-10 w-10 items-center justify-center rounded-md border border-border"
         >
-          ←
+          <Icon name="arrow-left" size={18} />
         </a>
         <span class="text-sm font-medium">{pageTitle}</span>
       </nav>
@@ -129,11 +132,12 @@
           <a
             href={item.href}
             use:tactile={{ haptic: false }}
-            class="tap-target tap-target--btn rounded-md px-3 py-2 hover-bg-surface {isActive(item.path)
+            class="tap-target tap-target--btn flex items-center gap-2 rounded-md px-3 py-2 hover-bg-surface {isActive(item.path)
               ? 'bg-surface text-primary'
               : 'text-muted'}"
           >
-            {item.label}
+            <Icon name={item.icon} size={16} />
+            <span>{item.label}</span>
           </a>
         {/each}
       </div>
@@ -174,10 +178,10 @@
           <a
             href={item.href}
             use:tactile={{ haptic: "tick" }}
-            class="tap-target tap-target--icon relative z-10 flex flex-1 flex-col items-center justify-center gap-1 rounded-full px-1 py-2 text-[10px] {active ? 'text-primary' : 'text-muted'}"
+            class="tap-target tap-target--icon relative z-10 flex flex-1 flex-col items-center justify-center gap-1 rounded-full px-1 py-1.5 text-[10px] {active ? 'text-primary' : 'text-muted'}"
             aria-current={active ? "page" : undefined}
           >
-            <span class="text-lg leading-none" aria-hidden="true">{item.icon}</span>
+            <Icon name={item.icon} size={20} />
             <span class="leading-none">{item.label}</span>
           </a>
         {/each}

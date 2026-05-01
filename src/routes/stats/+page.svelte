@@ -1,5 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
@@ -107,22 +109,20 @@
   }
 </script>
 
-<svelte:head>
-  <title>Stats · Series Tracker</title>
-</svelte:head>
+{#snippet headerActions()}
+  <a
+    href="{base}/settings/"
+    use:tactile={{ haptic: false }}
+    aria-label="Settings"
+    class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted hover-border-primary hover-text-text"
+  >
+    <Icon name="settings" size={16} />
+  </a>
+{/snippet}
+
+<PageHeader title="Profile" subtitle="Your library at a glance" actions={headerActions} />
 
 <section class="space-y-7">
-  <div class="flex flex-wrap items-center gap-2">
-    <h1 class="mr-auto text-xl font-semibold">Your stats</h1>
-    <a
-      href="{base}/settings/"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-primary hover-text-text"
-    >
-      Settings →
-    </a>
-  </div>
-
   {#if stats.total === 0}
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-muted">
       <p class="mb-4">Your library is empty — start adding shows and movies to see stats.</p>

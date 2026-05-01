@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
@@ -133,29 +135,31 @@
   }
 </script>
 
-<section class="space-y-8">
-  <div class="flex flex-wrap items-center gap-2">
-    <h1 class="mr-auto text-xl font-semibold">Discover</h1>
-    <button
-      type="button"
-      use:tactile
-      onclick={toggleHideAdded}
-      aria-pressed={hideAdded}
-      class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 {hideAdded
-        ? 'border-primary bg-primary text-bg'
-        : 'border-border text-muted hover-border-primary'}"
-    >
-      {hideAdded ? "✓ Hiding added" : "Hide added"}
-    </button>
-    <a
-      href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"
-    >
-      Browse all →
-    </a>
-  </div>
+{#snippet headerActions()}
+  <button
+    type="button"
+    use:tactile
+    onclick={toggleHideAdded}
+    aria-pressed={hideAdded}
+    class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 {hideAdded
+      ? 'border-primary bg-primary text-bg'
+      : 'border-border text-muted hover-border-primary'}"
+  >
+    {hideAdded ? "✓ Hiding added" : "Hide added"}
+  </button>
+  <a
+    href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"
+  >
+    <span>Browse all</span>
+    <Icon name="arrow-right" size={14} />
+  </a>
+{/snippet}
 
+<PageHeader title="Discover" actions={headerActions} />
+
+<section class="space-y-7">
   {#if error}
     <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">
       {error}
@@ -164,9 +168,9 @@
 
   <!-- TRENDING -->
   <div class="space-y-3">
-    <div class="flex items-center gap-3 border-b border-border pb-1.5">
-      <h2 class="flex items-center gap-1.5 text-sm font-semibold tracking-tight text-text">
-        <span aria-hidden="true">🔥</span>
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
+        <Icon name="flame" size={14} />
         Trending
       </h2>
       <div class="flex gap-1 text-xs">
@@ -200,10 +204,10 @@
   {#if visibleRecs.length > 0}
     <!-- RECOMMENDED -->
     <div class="space-y-3">
-      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
-        <span aria-hidden="true">✨</span>
-        Recommended for you
-        <span class="ml-1 text-xs font-normal text-muted">based on your library</span>
+      <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
+        <Icon name="sparkles" size={14} />
+        Recommended
+        <span class="ml-1 text-[11px] font-normal normal-case text-muted/70">based on your library</span>
       </h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each visibleRecs as r (r.media_type + ":" + r.id)}
@@ -220,13 +224,16 @@
   {#if visiblePopularTv.length > 0 || visiblePopularMovies.length > 0}
     <!-- POPULAR -->
     <div class="space-y-4">
-      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
-        <span aria-hidden="true">📈</span>
+      <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
+        <Icon name="trending-up" size={14} />
         Popular right now
       </h2>
       {#if visiblePopularTv.length > 0}
         <div class="space-y-2">
-          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">📺 TV</h3>
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+            <Icon name="tv" size={12} />
+            TV
+          </h3>
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
             {#each visiblePopularTv as r (r.media_type + ":" + r.id)}
               <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
@@ -236,7 +243,10 @@
       {/if}
       {#if visiblePopularMovies.length > 0}
         <div class="space-y-2">
-          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">🎬 Movies</h3>
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+            <Icon name="film" size={12} />
+            Movies
+          </h3>
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
             {#each visiblePopularMovies as r (r.media_type + ":" + r.id)}
               <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
@@ -250,14 +260,17 @@
   {#if visibleTopRatedTv.length > 0 || visibleTopRatedMovies.length > 0}
     <!-- TOP RATED -->
     <div class="space-y-4">
-      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
-        <span aria-hidden="true">🏆</span>
+      <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
+        <Icon name="trophy" size={14} />
         Top rated
-        <span class="ml-1 text-xs font-normal text-muted">all-time on TMDB</span>
+        <span class="ml-1 text-[11px] font-normal normal-case text-muted/70">all-time on TMDB</span>
       </h2>
       {#if visibleTopRatedTv.length > 0}
         <div class="space-y-2">
-          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">📺 TV</h3>
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+            <Icon name="tv" size={12} />
+            TV
+          </h3>
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
             {#each visibleTopRatedTv as r (r.media_type + ":" + r.id)}
               <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
@@ -267,7 +280,10 @@
       {/if}
       {#if visibleTopRatedMovies.length > 0}
         <div class="space-y-2">
-          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">🎬 Movies</h3>
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+            <Icon name="film" size={12} />
+            Movies
+          </h3>
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
             {#each visibleTopRatedMovies as r (r.media_type + ":" + r.id)}
               <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
