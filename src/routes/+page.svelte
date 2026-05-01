@@ -10,15 +10,7 @@
     season: number;
     episode: number;
     remaining: number;
-    daysSince: number;
   };
-
-  function daysSince(iso: string | undefined): number {
-    if (!iso) return 0;
-    const then = new Date(iso).getTime();
-    if (Number.isNaN(then)) return 0;
-    return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
-  }
 
   function nextEpisode(e: TvEntry): { season: number; episode: number } | null {
     for (const s of e.seasons) {
@@ -43,7 +35,6 @@
           season: next.season,
           episode: next.episode,
           remaining: totalRemaining(e),
-          daysSince: daysSince(e.updatedAt),
         };
       })
       .filter((x): x is ContinueItem => x !== null)

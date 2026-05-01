@@ -328,12 +328,19 @@
     margin: 0 auto;
     max-width: 32rem;
     border-radius: 1.25rem;
+    /* Mirror the floating-nav fallback chain for Samsung Internet etc. */
+    background: rgba(26, 31, 38, 0.85);
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
     border: 1px solid var(--color-border);
-    backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     padding: 0.625rem 0.75rem 0.625rem;
     box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.55);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .search-dock-inner {
+      background: rgba(26, 31, 38, 0.96);
+    }
   }
   @media (min-width: 640px) {
     .search-dock {

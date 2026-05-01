@@ -5,6 +5,7 @@
   import PersonCard from "$lib/components/PersonCard.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import Trailer from "$lib/components/Trailer.svelte";
   import WatchProviders from "$lib/components/WatchProviders.svelte";
@@ -14,6 +15,7 @@
     entryFromTvDetail,
     posterUrl,
     recommendations,
+    similar,
     tvDetail,
     tvDetailFull,
     watchProviders,
@@ -26,6 +28,7 @@
 
   let detail = $state<TvDetailFull | null>(null);
   let related = $state<RecommendationItem[]>([]);
+  let similarItems = $state<RecommendationItem[]>([]);
   let providers = $state<WatchProviderRegion | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
@@ -40,12 +43,17 @@
     Promise.all([
       tvDetailFull(id, apiKey, ctrl.signal),
       recommendations("tv", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
+      similar("tv", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
       watchProviders("tv", id, apiKey, ctrl.signal).catch(() => null),
     ])
-      .then(([d, r, p]) => {
+      .then(([d, r, s, p]) => {
         if (ctrl.signal.aborted) return;
         detail = d;
         related = r.slice(0, 16);
+        // Drop anything already in the recommendations list to keep the two
+        // rails distinct (algorithmic vs keyword-overlap).
+        const seen = new Set(r.map((x) => `${x.media_type}:${x.id}`));
+        similarItems = s.filter((x) => !seen.has(`${x.media_type}:${x.id}`)).slice(0, 16);
         providers = p?.results?.[region] ?? null;
       })
       .catch((e) => {
@@ -96,7 +104,7 @@
 </svelte:head>
 
 {#if loading && !detail}
-  <p class="text-sm text-muted">Loading...</p>
+  <Skeleton variant="infoPage" />
 {:else if error}
   <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
 {:else if detail}
@@ -141,7 +149,7 @@
           <p class="text-xs text-muted">
             Created by
             {#each creators as cr, i (cr.id)}
-              <a href="{base}/discover/browse/?with_people={cr.id}" class="text-text hover:text-accent">{cr.name}</a>{#if i < creators.length - 1},
+              <a href="{base}/discover/browse/?kind=movie&with_people={cr.id}" class="text-text hover:text-accent">{cr.name}</a>{#if i < creators.length - 1},
               {/if}
             {/each}
           </p>
@@ -254,10 +262,37 @@
       </Rail>
     {/if}
 
-    <!-- RELATED RAIL -->
+    <!-- WATCH NEXT (recommendations endpoint — sequels & franchise) -->
     {#if related.length > 0}
-      <Rail title="Related Shows" subtitle="You might also like">
+      <Rail title="Watch next" subtitle="Sequels & franchise">
         {#each related as r (r.media_type + ":" + r.id)}
+          {#if r.media_type === "tv"}
+            <PosterCard
+              kind="tv"
+              id={r.id}
+              title={r.name}
+              poster={posterUrl(r.poster_path, "w342")}
+              year={r.first_air_date ? r.first_air_date.slice(0, 4) : undefined}
+              voteAverage={r.vote_average}
+            />
+          {:else if r.media_type === "movie"}
+            <PosterCard
+              kind="movie"
+              id={r.id}
+              title={r.title}
+              poster={posterUrl(r.poster_path, "w342")}
+              year={r.release_date ? r.release_date.slice(0, 4) : undefined}
+              voteAverage={r.vote_average}
+            />
+          {/if}
+        {/each}
+      </Rail>
+    {/if}
+
+    <!-- MORE LIKE THIS (similar endpoint — thematic) -->
+    {#if similarItems.length > 0}
+      <Rail title="More like this" subtitle="Thematically alike">
+        {#each similarItems as r (r.media_type + ":" + r.id)}
           {#if r.media_type === "tv"}
             <PosterCard
               kind="tv"

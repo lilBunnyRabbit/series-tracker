@@ -5,6 +5,7 @@
   import NotesEditor from "$lib/components/NotesEditor.svelte";
   import RatingPicker from "$lib/components/RatingPicker.svelte";
   import SeasonCounter from "$lib/components/SeasonCounter.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import StatusSegmented from "$lib/components/StatusSegmented.svelte";
   import { store } from "$lib/store.svelte";
@@ -92,7 +93,16 @@
   <a href="{base}/" class="hidden text-sm text-muted hover:text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
-    <p class="text-sm text-muted">Loading...</p>
+    <div class="flex flex-col gap-6 md:flex-row">
+      <div class="w-full max-w-[200px] flex-shrink-0">
+        <Skeleton variant="poster" />
+      </div>
+      <div class="min-w-0 flex-1 space-y-3">
+        <Skeleton variant="line" />
+        <Skeleton variant="line" />
+        <Skeleton variant="line" />
+      </div>
+    </div>
   {:else if error}
     <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
   {:else if headerInfo}

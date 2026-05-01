@@ -75,6 +75,11 @@ export type TvEntry = {
   rating?: number;
   notes?: string;
   seasonRatings?: Record<number, number>;
+  /** Per-episode runtime in minutes (TMDB episode_run_time[0]). Stats use it
+   *  to compute total time watched from `runtime × watchedEpisodes`. */
+  runtime?: number;
+  /** Captured at add time so stats can compute top genres locally. */
+  genres?: { id: number; name: string }[];
   addedAt: string;
   updatedAt: string;
 };
@@ -90,6 +95,9 @@ export type MovieEntry = {
   voteAverage?: number;
   rating?: number;
   notes?: string;
+  /** Movie length in minutes. */
+  runtime?: number;
+  genres?: { id: number; name: string }[];
   addedAt: string;
   updatedAt: string;
 };
@@ -139,6 +147,8 @@ export type TvDetail = {
   status: string;
   first_air_date: string;
   vote_average?: number;
+  episode_run_time?: number[];
+  genres?: { id: number; name: string }[];
   seasons: {
     season_number: number;
     name: string;
@@ -195,9 +205,7 @@ export type TvDetailFull = TvDetail & {
   backdrop_path: string | null;
   tagline?: string;
   vote_count?: number;
-  genres?: { id: number; name: string }[];
   networks?: { id: number; name: string; logo_path: string | null }[];
-  episode_run_time?: number[];
   credits?: Credits;
   external_ids?: ExternalIds;
   images?: Images;

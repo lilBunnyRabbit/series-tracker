@@ -155,6 +155,16 @@ export async function recommendations(
   return data.results.map((r) => ({ ...r, media_type: kind }) as RecommendationItem);
 }
 
+export async function similar(
+  kind: "tv" | "movie",
+  id: number,
+  key: string,
+  signal?: AbortSignal
+): Promise<RecommendationItem[]> {
+  const data = await get<RecommendationPage<typeof kind>>(`/${kind}/${id}/similar`, key, {}, { signal });
+  return data.results.map((r) => ({ ...r, media_type: kind }) as RecommendationItem);
+}
+
 type TrendingPage = {
   page: number;
   total_pages: number;
@@ -179,6 +189,16 @@ export async function popularMovies(key: string, signal?: AbortSignal): Promise<
 
 export async function popularTv(key: string, signal?: AbortSignal): Promise<RecommendationItem[]> {
   const data = await get<PopularTvPage>("/tv/popular", key, {}, { signal });
+  return data.results.map((r) => ({ ...r, media_type: "tv" }) as RecommendationItem);
+}
+
+export async function topRatedMovies(key: string, signal?: AbortSignal): Promise<RecommendationItem[]> {
+  const data = await get<PopularMoviesPage>("/movie/top_rated", key, {}, { signal });
+  return data.results.map((r) => ({ ...r, media_type: "movie" }) as RecommendationItem);
+}
+
+export async function topRatedTv(key: string, signal?: AbortSignal): Promise<RecommendationItem[]> {
+  const data = await get<PopularTvPage>("/tv/top_rated", key, {}, { signal });
   return data.results.map((r) => ({ ...r, media_type: "tv" }) as RecommendationItem);
 }
 
@@ -210,6 +230,8 @@ export type DiscoverFilters = {
   page: number;
   /** Minimum vote count to suppress junk (default 20). Set to 0 to disable. */
   minVotes?: number;
+  /** Filter by person (cast or crew). Movie-only — TMDB TV discover ignores it. */
+  withPeople?: number[];
 };
 
 const SORT_TV: Record<DiscoverSort, string> = {
@@ -249,6 +271,12 @@ export async function discover(
   };
   if (filters.genres.length > 0) params.with_genres = filters.genres.join(",");
   if (minVotes > 0) params["vote_count.gte"] = String(minVotes);
+  // with_people is a movie-only TMDB param. For TV, TMDB silently ignores it
+  // (the param has no equivalent on /discover/tv) — callers should switch to
+  // kind="movie" when filtering by person.
+  if (kind === "movie" && filters.withPeople && filters.withPeople.length > 0) {
+    params.with_people = filters.withPeople.join(",");
+  }
 
   type RawTv = { id: number; name: string; poster_path: string | null; first_air_date?: string; overview?: string; vote_average?: number };
   type RawMovie = { id: number; title: string; poster_path: string | null; release_date?: string; overview?: string; vote_average?: number };
@@ -311,6 +339,8 @@ export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): Tv
     poster: posterUrl(detail.poster_path, "w342"),
     year: detail.first_air_date ? detail.first_air_date.slice(0, 4) : undefined,
     voteAverage: detail.vote_average,
+    runtime: detail.episode_run_time && detail.episode_run_time.length > 0 ? detail.episode_run_time[0] : undefined,
+    genres: detail.genres,
     seasons,
     progress,
     status,
@@ -328,6 +358,8 @@ export function entryFromMovieDetail(detail: MovieDetail, status: Status = "plan
     poster: posterUrl(detail.poster_path, "w342"),
     year: detail.release_date ? detail.release_date.slice(0, 4) : undefined,
     voteAverage: detail.vote_average,
+    runtime: detail.runtime || undefined,
+    genres: detail.genres,
     watched: status === "completed",
     status,
     addedAt: now,

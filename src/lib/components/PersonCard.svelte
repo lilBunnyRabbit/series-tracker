@@ -9,19 +9,16 @@
     profile: string | null;
     /** Episode count overlay for this title — clever way to show involvement. */
     episodeCount?: number;
-    /** When set, search context is the show/movie they're cast in. */
+    /** Cosmetic only — TMDB has no person filter on TV discover, so all
+     *  person-bridge nav goes to the movie kind regardless. */
     searchKind?: "tv" | "movie";
   };
 
-  let { id, name, role, profile, episodeCount, searchKind }: Props = $props();
+  let { id, name, role, profile, episodeCount }: Props = $props();
 
-  // Until a dedicated /person/{id} page exists, link to discover-browse
-  // pre-filtered by this person — matches the "search by actor" Tier 1 path.
-  const href = $derived.by(() => {
-    if (searchKind === "movie") return `${base}/discover/browse/?with_cast=${id}`;
-    if (searchKind === "tv") return `${base}/discover/browse/?with_people=${id}`;
-    return `${base}/discover/browse/?with_people=${id}`;
-  });
+  // TMDB's /discover/tv has no person filter, so always bridge to movies for
+  // now. Forcing kind=movie ensures the with_people param actually applies.
+  const href = $derived(`${base}/discover/browse/?kind=movie&with_people=${id}`);
 </script>
 
 <a href={href} class="group flex w-[100px] flex-col gap-1.5 sm:w-[112px]" aria-label={name}>

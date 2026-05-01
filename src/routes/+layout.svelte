@@ -18,19 +18,20 @@
   });
 
   const relPath = $derived(page.url.pathname.replace(base, ""));
-  const isSettings = $derived(relPath.startsWith("/settings"));
+  // Routes that don't need a TMDB key — they only read local state. The gate
+  // would otherwise block users with imported libraries who haven't set a key.
+  const skipApiKeyGate = $derived(relPath.startsWith("/settings") || relPath.startsWith("/stats"));
   // Hide the floating nav on /search — the bottom-docked search input would
   // otherwise crowd it; users get a back button instead.
   const hideFloatingNav = $derived(relPath.startsWith("/search"));
 
-  // Order per design TODO: Home, Discover, Watchlist, Search, Profile.
-  // Profile slot reuses settings until the dedicated stats page lands.
+  // Order: Home, Discover, Watchlist, Search, Profile (stats hub, links to settings).
   const items: { href: string; label: string; path: string; icon: string }[] = [
     { href: `${base}/`, label: "Home", path: "/", icon: "⌂" },
     { href: `${base}/discover/`, label: "Discover", path: "/discover/", icon: "✨" },
     { href: `${base}/watchlist/`, label: "Watchlist", path: "/watchlist/", icon: "☰" },
     { href: `${base}/search/`, label: "Search", path: "/search/", icon: "⌕" },
-    { href: `${base}/settings/`, label: "Profile", path: "/settings/", icon: "◉" },
+    { href: `${base}/stats/`, label: "Profile", path: "/stats/", icon: "◉" },
   ];
 
   function isActive(path: string): boolean {
@@ -42,10 +43,12 @@
   const pageTitle = $derived.by(() => {
     if (relPath === "/" || relPath === "") return "Home";
     if (relPath.startsWith("/watchlist")) return "Watchlist";
+    if (relPath.startsWith("/upcoming")) return "Upcoming";
     if (relPath.startsWith("/search")) return "Search";
     if (relPath.startsWith("/discover/browse")) return "Browse";
     if (relPath.startsWith("/discover")) return "Discover";
-    if (relPath.startsWith("/settings")) return "Profile";
+    if (relPath.startsWith("/stats")) return "Profile";
+    if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.includes("/info")) return "Info";
     if (relPath.startsWith("/show/")) return "Show";
     if (relPath.startsWith("/movie/")) return "Movie";
@@ -61,6 +64,8 @@
     // Search hides the floating footer, so give it a back button to return home.
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;
+    if (relPath.startsWith("/settings")) return `${base}/stats/`;
+    if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
     return null;
   });
 
@@ -120,7 +125,7 @@
   </header>
 
   <main class="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-32 sm:px-4 sm:py-6 sm:pb-6">
-    {#if isSettings}
+    {#if skipApiKeyGate}
       {@render children()}
     {:else}
       <ApiKeyGate>
@@ -181,12 +186,23 @@
     max-width: 28rem;
     padding: 0.25rem;
     border-radius: 9999px;
+    /* Layered fallbacks so older Samsung Internet (no color-mix / no oklch)
+       still gets a visible translucent fill. Newer engines pick the
+       color-mix line; older engines fall back to the rgba above. */
+    background: rgba(36, 43, 51, 0.85);
     background: color-mix(in oklab, var(--color-surface) 88%, transparent);
     border: 1px solid var(--color-border);
-    backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     box-shadow:
       0 12px 32px -12px rgb(0 0 0 / 0.55),
       0 2px 6px -2px rgb(0 0 0 / 0.4);
+  }
+  /* When backdrop-filter isn't supported (or is gated), bump the rgba alpha
+     up so the pill stays readable as a solid translucent shape. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .floating-nav-pill {
+      background: rgba(36, 43, 51, 0.96);
+    }
   }
 </style>

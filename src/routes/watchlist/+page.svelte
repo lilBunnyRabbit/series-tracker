@@ -97,6 +97,12 @@
   <div class="flex flex-wrap items-center gap-2">
     <h1 class="mr-auto text-xl font-semibold">Watchlist</h1>
     <a
+      href="{base}/upcoming/"
+      class="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-text"
+    >
+      📅 Upcoming
+    </a>
+    <a
       href="{base}/discover/"
       class="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary"
     >

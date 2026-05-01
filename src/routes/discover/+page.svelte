@@ -3,12 +3,15 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
   import {
     entryFromSearchResult,
     popularMovies,
     popularTv,
     recommendations,
+    topRatedMovies,
+    topRatedTv,
     trending,
   } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
@@ -42,6 +45,8 @@
   let recItems = $state<RecommendationItem[]>([]);
   let popularMovieItems = $state<RecommendationItem[]>([]);
   let popularTvItems = $state<RecommendationItem[]>([]);
+  let topRatedTvItems = $state<RecommendationItem[]>([]);
+  let topRatedMovieItems = $state<RecommendationItem[]>([]);
 
   let loading = $state(false);
   let error = $state<string | null>(null);
@@ -50,6 +55,8 @@
   const visibleRecs = $derived(filterAdded(recItems));
   const visiblePopularTv = $derived(filterAdded(popularTvItems).slice(0, 8));
   const visiblePopularMovies = $derived(filterAdded(popularMovieItems).slice(0, 8));
+  const visibleTopRatedTv = $derived(filterAdded(topRatedTvItems).slice(0, 8));
+  const visibleTopRatedMovies = $derived(filterAdded(topRatedMovieItems).slice(0, 8));
 
   $effect(() => {
     void trendingWindow;
@@ -73,6 +80,8 @@
       ),
       popularTv(apiKey, ctrl.signal).then((r) => (popularTvItems = r)),
       popularMovies(apiKey, ctrl.signal).then((r) => (popularMovieItems = r)),
+      topRatedTv(apiKey, ctrl.signal).then((r) => (topRatedTvItems = r)),
+      topRatedMovies(apiKey, ctrl.signal).then((r) => (topRatedMovieItems = r)),
       buildRecs(seeds, apiKey, ctrl.signal).then((r) => (recItems = r)),
     ])
       .then((settled) => {
@@ -150,9 +159,13 @@
     </p>
   {/if}
 
+  <!-- TRENDING -->
   <div class="space-y-3">
-    <div class="flex items-center gap-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Trending</h2>
+    <div class="flex items-center gap-3 border-b border-border pb-1.5">
+      <h2 class="flex items-center gap-1.5 text-sm font-semibold tracking-tight text-text">
+        <span aria-hidden="true">🔥</span>
+        Trending
+      </h2>
       <div class="flex gap-1 text-xs">
         {#each ["day", "week"] as const as w (w)}
           <button
@@ -168,7 +181,7 @@
       </div>
     </div>
     {#if trendingItems.length === 0 && loading}
-      <p class="text-sm text-muted">Loading...</p>
+      <Skeleton variant="results" count={6} />
     {:else if visibleTrending.length > 0}
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each visibleTrending as r (r.media_type + ":" + r.id)}
@@ -181,10 +194,12 @@
   </div>
 
   {#if visibleRecs.length > 0}
+    <!-- RECOMMENDED -->
     <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
+      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
+        <span aria-hidden="true">✨</span>
         Recommended for you
-        <span class="ml-2 font-normal normal-case text-muted/70">based on your library</span>
+        <span class="ml-1 text-xs font-normal text-muted">based on your library</span>
       </h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each visibleRecs as r (r.media_type + ":" + r.id)}
@@ -198,25 +213,64 @@
     </div>
   {/if}
 
-  {#if visiblePopularTv.length > 0}
-    <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular TV</h2>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each visiblePopularTv as r (r.media_type + ":" + r.id)}
-          <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
-        {/each}
-      </div>
+  {#if visiblePopularTv.length > 0 || visiblePopularMovies.length > 0}
+    <!-- POPULAR -->
+    <div class="space-y-4">
+      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
+        <span aria-hidden="true">📈</span>
+        Popular right now
+      </h2>
+      {#if visiblePopularTv.length > 0}
+        <div class="space-y-2">
+          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">📺 TV</h3>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {#each visiblePopularTv as r (r.media_type + ":" + r.id)}
+              <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
+            {/each}
+          </div>
+        </div>
+      {/if}
+      {#if visiblePopularMovies.length > 0}
+        <div class="space-y-2">
+          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">🎬 Movies</h3>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {#each visiblePopularMovies as r (r.media_type + ":" + r.id)}
+              <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 
-  {#if visiblePopularMovies.length > 0}
-    <div class="space-y-3">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Popular movies</h2>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each visiblePopularMovies as r (r.media_type + ":" + r.id)}
-          <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
-        {/each}
-      </div>
+  {#if visibleTopRatedTv.length > 0 || visibleTopRatedMovies.length > 0}
+    <!-- TOP RATED -->
+    <div class="space-y-4">
+      <h2 class="flex items-baseline gap-1.5 border-b border-border pb-1.5 text-sm font-semibold tracking-tight text-text">
+        <span aria-hidden="true">🏆</span>
+        Top rated
+        <span class="ml-1 text-xs font-normal text-muted">all-time on TMDB</span>
+      </h2>
+      {#if visibleTopRatedTv.length > 0}
+        <div class="space-y-2">
+          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">📺 TV</h3>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {#each visibleTopRatedTv as r (r.media_type + ":" + r.id)}
+              <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
+            {/each}
+          </div>
+        </div>
+      {/if}
+      {#if visibleTopRatedMovies.length > 0}
+        <div class="space-y-2">
+          <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">🎬 Movies</h3>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {#each visibleTopRatedMovies as r (r.media_type + ":" + r.id)}
+              <SearchResultCard result={r as SearchMultiResult} onAdd={handleAdd} />
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </section>

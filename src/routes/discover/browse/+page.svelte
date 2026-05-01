@@ -4,6 +4,7 @@
   import { page } from "$app/state";
   import Pagination from "$lib/components/Pagination.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
   import { discover, entryFromSearchResult, genreList } from "$lib/tmdb";
   import type { DiscoverPage, DiscoverSort } from "$lib/tmdb";
@@ -48,6 +49,22 @@
   });
 
   const hideAdded = $derived.by<boolean>(() => page.url.searchParams.get("hidden") === "1");
+
+  // Person filter (cast + crew) — set when user navigates from a CastList entry
+  // or "directed by"/"created by" link. Honors both `with_people` (preferred,
+  // cast+crew) and the legacy `with_cast` form.
+  const withPeople = $derived.by<number[]>(() => {
+    const raw = page.url.searchParams.get("with_people") ?? page.url.searchParams.get("with_cast");
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  });
+
+  function clearPeople(): void {
+    updateParams({ with_people: null, with_cast: null, page: null });
+  }
 
   function toggleHideAdded(): void {
     const url = new URL(page.url);
@@ -127,6 +144,7 @@
       sort,
       genres: [...selectedGenres].sort((a, b) => a - b),
       page: pageNum,
+      withPeople,
     };
     loading = true;
     error = null;
@@ -220,6 +238,32 @@
     </label>
   </div>
 
+  {#if withPeople.length > 0}
+    <div class="flex flex-wrap items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-xs">
+      <span class="font-medium text-accent">Filtered by person</span>
+      <span class="text-muted">·</span>
+      <span class="font-mono text-text">#{withPeople.join(", #")}</span>
+      {#if kind === "tv"}
+        <span class="text-muted">·</span>
+        <button
+          type="button"
+          onclick={() => setKind("movie")}
+          class="rounded-full border border-accent px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent hover:text-bg"
+        >
+          Switch to Movies
+        </button>
+        <span class="text-[11px] italic text-muted">(person filter only applies to movies)</span>
+      {/if}
+      <button
+        type="button"
+        onclick={clearPeople}
+        class="ml-auto rounded-full border border-border px-2 py-0.5 text-[11px] text-muted hover:border-danger hover:text-danger"
+      >
+        × Clear
+      </button>
+    </div>
+  {/if}
+
   {#if availableGenres.length > 0}
     <div class="space-y-1.5">
       <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted">
@@ -261,7 +305,7 @@
   {/if}
 
   {#if !result && loading}
-    <p class="text-sm text-muted">Loading...</p>
+    <Skeleton variant="results" count={8} />
   {:else if result && result.results.length === 0}
     <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
       No results match these filters.

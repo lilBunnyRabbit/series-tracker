@@ -3,6 +3,7 @@
   import { store } from "$lib/store.svelte";
   import { seasonDetail } from "$lib/tmdb";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
+  import RatingPicker from "./RatingPicker.svelte";
 
   type Props = { showId: number; season: number; name: string; total: number };
   let { showId, season, name, total }: Props = $props();
@@ -17,6 +18,20 @@
   const seasonRating = $derived(entry?.seasonRatings?.[season] ?? null);
   const currentEpisode = $derived(episodes && current > 0 ? (episodes.find((e) => e.episode_number === current) ?? null) : null);
   const isComplete = $derived(current === total && total > 0);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // How many episodes have aired so far in this season — derived only when
+  // episode data is loaded (i.e. the season was expanded). Drives the
+  // "Catch up" button which fast-forwards progress to the latest aired ep.
+  const airedCount = $derived.by<number | null>(() => {
+    if (!episodes) return null;
+    let n = 0;
+    for (const ep of episodes) {
+      if (ep.air_date && ep.air_date <= todayIso) n++;
+    }
+    return n;
+  });
+  const canCatchUp = $derived(airedCount !== null && airedCount > current && airedCount < total);
 
   function dec() {
     vibrate("tick");
@@ -34,15 +49,12 @@
     vibrate("warn");
     store.resetSeason(showId, season);
   }
-
-  function setRating(value: number) {
-    if (seasonRating === value) {
-      store.setSeasonRating(showId, season, null);
-    } else {
-      store.setSeasonRating(showId, season, value);
-      vibrate("tap");
-    }
+  function catchUp() {
+    if (airedCount === null) return;
+    vibrate("success");
+    store.setProgress(showId, season, airedCount);
   }
+
 
   async function toggleExpand() {
     expanded = !expanded;
@@ -110,6 +122,16 @@
       </button>
     </div>
     <div class="flex w-full items-center justify-end gap-1.5 sm:w-auto">
+      {#if canCatchUp}
+        <button
+          type="button"
+          onclick={catchUp}
+          title="Set progress to the latest aired episode ({airedCount} of {total})"
+          class="rounded-md border border-accent px-2.5 py-1 text-[11px] text-accent hover:bg-accent hover:text-bg"
+        >
+          Catch up · E{airedCount}
+        </button>
+      {/if}
       {#if isComplete}
         <button
           type="button"
@@ -132,31 +154,11 @@
 
   {#if expanded}
     <div class="space-y-3 border-t border-border px-3 py-2">
-      <div class="flex flex-wrap items-center gap-1.5 text-xs">
-        <span class="mr-1 text-muted">Your rating</span>
-        {#each Array.from({ length: 10 }, (_, i) => i + 1) as v (v)}
-          <button
-            type="button"
-            onclick={() => setRating(v)}
-            aria-label="Rate {v}"
-            aria-pressed={seasonRating === v}
-            class="h-7 w-7 rounded-md border tabular-nums transition {seasonRating != null && v <= seasonRating
-              ? 'border-accent bg-accent text-bg'
-              : 'border-border text-muted hover:border-accent'}"
-          >
-            {v}
-          </button>
-        {/each}
-        {#if seasonRating != null}
-          <button
-            type="button"
-            onclick={() => store.setSeasonRating(showId, season, null)}
-            class="ml-1 rounded-md px-2 py-1 text-[11px] text-muted hover:text-danger"
-          >
-            Clear
-          </button>
-        {/if}
-      </div>
+      <RatingPicker
+        value={seasonRating}
+        onChange={(v) => store.setSeasonRating(showId, season, v)}
+        label="Season rating"
+      />
 
       {#if loading}
         <p class="text-xs text-muted">Loading episodes...</p>
