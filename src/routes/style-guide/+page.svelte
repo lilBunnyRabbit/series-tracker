@@ -139,6 +139,15 @@
     voteAverage: 6.1,
     year: "2019",
   });
+  const tvTuned = makeTv({
+    id: MOCK_BASE + 5,
+    title: "Bridgerton",
+    poster: POSTERS.bridgerton,
+    status: "tuned",
+    progress: {},
+    voteAverage: 7.4,
+    year: "2020",
+  });
 
   const movieWatching = makeMovie({
     id: MOCK_BASE + 11,
@@ -179,16 +188,27 @@
     year: "2018",
     runtime: 142,
   });
+  const movieTuned = makeMovie({
+    id: MOCK_BASE + 15,
+    title: "The Matrix",
+    poster: POSTERS.matrix,
+    status: "tuned",
+    voteAverage: 8.2,
+    year: "1999",
+    runtime: 136,
+  });
 
   const allEntries = [
     tvWatching,
     tvCompleted,
     tvPlan,
     tvDropped,
+    tvTuned,
     movieWatching,
     movieCompleted,
     moviePlan,
     movieDropped,
+    movieTuned,
   ];
 
   // SearchResultCard wants raw TMDB-shaped results (not Entry).

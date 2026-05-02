@@ -57,9 +57,10 @@
     }
   });
 
-  // Order: plan → watching → dropped → completed
-  // (future intent first, completed last so the heaviest commitment lives at the bottom).
-  const ADD_ORDER: Status[] = ["plan", "watching", "dropped", "completed"];
+  // Order: plan → watching → tuned → dropped → completed
+  // (future intent first, completed last so the heaviest commitment lives at the bottom;
+  // tuned/dropped sit together as the low-engagement middle tier).
+  const ADD_ORDER: Status[] = ["plan", "watching", "tuned", "dropped", "completed"];
 
   let dialog = $state<HTMLDialogElement>();
 

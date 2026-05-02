@@ -59,7 +59,7 @@
   );
 
   const counts = $derived.by(() => {
-    const c: Record<Status, number> = { watching: 0, completed: 0, plan: 0, dropped: 0 };
+    const c: Record<Status, number> = { watching: 0, completed: 0, plan: 0, dropped: 0, tuned: 0 };
     for (const e of store.entries) {
       if (kindFilter !== "all" && e.kind !== kindFilter) continue;
       c[e.status]++;

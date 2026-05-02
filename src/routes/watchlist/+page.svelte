@@ -90,7 +90,14 @@
   });
 
   const counts = $derived.by(() => {
-    const c: Record<Filter, number> = { all: store.entries.length, watching: 0, completed: 0, plan: 0, dropped: 0 };
+    const c: Record<Filter, number> = {
+      all: store.entries.length,
+      watching: 0,
+      completed: 0,
+      plan: 0,
+      dropped: 0,
+      tuned: 0,
+    };
     for (const e of store.entries) c[e.status]++;
     return c;
   });

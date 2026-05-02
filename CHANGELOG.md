@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-02
+
+### Added
+- New "Tuned in" status for titles you've passively caught a few episodes of without tracking specifics — handy when you sat through someone else's binge. Available everywhere status is set: the picker, segmented control, quick actions, watchlist filter, stats breakdown, and the home History rail.
+
 ## [0.5.0] - 2026-05-01
 
 ### Added

@@ -54,7 +54,7 @@
 
   const history = $derived.by<Entry[]>(() => {
     return store.entries
-      .filter((e) => e.status === "completed" || e.status === "dropped")
+      .filter((e) => e.status === "completed" || e.status === "dropped" || e.status === "tuned")
       .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
       .slice(0, 12);
   });
@@ -154,7 +154,7 @@
     {#if history.length > 0}
       <Rail
         title="History"
-        subtitle="Recently completed & dropped"
+        subtitle="Recently watched, dropped, or tuned in"
         seeAllHref="{base}/watchlist/?status=completed"
       >
         {#each history as e (e.kind + ":" + e.id)}

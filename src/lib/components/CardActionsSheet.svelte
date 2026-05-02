@@ -99,7 +99,7 @@
           type="button"
           use:tactile
           onclick={() => changeStatus(s)}
-          class="tap-target tap-target--btn flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {active
+          class="tap-target tap-target--btn flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 [&:nth-child(odd):last-child]:col-span-2 [&:nth-child(odd):last-child]:justify-center {active
             ? `${c.border} ${c.bg} text-bg`
             : `border-border ${c.text}`}"
         >

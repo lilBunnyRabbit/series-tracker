@@ -12,7 +12,7 @@
   }
 </script>
 
-<div role="radiogroup" aria-label="Status" class="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
+<div role="radiogroup" aria-label="Status" class="grid w-full grid-cols-2 gap-2 sm:grid-cols-5">
   {#each STATUSES as s (s)}
     {@const c = STATUS_COLOR[s]}
     {@const active = value === s}
@@ -22,7 +22,7 @@
       aria-checked={active}
       use:tactile
       onclick={() => pick(s)}
-      class="tap-target tap-target--btn flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {active
+      class="tap-target tap-target--btn flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 [&:nth-child(odd):last-child]:col-span-2 sm:[&:nth-child(odd):last-child]:col-span-1 {active
         ? `${c.border} ${c.bg} text-bg`
         : `border-border ${c.text}`}"
     >

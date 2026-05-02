@@ -187,7 +187,7 @@
     else store.setPreference("region", val);
   }
 
-  const ADD_STATUSES: Status[] = ["plan", "watching", "completed", "dropped"];
+  const ADD_STATUSES: Status[] = ["plan", "watching", "tuned", "completed", "dropped"];
 </script>
 
 <div class="mx-auto max-w-2xl">

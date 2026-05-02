@@ -10,6 +10,7 @@
   --color-accent: oklch(0.745 0.0699 50.47);
   --color-primary: oklch(0.745 0.0699 122.47);
   --color-secondary: oklch(0.745 0.0699 302.47);
+  --color-tertiary: oklch(0.745 0.0699 212.47);
   --color-danger: oklch(0.62 0.16 25);
 
   --font-sans:

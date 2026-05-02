@@ -1,12 +1,13 @@
-export type Status = "watching" | "completed" | "plan" | "dropped";
+export type Status = "watching" | "completed" | "plan" | "dropped" | "tuned";
 
-export const STATUSES: Status[] = ["watching", "completed", "plan", "dropped"];
+export const STATUSES: Status[] = ["watching", "completed", "plan", "dropped", "tuned"];
 
 export const STATUS_LABEL: Record<Status, string> = {
   watching: "Watching",
   completed: "Completed",
   plan: "Plan to watch",
   dropped: "Dropped",
+  tuned: "Tuned in",
 };
 
 export const STATUS_DESCRIPTION: Record<Status, string> = {
@@ -14,6 +15,7 @@ export const STATUS_DESCRIPTION: Record<Status, string> = {
   completed: "Finished — already watched it",
   plan: "Plan to watch later",
   dropped: "Started but won't finish",
+  tuned: "Caught a few episodes — not really tracking",
 };
 
 // Tailwind class fragments mapping each status to a colour family.
@@ -57,6 +59,15 @@ export const STATUS_COLOR: Record<
     bg: "bg-muted",
     chip: "border-border text-muted",
     hoverBorder: "hover:border-muted",
+  },
+  tuned: {
+    dot: "bg-tertiary",
+    text: "text-tertiary",
+    border: "border-tertiary",
+    borderSoft: "border-tertiary/60",
+    bg: "bg-tertiary",
+    chip: "border-tertiary text-tertiary",
+    hoverBorder: "hover:border-tertiary",
   },
 };
 

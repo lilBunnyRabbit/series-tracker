@@ -44,6 +44,7 @@
       completed: 0,
       plan: 0,
       dropped: 0,
+      tuned: 0,
     };
     for (const e of entries) statusCounts[e.status]++;
 
