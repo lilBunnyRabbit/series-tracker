@@ -4,6 +4,22 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-03
+
+### Added
+- Leaderboard page — full TV and Movies rankings by your rating, with podium colour-coding on the top three. Linked from Profile.
+- Pagination on the watchlist — 24 entries per page; the current page is part of the URL so it survives reloads and back-navigation.
+- Sort by release date in the watchlist — orders by year newest-first; entries without a year sort to the end.
+
+### Changed
+- Mobile floating nav now slides away when you scroll, and animates back in when you return to the top of the page.
+- Watchlist filter rows redesigned. The active status / kind tab now stretches to ~80% of the screen width on mobile, fully colour-filled with the label on the left and count on the right, so a glance at the row tells you which subset you're viewing. Inactive tabs sit beside it as compact bordered badges, each tinted with its status colour and the count rendered in the same colour. The strip scroll-snaps so the active tab always lines up with the page gutter, and a smooth transition animates between active and inactive states.
+- Kind filter (All / TV / Movies) now uses three distinct colour families — primary, secondary, and tertiary — so the categories read as visually separate rather than three slots of the same chip.
+- Sort and view (list / grid) options moved into a single bottom sheet behind a filter icon, freeing up the filter row on narrow screens. Selecting a sort or view applies and closes the sheet immediately.
+
+### Fixed
+- Opening a show no longer pushes it to the top of "Recently updated". Background TMDB sync that runs on every detail-page visit no longer counts as an edit; only your own changes (status, rating, progress, notes) move an entry up the list.
+
 ## [0.7.0] - 2026-05-03
 
 ### Added

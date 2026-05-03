@@ -407,6 +407,11 @@ function createStore() {
     // dropping progress for seasons that no longer exist). When new episodes
     // appear and the show was marked "completed", demote it to "watching" (or
     // "plan" if nothing was actually watched) so the user notices unwatched eps.
+    //
+    // Does NOT bump updatedAt — same reasoning as setBackdrop. Sync runs every
+    // time a show page is opened, so bumping the timestamp would surface the
+    // entry on top of "recently updated" just from viewing it. updatedAt should
+    // reflect user edits (status, rating, progress), not background metadata sync.
     syncTvSeasons(showId: number, freshSeasons: Season[]) {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
@@ -440,8 +445,6 @@ function createStore() {
           e.status = anyProgress ? "watching" : "plan";
         }
       }
-
-      withTimestamp(e);
     },
 
     /** Lazy-fill the backdrop URL on an existing entry. Skips if already set

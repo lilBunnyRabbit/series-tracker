@@ -262,7 +262,16 @@
     <!-- Top rated -->
     {#if topRated.length > 0}
       <div class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Your top rated</h2>
+        <h2 class="flex items-baseline justify-between text-sm font-medium uppercase tracking-wider text-muted">
+          <span>Your top rated</span>
+          <a
+            href="{base}/leaderboard/"
+            use:tactile={{ haptic: false }}
+            class="tap-target text-[11px] font-normal normal-case text-muted hover-text-text"
+          >
+            See full leaderboard →
+          </a>
+        </h2>
         <div class="space-y-1.5">
           {#each topRated as e, i (e.kind + ":" + e.id)}
             <a

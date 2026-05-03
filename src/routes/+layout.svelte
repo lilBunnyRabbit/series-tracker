@@ -70,12 +70,28 @@
   const skipApiKeyGate = $derived(
     relPath.startsWith("/settings") ||
       relPath.startsWith("/stats") ||
+      relPath.startsWith("/leaderboard") ||
       relPath.startsWith("/diary") ||
       relPath.startsWith("/style-guide")
   );
   // Hide the floating nav on /search — the bottom-docked search input would
   // otherwise crowd it; users get a back button instead.
   const hideFloatingNav = $derived(relPath.startsWith("/search"));
+
+  // Mobile-only: the floating nav slides away once the user has scrolled past
+  // the top so the content owns the screen, and reappears when they're back
+  // at the top. Threshold is small enough that iOS rubber-banding doesn't
+  // flicker the state but big enough to feel intentional.
+  let scrolled = $state(false);
+
+  $effect(() => {
+    const onScroll = () => {
+      scrolled = window.scrollY > 16;
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  });
 
   // Order: Home, Discover, Watchlist, Search, Profile (stats hub, links to settings).
   const items: { href: string; label: string; path: string; icon: IconName }[] = [
@@ -101,6 +117,7 @@
     if (relPath.startsWith("/discover/browse")) return "Browse";
     if (relPath.startsWith("/discover")) return "Discover";
     if (relPath.startsWith("/stats")) return "Profile";
+    if (relPath.startsWith("/leaderboard")) return "Leaderboard";
     if (relPath.startsWith("/diary")) return "Diary";
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.startsWith("/style-guide")) return "Style Guide";
@@ -121,6 +138,7 @@
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
+    if (relPath.startsWith("/leaderboard")) return `${base}/stats/`;
     if (relPath.startsWith("/diary")) return `${base}/stats/`;
     if (relPath.startsWith("/style-guide")) return `${base}/settings/`;
     if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
@@ -205,8 +223,11 @@
     {@const activeIndex = items.findIndex((i) => isActive(i.path))}
     <nav
       class="floating-nav sm:hidden"
+      class:is-hidden={scrolled}
       style="padding-bottom: max(env(safe-area-inset-bottom), 0.5rem)"
       aria-label="Primary"
+      aria-hidden={scrolled}
+      inert={scrolled}
     >
       <div class="floating-nav-pill">
         <!-- Sliding active-tab indicator. Width = 1/items, translateX = index. -->
@@ -271,6 +292,22 @@
     box-shadow:
       0 12px 32px -12px rgb(0 0 0 / 0.55),
       0 2px 6px -2px rgb(0 0 0 / 0.4);
+    transform-origin: 50% 100%;
+    transition:
+      transform var(--dur-release) var(--ease-spring),
+      opacity var(--dur-base) var(--ease-out),
+      filter var(--dur-base) var(--ease-out);
+    will-change: transform, opacity;
+  }
+
+  /* Slide the pill off the bottom edge with a soft scale + blur so the exit
+     reads as "settling away" rather than a hard cut. Spring ease on transform
+     gives the return a subtle overshoot when scrolling back to the top. */
+  .floating-nav.is-hidden .floating-nav-pill {
+    transform: translateY(calc(100% + 1.5rem)) scale(0.92);
+    opacity: 0;
+    filter: blur(4px);
+    pointer-events: none;
   }
   /* When backdrop-filter isn't supported (or is gated), bump the rgba alpha
      up so the pill stays readable as a solid translucent shape. */
@@ -298,6 +335,13 @@
   @media (prefers-reduced-motion: reduce) {
     .floating-nav-indicator {
       transition: none;
+    }
+    .floating-nav-pill {
+      transition: opacity var(--dur-fast) linear;
+    }
+    .floating-nav.is-hidden .floating-nav-pill {
+      transform: none;
+      filter: none;
     }
   }
 </style>
