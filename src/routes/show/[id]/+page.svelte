@@ -12,6 +12,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { backdropUrl, entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
+  import { effectiveSeasons, isSpecialSeason, sortSeasonsForDisplay } from "$lib/types";
   import type { Status, TvDetail, TvEntry } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -23,9 +24,13 @@
   const entry = $derived(store.get("tv", id));
   const tvEntry = $derived(entry?.kind === "tv" ? (entry as TvEntry) : null);
 
-  const totalEpisodes = $derived(tvEntry ? tvEntry.seasons.reduce((a, s) => a + s.episodeCount, 0) : 0);
+  // Totals and progress are computed against the seasons that count for this
+  // show — specials are excluded by default so the user can complete a series
+  // without ticking the bonus content.
+  const countedSeasons = $derived(tvEntry ? effectiveSeasons(tvEntry) : []);
+  const totalEpisodes = $derived(countedSeasons.reduce((a, s) => a + s.episodeCount, 0));
   const watchedEpisodes = $derived(
-    tvEntry ? tvEntry.seasons.reduce((a, s) => a + Math.min(tvEntry.progress[s.number] ?? 0, s.episodeCount), 0) : 0
+    tvEntry ? countedSeasons.reduce((a, s) => a + Math.min(tvEntry.progress[s.number] ?? 0, s.episodeCount), 0) : 0
   );
 
   // Always pull fresh TMDB data so newly-aired episodes show up. When the show
@@ -45,9 +50,11 @@
       .then((d) => {
         if (ctrl.signal.aborted) return;
         detail = d;
-        const seasons = d.seasons
-          .filter((s) => s.season_number > 0 || s.episode_count > 0)
-          .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }));
+        const seasons = sortSeasonsForDisplay(
+          d.seasons
+            .filter((s) => s.season_number > 0 || s.episode_count > 0)
+            .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }))
+        );
         store.syncTvSeasons(id, seasons);
         if (hasEntry) store.setBackdrop("tv", id, backdropUrl(d.backdrop_path, "w780"));
       })
@@ -69,12 +76,21 @@
   });
 
   const seasons = $derived(
-    tvEntry
-      ? tvEntry.seasons
-      : (detail?.seasons ?? [])
-          .filter((s) => s.season_number > 0 || s.episode_count > 0)
-          .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }))
+    sortSeasonsForDisplay(
+      tvEntry
+        ? tvEntry.seasons
+        : (detail?.seasons ?? [])
+            .filter((s) => s.season_number > 0 || s.episode_count > 0)
+            .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }))
+    )
   );
+
+  // Split into regular vs specials so the seasons section can render them as
+  // distinct groups — regular up top in display order, specials in their own
+  // collapsed-by-default block at the bottom.
+  const regularSeasons = $derived(seasons.filter((s) => !isSpecialSeason(s.number)));
+  const specialSeasons = $derived(seasons.filter((s) => isSpecialSeason(s.number)));
+  const includeSpecials = $derived(tvEntry?.includeSpecials ?? false);
 
   function addToLibrary(status: Status): void {
     if (!detail) return;
@@ -219,11 +235,11 @@
       />
     {/if}
 
-    {#if seasons.length > 0}
+    {#if regularSeasons.length > 0}
       <div class="space-y-2">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Seasons</h2>
         <div class="space-y-2">
-          {#each seasons as s (s.number)}
+          {#each regularSeasons as s (s.number)}
             {#if tvEntry}
               <SeasonCounter showId={id} season={s.number} name={s.name} total={s.episodeCount} />
             {:else}
@@ -231,6 +247,44 @@
                 <div>
                   <div class="text-sm font-medium">{s.name}</div>
                   <div class="text-xs text-muted">Season {s.number} · {s.episodeCount} episodes</div>
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if specialSeasons.length > 0}
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Specials</h2>
+          {#if tvEntry}
+            <label class="flex items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={includeSpecials}
+                onchange={(e) => store.setIncludeSpecials(id, (e.currentTarget as HTMLInputElement).checked)}
+                class="h-4 w-4 cursor-pointer accent-primary"
+              />
+              <span>Count toward completion</span>
+            </label>
+          {/if}
+        </div>
+        {#if tvEntry && !includeSpecials}
+          <p class="text-xs text-muted">
+            Specials are tracked separately — Mark complete and progress totals ignore this section unless you tick "Count toward completion".
+          </p>
+        {/if}
+        <div class="space-y-2 {tvEntry && !includeSpecials ? 'opacity-75' : ''}">
+          {#each specialSeasons as s (s.number)}
+            {#if tvEntry}
+              <SeasonCounter showId={id} season={s.number} name={s.name} total={s.episodeCount} />
+            {:else}
+              <div class="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2">
+                <div>
+                  <div class="text-sm font-medium">{s.name}</div>
+                  <div class="text-xs text-muted">Specials · {s.episodeCount} episodes</div>
                 </div>
               </div>
             {/if}

@@ -4,6 +4,24 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-03
+
+### Added
+- Pagination redesigned: First / Prev / [editable page input] of N / Next / Last on a single row. The numbered page buttons are gone — type the page you want or use the chevrons. Single-row layout that never wraps on narrow screens.
+- Specials are tracked in their own section at the bottom of the show page and excluded from completion by default. A per-show "Count toward completion" toggle flips them back on.
+- Library status pill now shows the status label (Watching, Plan, etc.) under the title on every poster card, replacing the bare colored dot.
+- Settings shows current IndexedDB storage usage with a refresh button.
+- Picker (both the bracket picker and the random-pick surprise sheet) shows your saved notes alongside the title — useful when picking, since the note is often the deciding factor.
+- Image galleries on info pages start collapsed at 8 thumbnails with a "Show all" expansion. The fullscreen preview now supports prev/next arrows and arrow-key navigation.
+
+### Changed
+- "Mark complete" and "+1 episode" walk only the seasons that count toward this show — specials no longer block a show from being marked complete.
+
+### Fixed
+- Tapping the start of a list scroll no longer flashes a shrink animation on the card the finger landed on.
+- Bulk search status chip and "+ Add" button now line up when stacked across a results rail.
+- Scroll position is restored when navigating back from a detail page to a list, even when the list loads its content asynchronously.
+
 ## [0.6.0] - 2026-05-02
 
 ### Added

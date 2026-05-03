@@ -2,7 +2,7 @@
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
   type Props = { entry: Entry; open: boolean; onClose: () => void };
@@ -19,10 +19,11 @@
   });
 
   // TV "next episode" hint — same logic as info page so the sheet button label
-  // matches what would happen on tap.
+  // matches what would happen on tap. Walks only the seasons that count
+  // (specials excluded by default) to mirror incrementCurrent behavior.
   const nextEp = $derived.by<{ season: number; episode: number; total: number } | null>(() => {
     if (entry.kind !== "tv") return null;
-    for (const s of entry.seasons) {
+    for (const s of effectiveSeasons(entry)) {
       const cur = entry.progress[s.number] ?? 0;
       if (cur < s.episodeCount) return { season: s.number, episode: cur + 1, total: s.episodeCount };
     }

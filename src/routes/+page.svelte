@@ -6,6 +6,7 @@
   import Rail from "$lib/components/Rail.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { effectiveSeasons } from "$lib/types";
   import type { Entry, TvEntry } from "$lib/types";
 
   type ContinueItem = {
@@ -16,7 +17,9 @@
   };
 
   function nextEpisode(e: TvEntry): { season: number; episode: number } | null {
-    for (const s of e.seasons) {
+    // Skip past specials by default — Continue Watching shouldn't push the
+    // user into bonus content unless they've opted in for this show.
+    for (const s of effectiveSeasons(e)) {
       const cur = e.progress[s.number] ?? 0;
       if (cur < s.episodeCount) return { season: s.number, episode: cur + 1 };
     }
@@ -24,7 +27,7 @@
   }
 
   function totalRemaining(e: TvEntry): number {
-    return e.seasons.reduce((a, s) => a + Math.max(0, s.episodeCount - (e.progress[s.number] ?? 0)), 0);
+    return effectiveSeasons(e).reduce((a, s) => a + Math.max(0, s.episodeCount - (e.progress[s.number] ?? 0)), 0);
   }
 
   const continueWatching = $derived.by<ContinueItem[]>(() => {
@@ -60,7 +63,7 @@
   });
 
   function tvMeta(e: TvEntry): string {
-    const total = e.seasons.reduce((a, s) => a + s.episodeCount, 0);
+    const total = effectiveSeasons(e).reduce((a, s) => a + s.episodeCount, 0);
     return total > 0 ? `${total} ep` : "";
   }
 

@@ -6,78 +6,98 @@
     current: number;
     total: number;
     onGoTo: (page: number) => void;
-    /** Numbers to show on each side of the current page. Default 1 → "1 ... 5 6 7 ... 10". */
+    /** Kept for backwards-compat with older call sites; no longer affects
+     *  rendering since the redesign dropped sibling page-number buttons. */
     siblings?: number;
   };
 
-  let { current, total, onGoTo, siblings = 1 }: Props = $props();
-
-  type Item = number | "left-ellipsis" | "right-ellipsis";
-
-  // 5 fixed slots: first, last, current, two ellipsis. Plus 2*siblings around current.
-  // If total fits in those slots without dots, render every page.
-  const pages = $derived.by<Item[]>(() => {
-    if (total <= 1) return [];
-    const totalSlots = 5 + siblings * 2;
-    if (total <= totalSlots) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-    const left = Math.max(current - siblings, 1);
-    const right = Math.min(current + siblings, total);
-    const showLeftDots = left > 2;
-    const showRightDots = right < total - 1;
-
-    if (!showLeftDots && showRightDots) {
-      const count = 3 + siblings * 2;
-      return [...Array.from({ length: count }, (_, i) => i + 1), "right-ellipsis", total];
-    }
-    if (showLeftDots && !showRightDots) {
-      const count = 3 + siblings * 2;
-      const start = total - count + 1;
-      return [1, "left-ellipsis", ...Array.from({ length: count }, (_, i) => start + i)];
-    }
-    const middle = Array.from({ length: right - left + 1 }, (_, i) => left + i);
-    return [1, "left-ellipsis", ...middle, "right-ellipsis", total];
-  });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let { current, total, onGoTo, siblings: _siblings = 1 }: Props = $props();
 
   function jump(delta: number): void {
     const target = current + delta;
     if (target < 1 || target > total) return;
     onGoTo(target);
   }
+
+  // One-way binding via `value={current}`: the input shows the current page,
+  // the user types freely (DOM owns the in-flight value), commit on blur /
+  // Enter. Avoids the round-trip pain of two-way binding when the prop
+  // changes mid-edit.
+  function commit(e: Event): void {
+    const el = e.currentTarget as HTMLInputElement;
+    const n = Number(el.value);
+    if (!Number.isFinite(n)) {
+      el.value = String(current);
+      return;
+    }
+    const target = Math.min(Math.max(Math.floor(n), 1), total);
+    if (target === current) {
+      el.value = String(current);
+      return;
+    }
+    onGoTo(target);
+  }
+
+  function onKey(e: KeyboardEvent): void {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.currentTarget as HTMLInputElement).blur();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      (e.currentTarget as HTMLInputElement).value = String(current);
+      (e.currentTarget as HTMLInputElement).blur();
+    }
+  }
 </script>
 
-<nav class="flex flex-wrap items-center justify-center gap-1.5" aria-label="Pagination">
+<!-- Single row, never wraps. The page numbers grid is gone — at 100+ pages it
+     was either a tiny scroll strip on mobile or it spilled to a second line.
+     Replaced with an inline number input so the user types the page they
+     want; First / Last chevrons handle the edges in one tap. -->
+<nav
+  class="pagination flex items-center justify-center gap-1 text-sm"
+  aria-label="Pagination"
+>
+  <button
+    type="button"
+    use:tactile
+    onclick={() => onGoTo(1)}
+    disabled={current <= 1}
+    aria-label="First page"
+    title="First page"
+    class="tap-target tap-target--btn flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-base leading-none hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    «
+  </button>
   <button
     type="button"
     use:tactile
     onclick={() => jump(-1)}
     disabled={current <= 1}
     aria-label="Previous page"
-    class="tap-target tap-target--btn flex items-center rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     <Icon name="arrow-left" size={14} />
   </button>
 
-  {#each pages as item, i (i + ":" + item)}
-    {#if typeof item === "number"}
-      {@const active = item === current}
-      <button
-        type="button"
-        use:tactile
-        onclick={() => onGoTo(item)}
-        aria-current={active ? "page" : undefined}
-        aria-label={`Page ${item}`}
-        class="tap-target tap-target--btn min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors duration-150 {active
-          ? 'border-primary bg-primary text-bg'
-          : 'border-border hover-border-primary'}"
-      >
-        {item}
-      </button>
-    {:else}
-      <span aria-hidden="true" class="px-1 text-sm text-muted">…</span>
-    {/if}
-  {/each}
+  <!-- Editable page indicator. Acts as both "where am I" and "jump to". -->
+  <div class="flex shrink-0 items-center gap-1 px-1">
+    <input
+      type="number"
+      min="1"
+      max={total}
+      inputmode="numeric"
+      value={current}
+      onkeydown={onKey}
+      onblur={commit}
+      aria-label="Page number"
+      class="w-14 rounded-md border border-border bg-surface-2 px-1.5 py-2 text-center text-sm tabular-nums outline-none focus:border-primary"
+    />
+    <span class="whitespace-nowrap text-xs tabular-nums text-muted">
+      / {total.toLocaleString()}
+    </span>
+  </div>
 
   <button
     type="button"
@@ -85,8 +105,33 @@
     onclick={() => jump(1)}
     disabled={current >= total}
     aria-label="Next page"
-    class="tap-target tap-target--btn flex items-center rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+    class="tap-target tap-target--btn flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
   >
     <Icon name="arrow-right" size={14} />
   </button>
+  <button
+    type="button"
+    use:tactile
+    onclick={() => onGoTo(total)}
+    disabled={current >= total}
+    aria-label="Last page"
+    title="Last page"
+    class="tap-target tap-target--btn flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-base leading-none hover-border-primary disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    »
+  </button>
 </nav>
+
+<style>
+  /* Hide the native number-input spinners — they crowd the cell and the user
+     types or uses the prev/next buttons instead. */
+  .pagination input[type="number"]::-webkit-outer-spin-button,
+  .pagination input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .pagination input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+</style>

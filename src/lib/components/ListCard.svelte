@@ -3,7 +3,7 @@
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { longPress, tactile } from "$lib/tactile";
-  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
+  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
   type Props = {
@@ -21,10 +21,11 @@
     entry.status === "dropped" ? `${c.borderSoft} opacity-70` : c.borderSoft
   );
 
-  const totalEpisodes = $derived(entry.kind === "tv" ? entry.seasons.reduce((a, s) => a + s.episodeCount, 0) : 0);
+  const countedSeasons = $derived(entry.kind === "tv" ? effectiveSeasons(entry) : []);
+  const totalEpisodes = $derived(countedSeasons.reduce((a, s) => a + s.episodeCount, 0));
   const watchedEpisodes = $derived(
     entry.kind === "tv"
-      ? entry.seasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0)
+      ? countedSeasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0)
       : 0
   );
   const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);

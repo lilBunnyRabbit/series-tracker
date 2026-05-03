@@ -102,7 +102,11 @@
       filter var(--dur-press) var(--ease-out);
   }
 
-  .tap-target--card:active,
+  /* Cards skip the :active selector and rely solely on `.is-pressed` from the
+     tactile action — :active fires on touchstart even at the start of a
+     scroll, which made every scroll-start briefly shrink whichever card the
+     finger landed on. The action delays the class on touch, so real taps still
+     get the press feedback but scroll-starts never paint it. */
   .tap-target--card.is-pressed {
     transform: scale(0.985);
     filter: brightness(0.92);

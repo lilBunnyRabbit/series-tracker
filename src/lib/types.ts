@@ -98,9 +98,35 @@ export type TvEntry = {
   runtime?: number;
   /** Captured at add time so stats can compute top genres locally. */
   genres?: { id: number; name: string }[];
+  /** When false / absent, season 0 (specials) is excluded from completion
+   *  calculations and Mark complete — users can finish a show without ticking
+   *  specials. Flip on per-show via the show page toggle to track them. */
+  includeSpecials?: boolean;
   addedAt: string;
   updatedAt: string;
 };
+
+/** Season-zero is TMDB's convention for specials. Centralised so everything
+ *  agrees on the cutoff. */
+export function isSpecialSeason(seasonNumber: number): boolean {
+  return seasonNumber === 0;
+}
+
+/** Seasons that count toward "complete" / progress totals for a given entry.
+ *  Honors the per-show `includeSpecials` flag. */
+export function effectiveSeasons(entry: TvEntry): Season[] {
+  if (entry.includeSpecials) return entry.seasons;
+  return entry.seasons.filter((s) => !isSpecialSeason(s.number));
+}
+
+/** Sort seasons for display so specials (season 0) always render last. */
+export function sortSeasonsForDisplay<T extends { number: number }>(seasons: T[]): T[] {
+  return [...seasons].sort((a, b) => {
+    if (a.number === 0 && b.number !== 0) return 1;
+    if (b.number === 0 && a.number !== 0) return -1;
+    return a.number - b.number;
+  });
+}
 
 export type MovieEntry = {
   kind: "movie";

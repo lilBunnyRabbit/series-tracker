@@ -2,7 +2,7 @@
   import { base } from "$app/paths";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { tactile } from "$lib/tactile";
-  import { STATUS_COLOR } from "$lib/types";
+  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
   type Props = {
@@ -88,16 +88,21 @@
 
     <span class="absolute bottom-1.5 left-1.5 flex items-center gap-1.5">
       <TypeBadge {kind} variant="overlay" />
-      {#if c}
-        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-black/65 backdrop-blur-sm" aria-hidden="true">
-          <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
-        </span>
-      {/if}
     </span>
   </div>
 
   <div class="min-w-0 px-0.5">
     <div class="line-clamp-2 text-xs font-medium leading-snug text-text">{title}</div>
+    {#if c && status}
+      <!-- Labelled status pill replaces the bare-dot poster overlay we used to
+           show. Once a card is in the library, the user wants a clear "you've
+           got this as Watching/Plan/etc." readout below the title — a colored
+           dot in the corner wasn't legible enough to communicate state. -->
+      <div class="mt-1 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium {c.chip}">
+        <span class="h-1.5 w-1.5 rounded-full {c.dot}" aria-hidden="true"></span>
+        <span class="truncate">{STATUS_LABEL[status]}</span>
+      </div>
+    {/if}
     {#if year || meta}
       <div class="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
         {#if year}<span class="tabular-nums">{year}</span>{/if}

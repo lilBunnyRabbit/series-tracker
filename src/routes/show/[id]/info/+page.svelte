@@ -24,6 +24,7 @@
     watchProviders,
   } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
+  import { effectiveSeasons } from "$lib/types";
   import type { Status, TvDetailFull, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -103,10 +104,11 @@
   }
 
   // Next-episode label for the inline +ep button. Returns null when the show
-  // is fully watched (or not in library), which hides the button.
+  // is fully watched (or not in library), which hides the button. Walks only
+  // the seasons that count for completion (specials excluded by default).
   const nextEp = $derived.by<{ season: number; episode: number; total: number } | null>(() => {
     if (!entry || entry.kind !== "tv") return null;
-    for (const s of entry.seasons) {
+    for (const s of effectiveSeasons(entry)) {
       const cur = entry.progress[s.number] ?? 0;
       if (cur < s.episodeCount) {
         return { season: s.number, episode: cur + 1, total: s.episodeCount };
@@ -428,12 +430,20 @@
       </Rail>
     {/if}
 
-    <!-- SEASONS -->
+    <!-- SEASONS — specials (season 0) sorted to the bottom. -->
     {#if detail.seasons.length > 0}
+      {@const visibleSeasons = detail.seasons
+        .filter((s) => s.season_number > 0 || s.episode_count > 0)
+        .slice()
+        .sort((a, b) => {
+          if (a.season_number === 0 && b.season_number !== 0) return 1;
+          if (b.season_number === 0 && a.season_number !== 0) return -1;
+          return a.season_number - b.season_number;
+        })}
       <section class="space-y-3">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Seasons</h2>
         <div class="grid gap-2 sm:grid-cols-2">
-          {#each detail.seasons.filter((s) => s.season_number > 0 || s.episode_count > 0) as s (s.season_number)}
+          {#each visibleSeasons as s (s.season_number)}
             <div class="flex gap-3 rounded-md border border-border bg-surface p-2">
               <div class="h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-surface-2">
                 {#if s.poster_path}
@@ -442,7 +452,9 @@
               </div>
               <div class="min-w-0 flex-1">
                 <div class="truncate text-sm font-medium">{s.name}</div>
-                <div class="text-xs text-muted">{s.episode_count} ep{s.episode_count === 1 ? "" : "s"}</div>
+                <div class="text-xs text-muted">
+                  {s.season_number === 0 ? "Specials · " : ""}{s.episode_count} ep{s.episode_count === 1 ? "" : "s"}
+                </div>
                 {#if s.air_date}<div class="text-[11px] text-muted">{s.air_date}</div>{/if}
               </div>
             </div>

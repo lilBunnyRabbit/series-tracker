@@ -3,7 +3,7 @@
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { longPress, tactile } from "$lib/tactile";
-  import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
+  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
   type Props = { entry: Entry; compact?: boolean };
@@ -11,9 +11,15 @@
 
   const href = $derived(entry.kind === "tv" ? `${base}/show/${entry.id}/` : `${base}/movie/${entry.id}/`);
 
-  const totalEpisodes = $derived(entry.kind === "tv" ? entry.seasons.reduce((a, s) => a + s.episodeCount, 0) : 0);
+  // Card progress mirrors the show page: specials are excluded from totals
+  // unless the user has opted into them, so the bar fills to 100% the moment
+  // the regular run is done.
+  const countedSeasons = $derived(entry.kind === "tv" ? effectiveSeasons(entry) : []);
+  const totalEpisodes = $derived(countedSeasons.reduce((a, s) => a + s.episodeCount, 0));
   const watchedEpisodes = $derived(
-    entry.kind === "tv" ? entry.seasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0) : 0
+    entry.kind === "tv"
+      ? countedSeasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0)
+      : 0
   );
   const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
 

@@ -8,7 +8,7 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
   type Filter = "all" | Status;
@@ -62,9 +62,10 @@
 
   function progressPct(e: Entry): number {
     if (e.kind !== "tv") return e.status === "completed" ? 1 : 0;
-    const total = e.seasons.reduce((a, s) => a + s.episodeCount, 0);
+    const counted = effectiveSeasons(e);
+    const total = counted.reduce((a, s) => a + s.episodeCount, 0);
     if (total === 0) return 0;
-    const watched = e.seasons.reduce((a, s) => a + Math.min(e.progress[s.number] ?? 0, s.episodeCount), 0);
+    const watched = counted.reduce((a, s) => a + Math.min(e.progress[s.number] ?? 0, s.episodeCount), 0);
     return watched / total;
   }
 

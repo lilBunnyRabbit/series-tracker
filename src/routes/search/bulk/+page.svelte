@@ -238,8 +238,11 @@
                 />
                 <div class="mt-auto">
                   {#if existing && c}
+                    <!-- Match the StatusMenu sm-button geometry (px-3 py-1.5
+                         text-xs) so the chip and the +Add button land at the
+                         same height when stacked side-by-side across the rail. -->
                     <span
-                      class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium {c.chip}"
+                      class="flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium {c.chip}"
                     >
                       <span class="h-1.5 w-1.5 rounded-full {c.dot}" aria-hidden="true"></span>
                       <span class="truncate">{STATUS_LABEL[existing.status]}</span>

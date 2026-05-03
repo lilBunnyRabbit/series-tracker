@@ -462,13 +462,24 @@ export function clearCache(): void {
 
 export function entryFromTvDetail(detail: TvDetail, status: Status = "plan"): TvEntry {
   const now = new Date().toISOString();
+  // Sort with specials (season 0) last so library order matches what the show
+  // page renders; downstream consumers (incrementCurrent, library card meta)
+  // can iterate in display order.
   const seasons = detail.seasons
     .filter((s) => s.season_number > 0 || s.episode_count > 0)
-    .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }));
+    .map((s) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count }))
+    .sort((a, b) => {
+      if (a.number === 0 && b.number !== 0) return 1;
+      if (b.number === 0 && a.number !== 0) return -1;
+      return a.number - b.number;
+    });
   // Adding as "completed" means the user has already finished it — pre-fill
-  // every season's progress so episode counts and the show page line up.
+  // every non-special season's progress. Specials stay at zero unless the user
+  // explicitly opts into tracking them later.
   const progress: Record<number, number> =
-    status === "completed" ? Object.fromEntries(seasons.map((s) => [s.number, s.episodeCount])) : {};
+    status === "completed"
+      ? Object.fromEntries(seasons.filter((s) => s.number !== 0).map((s) => [s.number, s.episodeCount]))
+      : {};
   return {
     kind: "tv",
     id: detail.id,

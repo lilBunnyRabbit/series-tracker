@@ -1,5 +1,6 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
+import { effectiveSeasons } from "./types";
 import type { DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
 
 const IDB_KEY = "state";
@@ -303,7 +304,10 @@ function createStore() {
       const next = (e.progress[season] ?? 0) + delta;
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, next));
       withTimestamp(e);
-      const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      // Completion is judged against the seasons that count for this show —
+      // specials are excluded unless includeSpecials is on.
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       const anyProgress = Object.values(e.progress).some((v) => v > 0);
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
@@ -317,7 +321,8 @@ function createStore() {
       if (!s) return;
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, Math.floor(value || 0)));
       withTimestamp(e);
-      const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       const anyProgress = Object.values(e.progress).some((v) => v > 0);
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
@@ -330,7 +335,8 @@ function createStore() {
       if (!s) return;
       e.progress[season] = s.episodeCount;
       withTimestamp(e);
-      const allDone = e.seasons.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       if (allDone) e.status = "completed";
       else if (e.status === "plan") e.status = "watching";
     },
@@ -347,7 +353,10 @@ function createStore() {
     incrementCurrent(showId: number): boolean {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return false;
-      for (const s of e.seasons) {
+      // Walk only the seasons that count for this show — skip specials when
+      // they're excluded so "+1 episode" never lands inside specials by
+      // accident on a show the user has otherwise finished.
+      for (const s of effectiveSeasons(e)) {
         const cur = e.progress[s.number] ?? 0;
         if (cur < s.episodeCount) {
           this.updateProgress(showId, s.number, 1);
@@ -364,12 +373,33 @@ function createStore() {
       // For movies, "watched" mirrors status === "completed". Keep them aligned
       // so any legacy export that still ships `watched` stays consistent.
       if (e.kind === "movie") e.watched = status === "completed";
-      // For TV, "completed" implies every episode watched — fill progress so
-      // the show page, library card, and per-season counters all agree.
+      // For TV, "completed" implies every counted episode watched — fill
+      // progress for the seasons that count. Specials stay at their current
+      // value (typically 0) unless the user has opted into tracking them.
       if (e.kind === "tv" && status === "completed") {
-        for (const s of e.seasons) e.progress[s.number] = s.episodeCount;
+        for (const s of effectiveSeasons(e)) e.progress[s.number] = s.episodeCount;
       }
       withTimestamp(e);
+    },
+
+    setIncludeSpecials(showId: number, value: boolean) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+      if (value) e.includeSpecials = true;
+      else delete e.includeSpecials;
+      withTimestamp(e);
+      // Toggling can flip completion state in either direction:
+      // - turning ON specials: a show that was "completed" without specials
+      //   may need to drop back to "watching" if specials are unwatched.
+      // - turning OFF specials: a show stuck on "watching" because of
+      //   unwatched specials may deserve to auto-promote to "completed".
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((s) => (e.progress[s.number] ?? 0) === s.episodeCount);
+      if (allDone && e.status !== "completed") e.status = "completed";
+      else if (!allDone && e.status === "completed") {
+        const anyProgress = Object.values(e.progress).some((v) => v > 0);
+        e.status = anyProgress ? "watching" : "plan";
+      }
     },
 
     // Reconciles a stored TV entry's seasons with a fresh TMDB snapshot. Preserves
@@ -403,7 +433,8 @@ function createStore() {
       e.progress = nextProgress;
 
       if (newTotal > prevTotal && e.status === "completed") {
-        const allDone = e.seasons.every((s) => (e.progress[s.number] ?? 0) === s.episodeCount);
+        const counted = effectiveSeasons(e);
+        const allDone = counted.length > 0 && counted.every((s) => (e.progress[s.number] ?? 0) === s.episodeCount);
         if (!allDone) {
           const anyProgress = Object.values(e.progress).some((v) => v > 0);
           e.status = anyProgress ? "watching" : "plan";

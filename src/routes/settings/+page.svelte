@@ -29,6 +29,42 @@
 
   let cacheCleared = $state(false);
 
+  // navigator.storage.estimate is async and only resolves in the browser. We
+  // keep both fields nullable so the row can render a "—" placeholder during
+  // the first paint without a layout shift when the values land.
+  let storageUsage = $state<number | null>(null);
+  let storageQuota = $state<number | null>(null);
+  let storageError = $state<string | null>(null);
+
+  async function refreshStorage(): Promise<void> {
+    if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
+      storageError = "Not supported";
+      return;
+    }
+    try {
+      const est = await navigator.storage.estimate();
+      storageUsage = typeof est.usage === "number" ? est.usage : null;
+      storageQuota = typeof est.quota === "number" ? est.quota : null;
+      storageError = null;
+    } catch (e) {
+      storageError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 2 : 1)} KB`;
+    const mb = kb / 1024;
+    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 2 : 1)} MB`;
+    return `${(mb / 1024).toFixed(2)} GB`;
+  }
+
+  const storagePct = $derived.by(() => {
+    if (storageUsage === null || storageQuota === null || storageQuota === 0) return null;
+    return (storageUsage / storageQuota) * 100;
+  });
+
   const updateAvailable = $derived(isUpdateAvailable());
   const buildTimeFmt = $derived.by(() => {
     if (!version.current.buildTime) return null;
@@ -87,6 +123,13 @@
   let importMessage = $state<string | null>(null);
   let importMode = $state<"replace" | "merge">("merge");
   let exportApiKey = $state(false);
+
+  // Kick off the first storage read in the browser. Runs once on mount; the
+  // user can re-poll via the row's refresh button if they just imported or
+  // wiped data and want to see the number move.
+  $effect(() => {
+    void refreshStorage();
+  });
 
   function flashSaved(msg: string): void {
     savedNote = msg;
@@ -274,6 +317,51 @@
       >
         {cacheCleared ? "Cleared ✓" : "Clear cache"}
       </button>
+    </div>
+
+    <hr class="border-border" />
+
+    <div class="space-y-2">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="text-sm font-medium">Storage</h3>
+          <p class="mt-0.5 text-xs text-muted">
+            Library, diary, and preferences live in IndexedDB. Browsers usually allow tens of MB
+            before warning.
+          </p>
+        </div>
+        <button
+          type="button"
+          use:tactile
+          onclick={refreshStorage}
+          class="tap-target tap-target--btn rounded-md border border-border px-3 py-2 text-xs hover-border-accent"
+        >
+          Refresh
+        </button>
+      </div>
+      {#if storageError}
+        <p class="text-xs text-muted">Couldn't read: {storageError}.</p>
+      {:else if storageUsage === null}
+        <p class="text-xs text-muted">Reading…</p>
+      {:else}
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+          <span class="font-medium tabular-nums">{formatBytes(storageUsage)}</span>
+          {#if storageQuota !== null}
+            <span class="text-xs text-muted">used of {formatBytes(storageQuota)}</span>
+          {/if}
+          {#if storagePct !== null}
+            <span class="text-xs tabular-nums text-muted">· {storagePct < 0.1 ? "<0.1" : storagePct.toFixed(1)}%</span>
+          {/if}
+        </div>
+        {#if storagePct !== null}
+          <div class="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+            <div
+              class="h-full bg-accent transition-all"
+              style="width: {Math.max(0.5, Math.min(storagePct, 100))}%"
+            ></div>
+          </div>
+        {/if}
+      {/if}
     </div>
   </div>
 

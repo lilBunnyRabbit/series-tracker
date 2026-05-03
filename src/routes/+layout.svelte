@@ -1,5 +1,6 @@
 <script lang="ts">
   import "./layout.css";
+  import { afterNavigate, beforeNavigate } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import { initBackTracker, smartBack } from "$lib/back.svelte";
@@ -16,6 +17,38 @@
 
   initBackTracker();
   const onBack = smartBack();
+
+  // Scroll restoration on history.back. SvelteKit restores once on popstate,
+  // but list pages (watchlist, browse, search) often load their content
+  // asynchronously via $effect — by the time the data lands and the page
+  // becomes tall enough, the original restore has already clamped scroll to
+  // 0 because the DOM was too short. We re-apply the saved position across
+  // a few animation frames so the late-arriving content can be scrolled to.
+  const scrollByUrl = new Map<string, number>();
+
+  beforeNavigate(({ from }) => {
+    if (from) scrollByUrl.set(from.url.href, window.scrollY);
+  });
+
+  afterNavigate(({ to, type }) => {
+    if (!to) return;
+    if (type !== "popstate") return;
+    const target = scrollByUrl.get(to.url.href);
+    if (!target) return;
+    let attempts = 0;
+    const tick = () => {
+      window.scrollTo({ top: target, behavior: "instant" as ScrollBehavior });
+      // Stop once we land within 4px of the target (close enough — content
+      // jitter from images loading can cost a pixel here and there) or after
+      // ~30 frames (~500ms) so we don't loop forever on a permanently
+      // shortened page.
+      if (Math.abs(window.scrollY - target) > 4 && attempts < 30) {
+        attempts++;
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+  });
 
   onMount(async () => {
     versionModule.init();

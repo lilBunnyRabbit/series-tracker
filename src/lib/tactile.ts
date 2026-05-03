@@ -8,8 +8,8 @@ type TactileOptions = {
 };
 
 /**
- * Press-feedback Svelte action. On pointerdown: adds `.is-pressed` for the
- * scale-down. On pointerup: removes the class AND fires the haptic IF the
+ * Press-feedback Svelte action. On pointerdown: schedules `.is-pressed` for
+ * the scale-down. On pointerup: removes the class AND fires the haptic IF the
  * pointer barely moved (treating it as a tap, not a scroll). Pair with a
  * `.tap-target--*` utility class for the visual scale-down.
  *
@@ -17,18 +17,36 @@ type TactileOptions = {
  * starts with pointerdown including the start of a scroll gesture. Firing the
  * haptic immediately means scrolling a list vibrates the phone for every card
  * we cross. Waiting for pointerup and checking that the pointer didn't move
- * means we only vibrate on real taps. The is-pressed class still fires on
- * pointerdown so visual feedback stays instant; iOS does the same — the tile
- * depresses on touch and only un-depresses (without firing the action) once
- * the system decides the gesture was a scroll.
+ * means we only vibrate on real taps.
+ *
+ * Why delay the visual press on touch — same reason. Adding `.is-pressed`
+ * immediately on touch means every scroll-start visibly shrinks whichever
+ * card the finger landed on. Buying a short delay (~90ms) lets the gesture
+ * declare itself: real taps end well after that and still get the visual,
+ * scroll-starts move past the threshold and we never paint the press state.
+ * Mouse is instant — pointer-on-mouse never starts a scroll mid-press.
  */
 const TAP_MOVEMENT_THRESHOLD = 8;
+const TOUCH_PRESS_DELAY_MS = 90;
 
 export function tactile(node: HTMLElement, options: TactileOptions = {}) {
   let opts = options;
   let pressed = false;
   let startX = 0;
   let startY = 0;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearPressTimer(): void {
+    if (pressTimer === null) return;
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+  function applyPressed(): void {
+    node.classList.add("is-pressed");
+  }
+  function clearPressed(): void {
+    node.classList.remove("is-pressed");
+  }
 
   function press(e: PointerEvent): void {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -36,12 +54,21 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
     pressed = true;
     startX = e.clientX;
     startY = e.clientY;
-    node.classList.add("is-pressed");
+    clearPressTimer();
+    if (e.pointerType === "mouse") {
+      applyPressed();
+    } else {
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        if (pressed) applyPressed();
+      }, TOUCH_PRESS_DELAY_MS);
+    }
   }
   function release(e: PointerEvent): void {
     if (!pressed) return;
     pressed = false;
-    node.classList.remove("is-pressed");
+    clearPressTimer();
+    clearPressed();
     if (opts.haptic === false) return;
     const dx = Math.abs(e.clientX - startX);
     const dy = Math.abs(e.clientY - startY);
@@ -51,7 +78,8 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
   function cancel(): void {
     if (!pressed) return;
     pressed = false;
-    node.classList.remove("is-pressed");
+    clearPressTimer();
+    clearPressed();
   }
   function move(e: PointerEvent): void {
     if (!pressed) return;
@@ -59,7 +87,8 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
     const dy = Math.abs(e.clientY - startY);
     if (dx > TAP_MOVEMENT_THRESHOLD || dy > TAP_MOVEMENT_THRESHOLD) {
       pressed = false;
-      node.classList.remove("is-pressed");
+      clearPressTimer();
+      clearPressed();
     }
   }
 
@@ -74,6 +103,7 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
       opts = next;
     },
     destroy() {
+      clearPressTimer();
       node.removeEventListener("pointerdown", press);
       node.removeEventListener("pointermove", move);
       node.removeEventListener("pointerup", release);

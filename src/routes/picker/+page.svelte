@@ -9,7 +9,7 @@
   import { tactile } from "$lib/tactile";
   import { posterUrl, recommendations } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
-  import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
   import { backOut } from "svelte/easing";
   import { fade, fly, scale } from "svelte/transition";
@@ -176,7 +176,7 @@
 
   function entryMeta(e: Entry): string {
     if (e.kind === "tv") {
-      const total = e.seasons.reduce((a, s) => a + s.episodeCount, 0);
+      const total = effectiveSeasons(e).reduce((a, s) => a + s.episodeCount, 0);
       return total ? `${total} ep` : "TV";
     }
     if (e.runtime) {
@@ -379,6 +379,14 @@
             <span>{entryMeta(w)}</span>
           </p>
         {/if}
+        {#if w.notes && w.notes.trim()}
+          <p
+            class="mx-auto max-w-prose text-sm italic text-muted/90"
+            in:fly={{ y: 8, duration: 320, easing: backOut, delay: 320 }}
+          >
+            "{w.notes.trim()}"
+          </p>
+        {/if}
       </header>
 
       <a
@@ -490,6 +498,13 @@
         {#if entryYear(e)}<span aria-hidden="true">·</span>{/if}
         <span>{entryMeta(e)}</span>
       </div>
+      {#if e.notes && e.notes.trim()}
+        <!-- Surface the user's note here so the bracket pick has the context
+             they wrote when adding the title (e.g. who recommended it, why
+             they were saving it). Italic + line-clamp keeps it visually
+             secondary to the metadata above. -->
+        <p class="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-muted/90">"{e.notes.trim()}"</p>
+      {/if}
     </div>
   </button>
 {/snippet}

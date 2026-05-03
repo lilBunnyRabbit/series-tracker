@@ -28,6 +28,10 @@
     year?: string;
     voteAverage?: number;
     overview?: string;
+    /** User's library note — only ever set for library-sourced picks. Carried
+     *  through so the result UI can surface "the reason you saved this" alongside
+     *  the title, since that note is often the deciding factor when re-rolling. */
+    notes?: string;
   };
 
   let dialog = $state<HTMLDialogElement>();
@@ -66,6 +70,7 @@
         poster: e.poster ?? null,
         year: e.year,
         voteAverage: e.voteAverage,
+        notes: e.notes,
       }));
   }
 
@@ -241,6 +246,12 @@
               {#if pick.year}<span aria-hidden="true"> · </span>{/if}
               <span class="uppercase tracking-wider">{pick.kind === "tv" ? "TV" : "Movie"}</span>
             </p>
+            {#if pick.notes && pick.notes.trim()}
+              <!-- User's saved note appears above the TMDB overview — it's
+                   their own framing of why they saved the title and is the
+                   most likely thing to break a re-roll tie. -->
+              <p class="mt-2 line-clamp-3 text-xs italic text-muted/90">"{pick.notes.trim()}"</p>
+            {/if}
             {#if pick.overview}
               <p class="mt-2 line-clamp-3 text-xs text-muted/90">{pick.overview}</p>
             {/if}
