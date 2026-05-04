@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-04
+
+### Changed
+- Watchlist status filter reworked into a two-state picker. The active filter renders as a full-width colour-filled bar with a chevron-down trigger on the right; tapping the bar expands a horizontally-scrollable strip of every status, with the selected one bg-filled and the others as soft status-tinted badges. Tapping a status applies it and collapses the bar back. The transition between the two states animates the resize end-to-end (active eases between full-row and compact size; inactives slide in/out; the chevron collapses).
+- Kind row (All / TV / Movies) now mirrors the status bar pattern — the selected kind takes the full remaining width, inactives stay content-sized. "All" no longer carries a coloured dot since it's a catch-all.
+- Sort & view trigger restyled to match the chevron-down trigger visually (same border, padding, height) so both filter rows share one control vocabulary.
+
 ## [0.8.0] - 2026-05-03
 
 ### Added
