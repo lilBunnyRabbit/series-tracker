@@ -10,6 +10,7 @@
     | "arrow-left"
     | "arrow-right"
     | "chevron-right"
+    | "chevron-down"
     | "plus"
     | "calendar"
     | "download"
@@ -83,6 +84,8 @@
     <path d="m12 5 7 7-7 7" />
   {:else if name === "chevron-right"}
     <polyline points="9 18 15 12 9 6" />
+  {:else if name === "chevron-down"}
+    <polyline points="6 9 12 15 18 9" />
   {:else if name === "plus"}
     <path d="M5 12h14" />
     <path d="M12 5v14" />

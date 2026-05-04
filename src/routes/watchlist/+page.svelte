@@ -160,22 +160,25 @@
     return c;
   });
 
-  // Status tab strip needs a ref so the active tab can be scrolled into the
-  // start of the strip on mount and on filter change. With min-width: 80vw
-  // on the active hero tab, only one tab fits comfortably at a time on
-  // mobile, so we want the active one pinned to the left edge.
+  // Status filter UI is a two-state component:
+  //   • closed (default): the active filter renders as a full-width bar with
+  //     a "+" trigger on the right.
+  //   • open: the bar is replaced by a horizontal scroll-strip showing every
+  //     status (compact, all the same size) so the user can pick a different
+  //     one. Tapping any tab applies it and collapses back to the closed bar.
   //
-  // scrollIntoView walks up the ancestor chain and may end up scrolling the
-  // document too if any of the page is below the fold. We avoid that by
-  // computing the horizontal offset ourselves and calling scrollTo on the
-  // strip alone — page scroll position is left untouched.
-  const STRIP_GUTTER_PX = 12; // matches scroll-padding-left: 0.75rem
+  // Why two states instead of always-visible chips: on a phone six chips never
+  // fit comfortably and either wrap or scroll, both of which felt cluttered.
+  // Hiding inactive options behind one tap keeps the filter row to a single
+  // dominant slot.
+  let pickerOpen = $state(false);
+  // Strip ref so we can scroll the active tab into view when the picker opens
+  // — saves a manual swipe to find your current selection in a long list.
+  const STRIP_GUTTER_PX = 12; // matches the page's px-3 content gutter
   let statusStrip = $state<HTMLDivElement>();
   $effect(() => {
-    filter; // re-run when filter changes
-    if (!statusStrip) return;
-    // requestAnimationFrame so the active class swap (which rewidths the
-    // tab) lands before we measure positions.
+    if (!pickerOpen || !statusStrip) return;
+    // Wait one frame so the picker's DOM has rendered before measuring.
     requestAnimationFrame(() => {
       const strip = statusStrip;
       if (!strip) return;
@@ -184,9 +187,15 @@
       const stripRect = strip.getBoundingClientRect();
       const activeRect = active.getBoundingClientRect();
       const target = activeRect.left - stripRect.left + strip.scrollLeft - STRIP_GUTTER_PX;
-      strip.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+      // Instant rather than smooth: the strip only just appeared, so the user
+      // hasn't oriented yet — no animation to follow.
+      strip.scrollTo({ left: Math.max(0, target), behavior: "auto" });
     });
   });
+  function pickStatus(f: Filter): void {
+    setFilter(f);
+    pickerOpen = false;
+  }
 
   // Bottom sheet for sort + view. Inline (not a shared component) because it's
   // used only here. Uses <dialog>.showModal so it composes with the existing
@@ -258,54 +267,90 @@
       </div>
     </div>
   {:else}
-    <div class="space-y-2.5">
-      <!-- Status row. Active tab dominates the row (color-filled, full label
-           + count + dot) and is sized to ~80vw on mobile so it visually owns
-           the strip; inactive tabs stay as compact bordered badges sitting
-           beside it, accessible by horizontal scroll. The strip uses
-           scroll-snap so a swipe always lands on a tab boundary, and changing
-           filter scrolls the new active tab to the left edge (with the same
-           gutter as the page content). -->
-      <div
-        bind:this={statusStrip}
-        class="hero-row hero-row--wide -mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:overflow-visible"
-      >
-        <div class="flex w-max items-stretch gap-1 text-xs sm:w-auto" role="tablist" aria-label="Status filter">
-          {#each VALID_FILTER as f (f)}
-            {@const active = filter === f}
-            {@const c = f === "all" ? null : STATUS_COLOR[f as Status]}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={active}
-              use:tactile
-              onclick={() => setFilter(f)}
-              class="hero-tab shrink-0 {active
-                ? `hero-tab-active ${c ? `${c.bg} ${c.border}` : 'border-primary bg-primary'} text-bg`
-                : `hero-tab-inactive ${c ? c.borderSoft : 'border-border/60'} text-muted hover-text-text`}"
-            >
-              {#if c}
-                <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
-              {/if}
-              <span class="hero-tab-label">{f === "all" ? "All" : STATUS_LABEL[f as Status]}</span>
-              <span
-                class="tabular-nums {active
-                  ? 'ml-auto text-bg/85 text-sm font-semibold'
-                  : `text-[10px] ${c ? c.text : 'text-muted'}`}"
+    <div>
+      <!-- Status row, two-state. The wrapper carries `pb-2.5` (replacing the
+           parent's `space-y-2.5`) so the spacing to the kind row lives on the
+           component itself — this keeps the layout stable even if the picker's
+           horizontal scrollbar becomes visible (e.g. on desktop browsers
+           where scrollbar hiding may not apply): the scrollbar sits inside
+           the padding gutter rather than overlapping the tabs.
+           CLOSED: the active filter renders as a full-width colour-filled bar
+                   with a chevron-down trigger on the right. Tapping anywhere
+                   on the row opens the picker.
+           OPEN:   the bar is replaced by a horizontally-scrollable strip of
+                   every status, all the same compact size. The currently-
+                   selected one is bg-filled (no border); the others wear a
+                   soft status-tinted border. Tapping any tab applies it and
+                   collapses back to CLOSED. -->
+      {#if pickerOpen}
+        <div
+          bind:this={statusStrip}
+          class="hero-strip -mx-3 overflow-x-auto px-3 pb-2.5 sm:mx-0 sm:overflow-visible"
+        >
+          <div class="flex w-max items-stretch gap-1 text-xs sm:w-auto" role="tablist" aria-label="Status filter">
+            {#each VALID_FILTER as f (f)}
+              {@const active = filter === f}
+              {@const c = f === "all" ? null : STATUS_COLOR[f as Status]}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active}
+                use:tactile
+                onclick={() => pickStatus(f)}
+                class="hero-tab shrink-0 {active
+                  ? `${c ? c.bg : 'bg-primary'} border-transparent text-bg`
+                  : `bg-transparent ${c ? c.borderSoft : 'border-border/60'} text-muted hover-text-text`}"
               >
-                {counts[f]}
-              </span>
-            </button>
-          {/each}
+                {#if c}
+                  <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
+                {/if}
+                <span class="hero-tab-label">{f === "all" ? "All" : STATUS_LABEL[f as Status]}</span>
+                <span
+                  class="tabular-nums text-[10px] {active ? 'text-bg/85 font-semibold' : c ? c.text : 'text-muted'}"
+                >
+                  {counts[f]}
+                </span>
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
+      {:else}
+        {@const c = filter === "all" ? null : STATUS_COLOR[filter as Status]}
+        <button
+          type="button"
+          use:tactile
+          onclick={() => (pickerOpen = true)}
+          aria-label="Change status filter, currently {filter === 'all' ? 'All' : STATUS_LABEL[filter as Status]}"
+          aria-haspopup="true"
+          aria-expanded="false"
+          class="tap-target tap-target--card mb-2.5 flex w-full items-stretch gap-1.5"
+        >
+          <span
+            class="hero-tab hero-tab-active flex-1 {c
+              ? `${c.bg} ${c.border}`
+              : 'border-primary bg-primary'} text-bg"
+          >
+            {#if c}
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-bg" aria-hidden="true"></span>
+            {/if}
+            <span class="hero-tab-label">{filter === "all" ? "All" : STATUS_LABEL[filter as Status]}</span>
+            <span class="ml-auto text-sm font-semibold tabular-nums text-bg/85">{counts[filter]}</span>
+          </span>
+          <span
+            class="flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted"
+            aria-hidden="true"
+          >
+            <Icon name="chevron-down" size={18} />
+          </span>
+        </button>
+      {/if}
 
-      <!-- Kind row. Same hero-tab treatment as status, but with one colour
-           family per option (primary / secondary / tertiary) so the three
-           categories read as visually distinct rather than three slots of
-           the same chip. The trigger for the sort/view sheet sits at the
-           right edge of this row. -->
-      <div class="flex items-center gap-2">
+      <!-- Kind row. Mirrors the closed-state status bar pattern: the active
+           kind takes flex-1 to fill the row, inactives stay content-sized,
+           and the sort/view trigger on the right is styled to match the
+           chevron-down trigger's visual (same padding, border, height) so
+           the two filter rows feel like the same control family. -->
+      <div class="flex items-stretch gap-2">
         <div class="flex flex-1 items-stretch gap-1 text-xs" role="tablist" aria-label="Media kind filter">
           {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
             {@const active = kindFilter === k}
@@ -316,29 +361,31 @@
               aria-selected={active}
               use:tactile
               onclick={() => setKind(k)}
-              class="hero-tab shrink-0 {active
+              class="hero-tab {active ? 'flex-1' : 'shrink-0'} {active
                 ? `hero-tab-active ${c.border} ${c.bg} text-bg`
-                : `hero-tab-inactive ${c.borderSoft} text-muted hover-text-text`}"
+                : `bg-transparent ${c.borderSoft} text-muted hover-text-text`}"
             >
-              <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
+              {#if k !== "all"}
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
+              {/if}
               <span class="hero-tab-label">{label}</span>
             </button>
           {/each}
         </div>
 
-        <!-- Sort & view trigger. Both controls live in a bottom sheet to keep
-             this row uncluttered on narrow screens. The active sort/view live
-             in the URL so the trigger doesn't need to surface them; the sheet
-             shows the current selection when opened. -->
+        <!-- Sort & view trigger. Same outer styling as the chevron-down on
+             the closed status bar — px-3, plain bordered box, stretches to
+             match the row height — so both filter rows share one visual
+             vocabulary for "open more controls". -->
         <button
           type="button"
           use:tactile={{ haptic: false }}
           onclick={openSheet}
           aria-label="Sort and view options"
           aria-haspopup="dialog"
-          class="tap-target tap-target--icon flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted hover-border-primary"
+          class="tap-target tap-target--btn flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
         >
-          <Icon name="filter" size={16} />
+          <Icon name="filter" size={18} />
         </button>
       </div>
     </div>
@@ -450,94 +497,81 @@
     contain-intrinsic-size: 100% 100px;
   }
 
-  /* "Hero tab" pattern. Active tab is intentionally much more prominent than
-     the inactives — color-filled background, bigger padding, larger label —
-     so a quick glance at the row instantly communicates which subset is being
-     viewed. Inactives stay as compact bordered badges so the row still reads
-     as a row of selectable items, just visually quieter than the active hero. */
+  /* Hero-tab base. Used by:
+       - the closed-state status bar (active filter rendered as a full-width
+         bar — combined with `.hero-tab-active` for big padding + shadow)
+       - the open-state status picker (every status as a compact tab — base
+         only, no `.hero-tab-active`; bg/border come from per-tab Tailwind
+         utilities so the picker can show the selected one as bg-filled
+         without a competing border)
+       - the kind row (compact bordered tabs with `.hero-tab-active` reserved
+         for the currently-selected category) */
+  /* Hide the horizontal scrollbar on the picker strip — its vertical
+     footprint (a few px on macOS / Windows) made the row taller than the
+     closed-state bar, so opening the picker pushed the rest of the page
+     down by that same amount. Touch devices already swipe by default; on
+     desktop the row is short enough that mouse-wheel + click-drag is
+     enough. */
+  .hero-strip {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* old Edge */
+  }
+  .hero-strip::-webkit-scrollbar {
+    display: none; /* Chrome / Safari / new Edge */
+  }
+
   .hero-tab {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
     border-radius: 0.5rem;
-    /* Border-width/style only — colour is set per-tab via Tailwind utility
-       classes (e.g. border-primary, border-primary/60). Setting `border:
-       1px solid transparent` here would have higher specificity than the
+    /* Border-width/style only — border-color is set per-tab via Tailwind
+       utility classes (e.g. border-primary, border-primary/60). Setting a
+       full `border: ...` here would have higher specificity than the
        Tailwind class (Svelte scopes component styles into the unlayered
-       cascade above @layer utilities) and the inactive border-tint would
-       silently fail to apply. */
+       cascade above @layer utilities) and the per-tab tint would silently
+       fail to apply. Same for background — only set per-tab. */
     border-width: 1px;
     border-style: solid;
     white-space: nowrap;
     cursor: pointer;
     line-height: 1;
+    /* Consistent 40px height across every variant (closed-state hero bar,
+       open-state picker tabs, kind row tabs) so the selection never looks
+       like it shrank when you opened the picker — only the width differs.
+       Horizontal padding still varies by variant for content density. */
+    min-height: 2.5rem;
+    padding: 0 0.875rem;
     /* Dot + label flow from the left so the eye scans reading order; the
-       count gets `ml-auto` on the active tab to push it to the right edge. */
+       count gets `ml-auto` on the active bar to push it to the right edge. */
     justify-content: flex-start;
-    /* Snap each tab to the strip's start edge so manual swipes always land
-       on a tab boundary. */
-    scroll-snap-align: start;
-    /* Inactive→active toggles bg, border, text, padding, min-width, and
-       shadow simultaneously — animate all of them so the swap feels like one
-       gesture instead of colour-fading while size jumps. */
+    /* Smooth bg/border/colour swap + flex-grow transition so when the
+       selected tab in the kind row gains `flex-1` it eases into the
+       remaining space (and the previously-active tab eases back to its
+       content size) instead of snapping. */
     transition:
-      background-color 220ms var(--ease-out),
-      border-color 220ms var(--ease-out),
-      color 220ms var(--ease-out),
-      padding 220ms var(--ease-out),
-      min-width 220ms var(--ease-out),
-      box-shadow 220ms var(--ease-out);
+      background-color 200ms var(--ease-out),
+      border-color 200ms var(--ease-out),
+      color 200ms var(--ease-out),
+      flex-grow 280ms var(--ease-spring),
+      padding 280ms var(--ease-spring);
   }
   .hero-tab-label {
-    transition: font-size 220ms var(--ease-out);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   .hero-tab-active {
-    /* Active gets generous padding + bolder type so it sticks out as a
-       solid filled block. */
-    padding: 0.625rem 1rem;
+    /* Used on the closed-state status bar and on the kind row's active tab —
+       slightly more horizontal padding + soft shadow so the active selection
+       reads as a solid filled block dominant in its row. Height stays the
+       same as the picker tabs (via min-height on .hero-tab). */
+    padding: 0 1rem;
     box-shadow: 0 4px 12px -6px color-mix(in oklab, currentColor 30%, transparent);
   }
   .hero-tab-active .hero-tab-label {
     font-size: 0.875rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-  }
-  .hero-tab-inactive {
-    /* Inactive keeps a soft bordered-badge look so the row still reads as a
-       set of selectable items — just visually quieter than the active hero.
-       Border colour comes from the per-tab Tailwind class (e.g.
-       `border-primary/60` for the Watching status), matching the soft tint
-       used on library cards so the row visually mirrors the deck below. */
-    padding: 0.4rem 0.75rem;
-    background: transparent;
-  }
-  .hero-tab-inactive .hero-tab-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  .hero-tab-inactive:hover {
-    background: var(--color-surface);
-  }
-
-  /* Wide variant: the active tab claims ~80% of the viewport width on mobile
-     so the strip reads like a single-tab-at-a-time selector. Inactives still
-     live in the strip and become accessible by swiping horizontally. The
-     scroll-padding matches the page's px-3 gutter so the active tab snaps
-     to the visible content edge instead of the negative-margin viewport edge. */
-  .hero-row {
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    scroll-padding-left: 0.75rem;
-  }
-  @media (max-width: 639.98px) {
-    .hero-row--wide .hero-tab-active {
-      min-width: 80vw;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero-row {
-      scroll-behavior: auto;
-    }
   }
 
   /* Sheet styling — copied from CardActionsSheet so this page-local sheet
