@@ -265,11 +265,14 @@ export type TvDetail = {
   episode_run_time?: number[];
   genres?: { id: number; name: string }[];
   seasons: {
+    id?: number;
     season_number: number;
     name: string;
     episode_count: number;
     poster_path: string | null;
     air_date: string | null;
+    overview?: string;
+    vote_average?: number;
   }[];
 };
 
@@ -406,6 +409,22 @@ export type WatchProvidersResponse = {
   results: Record<string, WatchProviderRegion>;
 };
 
+export type EpisodeCrew = {
+  id: number;
+  name: string;
+  job: string;
+  department: string;
+  profile_path: string | null;
+};
+
+export type EpisodeGuestStar = {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+  order: number;
+};
+
 export type EpisodeBrief = {
   id: number;
   episode_number: number;
@@ -416,6 +435,8 @@ export type EpisodeBrief = {
   runtime: number | null;
   vote_average?: number;
   vote_count?: number;
+  crew?: EpisodeCrew[];
+  guest_stars?: EpisodeGuestStar[];
 };
 
 export type SeasonDetail = {
@@ -425,5 +446,12 @@ export type SeasonDetail = {
   overview: string;
   air_date: string | null;
   poster_path: string | null;
+  vote_average?: number;
   episodes: EpisodeBrief[];
+};
+
+export type SeasonDetailFull = SeasonDetail & {
+  credits?: Credits;
+  images?: { posters: ImageItem[] };
+  videos?: Videos;
 };

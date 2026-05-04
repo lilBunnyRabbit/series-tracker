@@ -216,6 +216,14 @@
           {/if}
         </div>
 
+        <a
+          href="{base}/show/{showId}/season/{season}/info/"
+          use:tactile={{ haptic: false }}
+          class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
+        >
+          ⓘ More info
+        </a>
+
         {#if detail?.overview}
           <p class="max-w-prose text-left text-sm leading-relaxed text-text/90">
             {detail.overview}

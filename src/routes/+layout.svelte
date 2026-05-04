@@ -75,9 +75,11 @@
       relPath.startsWith("/style-guide")
   );
   // Hide the floating nav on /search — the bottom-docked search input would
-  // otherwise crowd it; users get a back button instead. Season pages also
-  // hide it: they own the bottom edge with their own progress island.
-  const isSeasonRoute = $derived(/^\/show\/\d+\/season\/\d+/.test(relPath));
+  // otherwise crowd it; users get a back button instead. Season tracker pages
+  // also hide it: they own the bottom edge with their own progress island.
+  // Season /info subroute is excluded — it's a regular scrolling page and
+  // should keep the standard floating nav.
+  const isSeasonRoute = $derived(/^\/show\/\d+\/season\/\d+\/?$/.test(relPath));
   const hideFloatingNav = $derived(relPath.startsWith("/search") || isSeasonRoute);
 
   // Routes that lock body scroll and let an internal flex column own scrolling
@@ -141,6 +143,8 @@
   });
 
   const backHref = $derived.by(() => {
+    const seasonInfo = relPath.match(/^\/show\/(\d+)\/season\/\d+\/info\/?$/);
+    if (seasonInfo) return `${base}/show/${seasonInfo[1]}/info/`;
     const seasonMatch = relPath.match(/^\/show\/(\d+)\/season\/\d+\/?$/);
     if (seasonMatch) return `${base}/show/${seasonMatch[1]}/`;
     const info = relPath.match(/^\/(show|movie)\/(\d+)\/info\/?$/);

@@ -10,6 +10,7 @@ import type {
   SearchMultiPage,
   SearchMultiResult,
   SeasonDetail,
+  SeasonDetailFull,
   Status,
   TvDetail,
   TvDetailFull,
@@ -140,6 +141,14 @@ export const movieDetailFull = (id: number, key: string, signal?: AbortSignal) =
 
 export const seasonDetail = (seriesId: number, seasonNumber: number, key: string, signal?: AbortSignal) =>
   get<SeasonDetail>(`/tv/${seriesId}/season/${seasonNumber}`, key, {}, { signal, ttlMs: 60 * 60 * 1000 });
+
+export const seasonDetailFull = (seriesId: number, seasonNumber: number, key: string, signal?: AbortSignal) =>
+  get<SeasonDetailFull>(
+    `/tv/${seriesId}/season/${seasonNumber}`,
+    key,
+    { append_to_response: "credits,images,videos", include_image_language: "en,null" },
+    { signal, ttlMs: 60 * 60 * 1000 }
+  );
 
 export type RecommendationItem =
   | (Extract<SearchMultiResult, { media_type: "movie" }> & { vote_average?: number })

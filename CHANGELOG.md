@@ -4,7 +4,12 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
-## [0.8.1] - 2026-05-04
+### Added
+- New season info page (one tap from the show's More info → Seasons grid) with a hero, season cast, and a card per episode showing still, air date, runtime, TMDB rating, overview, director, writer, and a horizontal rail of guest stars. Each guest star links to their person page.
+- Show info page seasons grid redesigned as larger, clickable cards — each surfaces the season's poster, episode count, year, TMDB rating, and overview, and opens the new season info page on tap.
+
+### Changed
+- The season tracker page now has an "ⓘ More info" button next to the season title so you can jump from progress tracking to the full episode info view.
 
 ### Changed
 - Watchlist status filter reworked into a two-state picker. The active filter renders as a full-width colour-filled bar with a chevron-down trigger on the right; tapping the bar expands a horizontally-scrollable strip of every status, with the selected one bg-filled and the others as soft status-tinted badges. Tapping a status applies it and collapses the bar back. The transition between the two states animates the resize end-to-end (active eases between full-row and compact size; inactives slide in/out; the chevron collapses).

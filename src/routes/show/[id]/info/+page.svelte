@@ -27,7 +27,7 @@
   } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import { effectiveSeasons, STATUS_COLOR } from "$lib/types";
-  import type { Status, TvDetailFull, WatchProviderRegion } from "$lib/types";
+  import type { Status, TvDetailFull, TvEntry, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
   const language = $derived(store.preferences.language ?? defaultLanguage());
@@ -91,8 +91,12 @@
   });
 
   const entry = $derived(store.get("tv", id));
+  const tvEntry = $derived(entry?.kind === "tv" ? (entry as TvEntry) : null);
   const inLibrary = $derived(!!entry);
   const status = $derived(entry?.status ?? null);
+  // Status palette drives the season-card border tint so the info-page seasons
+  // grid mirrors the user's progress on each season at a glance.
+  const sc = $derived(tvEntry ? STATUS_COLOR[tvEntry.status] : null);
 
   const creators = $derived(
     detail?.credits?.crew.filter((c) => c.job === "Creator").slice(0, 3) ??
@@ -477,7 +481,8 @@
       </Rail>
     {/if}
 
-    <!-- SEASONS — specials (season 0) sorted to the bottom. -->
+    <!-- SEASONS — specials (season 0) sorted to the bottom. Each card links to
+         the season info page with rich episode + cast + crew data. -->
     {#if detail.seasons.length > 0}
       {@const visibleSeasons = detail.seasons
         .filter((s) => s.season_number > 0 || s.episode_count > 0)
@@ -488,23 +493,56 @@
           return a.season_number - b.season_number;
         })}
       <section class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Seasons</h2>
-        <div class="grid gap-2 sm:grid-cols-2">
+        <h2 class="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted">
+          Seasons
+          <span class="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-normal tabular-nums text-muted">
+            {visibleSeasons.length}
+          </span>
+        </h2>
+        <div class="grid gap-3 sm:grid-cols-2">
           {#each visibleSeasons as s (s.season_number)}
-            <div class="flex gap-3 rounded-md border border-border bg-surface p-2">
-              <div class="h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-surface-2">
+            {@const watched = tvEntry?.progress[s.season_number] ?? 0}
+            {@const seasonComplete = s.episode_count > 0 && watched >= s.episode_count}
+            {@const seasonStarted = watched > 0 && !seasonComplete}
+            {@const cardBorder = (seasonComplete || seasonStarted) && sc ? sc.borderSoft : "border-border"}
+            <a
+              href="{base}/show/{id}/season/{s.season_number}/info/"
+              use:tactile
+              aria-label="Open {s.name}"
+              class="tap-target tap-target--card hover-zoom group flex gap-3 overflow-hidden rounded-lg border bg-surface p-3 transition-colors duration-150 {cardBorder} {seasonComplete ? '' : 'hover-border-accent'}"
+            >
+              <div class="aspect-[2/3] h-32 flex-shrink-0 overflow-hidden rounded-md border border-border/40 bg-surface-2 sm:h-36">
                 {#if s.poster_path}
                   <img src={posterUrl(s.poster_path, "w185")} alt="" class="h-full w-full object-cover" loading="lazy" />
                 {/if}
               </div>
-              <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium">{s.name}</div>
-                <div class="text-xs text-muted">
-                  {s.season_number === 0 ? "Specials · " : ""}{s.episode_count} ep{s.episode_count === 1 ? "" : "s"}
+              <div class="flex min-w-0 flex-1 flex-col gap-1">
+                <div class="flex items-baseline gap-2">
+                  <span class="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted">
+                    {s.season_number === 0 ? "Specials" : `Season ${s.season_number}`}
+                  </span>
+                  {#if s.air_date}
+                    <span class="text-[10px] tabular-nums text-muted">· {s.air_date.slice(0, 4)}</span>
+                  {/if}
                 </div>
-                {#if s.air_date}<div class="text-[11px] text-muted">{s.air_date}</div>{/if}
+                <div class="line-clamp-2 text-sm font-medium leading-snug text-text">{s.name}</div>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted">
+                  <span>{s.episode_count} ep{s.episode_count === 1 ? "" : "s"}</span>
+                  {#if typeof s.vote_average === "number" && s.vote_average > 0}
+                    <span class="inline-flex items-center gap-0.5">
+                      <span class="text-accent">★</span>
+                      <span class="font-medium text-text/90">{s.vote_average.toFixed(1)}</span>
+                    </span>
+                  {/if}
+                </div>
+                {#if s.overview}
+                  <p class="mt-1 line-clamp-3 text-xs leading-relaxed text-muted">{s.overview}</p>
+                {/if}
+                <span class="mt-auto pt-1 text-[10px] uppercase tracking-wider text-muted/70 group-active:text-accent">
+                  View season info →
+                </span>
               </div>
-            </div>
+            </a>
           {/each}
         </div>
       </section>
