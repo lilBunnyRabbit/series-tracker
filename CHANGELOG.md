@@ -4,6 +4,8 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-04
+
 ### Added
 - Mark titles as **Rewatchable** from the show or movie page. Rewatchable entries are weighted ~2× in the picker's bracket pool, get a dedicated filter chip in the watchlist sort/view sheet, and surface as a poster shelf in your profile.
 - Per-episode toggling on the season tracker — tapping the small circle indicator on an episode row flips just that episode, so you can mark non-contiguous watches (e.g. E1 and E3 but not E2). Tapping the rest of the row keeps the original "mark watched up through here" flow.
