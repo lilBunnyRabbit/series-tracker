@@ -422,6 +422,23 @@
     {/if}
   </div>
 
+  <!-- Activity -->
+  <div class="space-y-3 rounded-lg border border-border bg-surface p-5">
+    <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Activity</h2>
+    <div class="flex items-center justify-between gap-3">
+      <p class="min-w-0 text-sm text-muted">
+        Recent changes to your library — adds, status flips, progress, ratings.
+      </p>
+      <a
+        href="{base}/activity/"
+        use:tactile={{ haptic: false }}
+        class="tap-target tap-target--btn shrink-0 rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
+      >
+        View {store.actions.length} {store.actions.length === 1 ? "entry" : "entries"} →
+      </a>
+    </div>
+  </div>
+
   <!-- Preferences -->
   <div class="space-y-4 rounded-lg border border-border bg-surface p-5">
     <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Preferences</h2>

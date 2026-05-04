@@ -1,12 +1,13 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
 import { effectiveSeasons } from "./types";
-import type { DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
+import type { ActionEntry, ActionType, DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 const SEARCH_HISTORY_LIMIT = 8;
+const ACTIONS_LIMIT = 200;
 const SAVE_DEBOUNCE_MS = 300;
 
 type PersistedV1 = { apiKey?: string | null; library?: Record<string, Entry> };
@@ -25,6 +26,11 @@ type PersistedV4 = PersistedV3 & {
 // purely additive. The version bump is the marker so future migrations can
 // branch from here.
 type PersistedV5 = PersistedV4;
+// V6 — added `actions: ActionEntry[]` for the activity log. Additive: missing
+// field defaults to []. Capped at ACTIONS_LIMIT inside the store.
+type PersistedV6 = PersistedV5 & {
+  actions?: ActionEntry[];
+};
 
 const empty: Store = {
   apiKey: null,
@@ -32,16 +38,18 @@ const empty: Store = {
   searchHistory: [],
   preferences: {},
   diary: [],
+  actions: [],
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV5): Store {
+function migrate(parsed: PersistedV6): Store {
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
     searchHistory: parsed.searchHistory ?? [],
     preferences: parsed.preferences ?? {},
     diary: parsed.diary ?? [],
+    actions: (parsed.actions ?? []).slice(0, ACTIONS_LIMIT),
     version: SCHEMA_VERSION,
   };
 }
@@ -51,11 +59,15 @@ function makeDiaryId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function makeActionId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV5);
+    return migrate(JSON.parse(raw) as PersistedV6);
   } catch {
     return null;
   }
@@ -166,7 +178,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV5>(IDB_KEY);
+        let data = await idbGet<PersistedV6>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -186,6 +198,7 @@ function createStore() {
         state.searchHistory = next.searchHistory;
         state.preferences = next.preferences;
         state.diary = next.diary;
+        state.actions = next.actions;
         state.version = next.version;
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
@@ -223,6 +236,36 @@ function createStore() {
     return e;
   }
 
+  /** Snapshot the current entry under (kind, id) for use as `prev` on an
+   *  ActionEntry. Must be called BEFORE the mutation runs, otherwise we
+   *  capture the post-mutation state. structuredClone keeps the snapshot
+   *  immune to subsequent in-place mutation. */
+  function snapshotEntry(kind: "tv" | "movie", id: number): Entry | undefined {
+    const e = state.library[entryKey(kind, id)];
+    return e ? structuredClone($state.snapshot(e)) : undefined;
+  }
+
+  /** Append an action to the activity log, trimming to ACTIONS_LIMIT. */
+  function pushAction(input: {
+    type: ActionType;
+    kind: "tv" | "movie";
+    refId: number;
+    title: string;
+    poster?: string | null;
+    meta?: { season?: number; episode?: number };
+    prev?: Entry;
+  }): void {
+    const action: ActionEntry = {
+      id: makeActionId(),
+      createdAt: new Date().toISOString(),
+      ...input,
+    };
+    state.actions.unshift(action);
+    if (state.actions.length > ACTIONS_LIMIT) {
+      state.actions.length = ACTIONS_LIMIT;
+    }
+  }
+
   return {
     get loaded() {
       return meta.loaded;
@@ -250,6 +293,9 @@ function createStore() {
     },
     get diary(): DiaryEntry[] {
       return state.diary;
+    },
+    get actions(): ActionEntry[] {
+      return state.actions;
     },
 
     setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
@@ -336,11 +382,33 @@ function createStore() {
     },
 
     addToLibrary(entry: Entry) {
-      state.library[entryKey(entry.kind, entry.id)] = entry;
+      const key = entryKey(entry.kind, entry.id);
+      const existed = state.library[key];
+      state.library[key] = entry;
+      // Treat re-add of an existing entry as a no-op for the activity log —
+      // prevents flicker-add/remove flows or import paths from doubling rows.
+      if (existed) return;
+      pushAction({
+        type: "add",
+        kind: entry.kind,
+        refId: entry.id,
+        title: entry.title,
+        poster: entry.poster,
+      });
     },
 
     removeFromLibrary(kind: "tv" | "movie", id: number) {
+      const prev = snapshotEntry(kind, id);
+      if (!prev) return;
       delete state.library[entryKey(kind, id)];
+      pushAction({
+        type: "remove",
+        kind,
+        refId: id,
+        title: prev.title,
+        poster: prev.poster,
+        prev,
+      });
     },
 
     updateProgress(showId: number, season: number, delta: number) {
@@ -348,6 +416,8 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
+      const prev = snapshotEntry("tv", showId);
+      const prevCount = e.progress[season] ?? 0;
       // Honour any explicit set: +1 fills the lowest-numbered unwatched ep
       // (advancing toward contiguous), -1 drops the highest watched. We
       // recompute progress as the watched count and re-evaluate whether the
@@ -373,6 +443,8 @@ function createStore() {
         const next = (e.progress[season] ?? 0) + delta;
         e.progress[season] = Math.max(0, Math.min(s.episodeCount, next));
       }
+      const newCount = e.progress[season] ?? 0;
+      if (newCount === prevCount) return;
       withTimestamp(e);
       // Completion is judged against the seasons that count for this show —
       // specials are excluded unless includeSpecials is on.
@@ -382,6 +454,15 @@ function createStore() {
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
       else if (!anyProgress && e.status === "completed") e.status = "watching";
+      pushAction({
+        type: "progress",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season, episode: newCount },
+        prev,
+      });
     },
 
     setProgress(showId: number, season: number, value: number) {
@@ -389,18 +470,35 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
+      const prev = snapshotEntry("tv", showId);
+      const prevCount = e.progress[season] ?? 0;
+      const prevExplicit = e.watchedEpisodes?.[season];
       // setProgress is the explicit "I've watched the first N" lever (used by
       // the row tap, the +/- island when contiguous, and the manual input).
       // It always produces a contiguous {1..N} state — drop any explicit set
       // for this season so the season's representation is clean.
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, Math.floor(value || 0)));
       clearExplicit(e, season);
+      const newCount = e.progress[season] ?? 0;
+      // Treat collapsing an explicit set into the same numeric count as a
+      // change worth logging (representation flipped), but a true no-op (same
+      // count, no explicit set to drop) is silent.
+      if (newCount === prevCount && !prevExplicit) return;
       withTimestamp(e);
       const counted = effectiveSeasons(e);
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       const anyProgress = Object.values(e.progress).some((v) => v > 0);
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
+      pushAction({
+        type: "progress",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season, episode: newCount },
+        prev,
+      });
     },
 
     /** Toggle a single episode's watched state without affecting the others.
@@ -413,6 +511,7 @@ function createStore() {
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
       if (episodeNumber < 1 || episodeNumber > s.episodeCount) return;
+      const prev = snapshotEntry("tv", showId);
       const set = currentWatchedSet(e, season);
       if (set.has(episodeNumber)) set.delete(episodeNumber);
       else set.add(episodeNumber);
@@ -424,6 +523,15 @@ function createStore() {
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
       else if (!anyProgress && e.status === "completed") e.status = "watching";
+      pushAction({
+        type: "episode-toggle",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season, episode: episodeNumber },
+        prev,
+      });
     },
 
     completeSeason(showId: number, season: number) {
@@ -431,6 +539,13 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
+      // No-op when the season is already at episodeCount with no explicit set
+      // — common when the row is tapped twice or "Mark caught up" lands on a
+      // season already fully watched.
+      const prevCount = e.progress[season] ?? 0;
+      const hadExplicit = !!e.watchedEpisodes?.[season];
+      if (prevCount === s.episodeCount && !hadExplicit) return;
+      const prev = snapshotEntry("tv", showId);
       e.progress[season] = s.episodeCount;
       clearExplicit(e, season);
       withTimestamp(e);
@@ -438,11 +553,24 @@ function createStore() {
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       if (allDone) e.status = "completed";
       else if (e.status === "plan") e.status = "watching";
+      pushAction({
+        type: "season-complete",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season },
+        prev,
+      });
     },
 
     resetSeason(showId: number, season: number) {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
+      const prevCount = e.progress[season] ?? 0;
+      const hadExplicit = !!e.watchedEpisodes?.[season];
+      if (prevCount === 0 && !hadExplicit) return;
+      const prev = snapshotEntry("tv", showId);
       e.progress[season] = 0;
       clearExplicit(e, season);
       withTimestamp(e);
@@ -453,6 +581,15 @@ function createStore() {
       const counted = effectiveSeasons(e);
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       if (!allDone && e.status === "completed") e.status = "watching";
+      pushAction({
+        type: "season-reset",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season },
+        prev,
+      });
     },
 
     incrementCurrent(showId: number): boolean {
@@ -474,6 +611,8 @@ function createStore() {
     setStatus(kind: "tv" | "movie", id: number, status: Status) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
+      if (e.status === status) return;
+      const prev = snapshotEntry(kind, id);
       e.status = status;
       // For movies, "watched" mirrors status === "completed". Keep them aligned
       // so any legacy export that still ships `watched` stays consistent.
@@ -490,11 +629,21 @@ function createStore() {
         }
       }
       withTimestamp(e);
+      pushAction({
+        type: "status",
+        kind,
+        refId: id,
+        title: e.title,
+        poster: e.poster,
+        prev,
+      });
     },
 
     setIncludeSpecials(showId: number, value: boolean) {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
+      if ((!!e.includeSpecials) === value) return;
+      const prev = snapshotEntry("tv", showId);
       if (value) e.includeSpecials = true;
       else delete e.includeSpecials;
       withTimestamp(e);
@@ -510,6 +659,14 @@ function createStore() {
         const anyProgress = Object.values(e.progress).some((v) => v > 0);
         e.status = anyProgress ? "watching" : "plan";
       }
+      pushAction({
+        type: "specials",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        prev,
+      });
     },
 
     // Reconciles a stored TV entry's seasons with a fresh TMDB snapshot. Preserves
@@ -592,36 +749,83 @@ function createStore() {
     setRewatchable(kind: "tv" | "movie", id: number, value: boolean) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
+      if ((!!e.rewatchable) === value) return;
+      const prev = snapshotEntry(kind, id);
       if (value) e.rewatchable = true;
       else delete e.rewatchable;
       withTimestamp(e);
+      pushAction({
+        type: "rewatchable",
+        kind,
+        refId: id,
+        title: e.title,
+        poster: e.poster,
+        prev,
+      });
     },
 
     setRating(kind: "tv" | "movie", id: number, rating: number | null) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
-      if (rating === null) delete e.rating;
-      else e.rating = Math.max(0, Math.min(10, rating));
+      const next = rating === null ? undefined : Math.max(0, Math.min(10, rating));
+      if (e.rating === next) return;
+      const prev = snapshotEntry(kind, id);
+      if (next === undefined) delete e.rating;
+      else e.rating = next;
       withTimestamp(e);
+      pushAction({
+        type: "rating",
+        kind,
+        refId: id,
+        title: e.title,
+        poster: e.poster,
+        prev,
+      });
     },
 
     setNotes(kind: "tv" | "movie", id: number, notes: string) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
       const trimmed = notes.trim();
-      if (trimmed) e.notes = notes;
+      const nextNotes = trimmed ? notes : undefined;
+      // Compare against current notes (treat empty/undefined as equivalent).
+      const cur = e.notes ?? undefined;
+      if (cur === nextNotes) return;
+      const prev = snapshotEntry(kind, id);
+      if (nextNotes) e.notes = nextNotes;
       else delete e.notes;
       withTimestamp(e);
+      pushAction({
+        type: "notes",
+        kind,
+        refId: id,
+        title: e.title,
+        poster: e.poster,
+        prev,
+      });
     },
 
     setSeasonRating(showId: number, season: number, rating: number | null) {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
       const ratings = e.seasonRatings ?? {};
-      if (rating === null) delete ratings[season];
-      else ratings[season] = Math.max(0, Math.min(10, rating));
+      const next = rating === null ? undefined : Math.max(0, Math.min(10, rating));
+      const cur = ratings[season];
+      if (cur === next) return;
+      const prev = snapshotEntry("tv", showId);
+      if (next === undefined) delete ratings[season];
+      else ratings[season] = next;
       e.seasonRatings = ratings;
       withTimestamp(e);
+      pushAction({
+        type: "season-rating",
+        kind: "tv",
+        refId: showId,
+        title: e.title,
+        poster: e.poster,
+        meta: { season },
+        prev,
+      });
     },
 
     pushSearchHistory(query: string) {
@@ -645,6 +849,7 @@ function createStore() {
           searchHistory: state.searchHistory,
           preferences: state.preferences,
           diary: state.diary,
+          actions: state.actions,
         },
         null,
         2
@@ -652,7 +857,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV5);
+      const parsed = migrate(JSON.parse(text) as PersistedV6);
       let added = 0;
       let merged = 0;
 
@@ -662,6 +867,7 @@ function createStore() {
         state.searchHistory = parsed.searchHistory;
         state.preferences = parsed.preferences;
         state.diary = parsed.diary;
+        state.actions = parsed.actions;
         added = Object.keys(parsed.library).length;
       } else {
         if (!state.apiKey && parsed.apiKey) state.apiKey = parsed.apiKey;
@@ -692,6 +898,16 @@ function createStore() {
             haveIds.add(d.id);
           }
         }
+        // Actions merge: dedupe by id, then resort by createdAt desc and trim.
+        const haveActionIds = new Set(state.actions.map((a) => a.id));
+        for (const a of parsed.actions) {
+          if (!haveActionIds.has(a.id)) {
+            state.actions.push(a);
+            haveActionIds.add(a.id);
+          }
+        }
+        state.actions.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        if (state.actions.length > ACTIONS_LIMIT) state.actions.length = ACTIONS_LIMIT;
       }
 
       return { added, merged, total: Object.keys(state.library).length };
@@ -711,6 +927,7 @@ function createStore() {
       state.searchHistory = [];
       state.preferences = {};
       state.diary = [];
+      state.actions = [];
       state.version = SCHEMA_VERSION;
       try {
         await idbDelete(IDB_KEY);

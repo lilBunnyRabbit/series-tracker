@@ -98,6 +98,12 @@ Group these because they share the "movement / feedback" vocabulary and are user
 - [ ] **Keyword/theme browsing** — `/keyword/{id}/movies` route; surface keyword chips on info pages from `detail.keywords`; integrate with discover/browse.
 - [ ] **Genre tag on watchlist rows** — schema change: store `genreIds: number[]` on `Entry`, backfill via TMDB on next visit. Surface as small tag under title in `ListCard`. Pairs with Stats genre breakdown.
 - [ ] **ListCard "status under poster" layout** — move status chip out of metadata row into the poster column.
+- [ ] **Activity log step 2 — undo + clear-all** — surfaces on top of the step-1 read-only feed at `/activity/`. Adds:
+  - per-row `Undo` button when (a) the action is `< 24h` old, (b) `undoneAt` is unset, (c) no newer action exists for the same `(kind, refId)` — prevents the "rolling back through someone else's later edit" footgun.
+  - `store.undoAction(id)`: replaces `state.library[key]` with `action.prev` for all types except `add` (→ `removeFromLibrary`) and `remove` (→ re-add `prev`). Mark the action `undoneAt` rather than deleting it; do not push a new "undo" action (avoids redo loops).
+  - `Clear activity history` button in Settings → Danger zone, sets `state.actions = []`. Distinct from wipe library / wipe all.
+
+  Step 1 already persists `prev` on every action and reserves `undoneAt`, so no schema migration is needed. *Complexity: small UI plus undo correctness — budget half a day.*
 
 ### Suggested ship order
 

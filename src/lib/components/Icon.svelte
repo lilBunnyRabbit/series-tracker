@@ -25,7 +25,14 @@
     | "tv"
     | "film"
     | "check"
-    | "x";
+    | "x"
+    | "trash"
+    | "tag"
+    | "star"
+    | "pencil"
+    | "repeat"
+    | "play"
+    | "rotate-ccw";
 
   type Props = {
     name: IconName;
@@ -152,5 +159,30 @@
   {:else if name === "x"}
     <line x1="18" y1="6" x2="6" y2="18" />
     <line x1="6" y1="18" x2="18" y2="6" />
+  {:else if name === "trash"}
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  {:else if name === "tag"}
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  {:else if name === "star"}
+    <polygon
+      points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+    />
+  {:else if name === "pencil"}
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  {:else if name === "repeat"}
+    <polyline points="17 1 21 5 17 9" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <polyline points="7 23 3 19 7 15" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+  {:else if name === "play"}
+    <polygon points="5 3 19 12 5 21 5 3" />
+  {:else if name === "rotate-ccw"}
+    <polyline points="1 4 1 10 7 10" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
   {/if}
 </svg>

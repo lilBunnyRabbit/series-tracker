@@ -213,6 +213,41 @@ export type Preferences = {
   diaryBackfilled?: boolean;
 };
 
+export type ActionType =
+  | "add"
+  | "remove"
+  | "status"
+  | "rating"
+  | "notes"
+  | "rewatchable"
+  | "specials"
+  | "progress"
+  | "season-complete"
+  | "season-reset"
+  | "episode-toggle"
+  | "season-rating";
+
+/** A single library mutation captured for the activity log. Capped at 200
+ *  most-recent entries inside the persisted state. `prev` snapshots the entry
+ *  before the mutation so a future Undo (deferred to step 2) can restore it
+ *  without per-field plumbing. `undoneAt` is reserved for that step and is
+ *  never set by step 1 writers. */
+export type ActionEntry = {
+  id: string;
+  type: ActionType;
+  kind: "tv" | "movie";
+  refId: number;
+  /** Snapshot of title at action time so removed entries still read correctly. */
+  title: string;
+  poster?: string | null;
+  createdAt: string;
+  meta?: { season?: number; episode?: number };
+  /** Pre-mutation snapshot of the entry. Absent for "add" (no prior state). */
+  prev?: Entry;
+  /** Reserved for the step-2 undo flow. */
+  undoneAt?: string;
+};
+
 export type DiaryEntry = {
   /** Locally-unique id; not a TMDB id. */
   id: string;
@@ -247,6 +282,7 @@ export type Store = {
   searchHistory: string[];
   preferences: Preferences;
   diary: DiaryEntry[];
+  actions: ActionEntry[];
   version: number;
 };
 

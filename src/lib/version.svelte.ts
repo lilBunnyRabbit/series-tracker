@@ -49,15 +49,6 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 export const version = state;
 
-// Dev-only handle for poking at the update overlay from the browser console:
-//   __version__.fromVersion = "0.9.0"; __version__.toVersion = "1.0.0"
-//   __version__.stage = "installing"  // then "clearing", "reloading", "idle"
-// The $state proxy makes these assignments reactive, so the overlay reflects
-// changes immediately. Stripped from production via the `dev` guard.
-if (browser && dev) {
-  (window as unknown as Record<string, unknown>).__version__ = state;
-}
-
 async function fetchVersion(): Promise<VersionInfo | null> {
   try {
     // `cache: "no-store"` for the browser cache; `?t=` defeats any

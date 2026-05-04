@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-04
+
+### Added
+- Activity log on `/activity/` — a chronological feed of recent library changes (adds, removes, status flips, progress, ratings, season completions) grouped by day with relative timestamps. Linked from Settings → Activity.
+
 ## [0.10.1] - 2026-05-04
 
 ### Fixed

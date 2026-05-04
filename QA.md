@@ -56,13 +56,7 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ### Medium (own commit)
 
-- [ ] `[L]` **Action history / activity log** — track add/remove/status-change/progress events. Spec:
-  - new IDB store `actions` (capped, ring-buffer or trim-on-write at e.g. 200 entries)
-  - render in Settings or a dedicated `/activity/` route
-  - each row: icon + verb + title + relative time ("Added *Severance* · 2h ago")
-  - **undo** button on recent entries (last ~10? last 24h?) — restores prior state
-  - clear-all in danger zone
-  This is a real feature — promote to `TODO.md` once scoped. Big value: turns the app into a logbook, not just a state store. *Complexity: IDB schema + write hooks in every mutation path + undo correctness. Easy to under-scope; budget a full day.*
+- [~] `[L]` **Action history / activity log** — step 1 shipped: `state.actions: ActionEntry[]` (embedded in the persisted store, schema bumped 5 → 6, capped at 200), `pushAction` hooks across every library mutation, read-only `/activity/` route grouped by day with relative timestamps, settings link. `prev` snapshot is captured on every action so step 2 (undo + clear-all in danger zone) can drop in without a migration — promoted to `TODO.md`.
 - [ ] `[M]` **Browse infinite scroll** — replace pagination on `/discover/browse/` with `IntersectionObserver`-driven append. Keep page param in URL for back-restore. Consider if pagination component (`Pagination.svelte`) stays for keyboard / accessibility fallback. *Complexity: IO is easy, scroll-restore on back-nav and URL-state coherence are the awkward bits.*
 
 ### Speculative
@@ -71,6 +65,7 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ## Recently fixed
 
+- 2026-05-04 — **Activity log (step 1)** — new `/activity/` route with a chronological list of every library mutation (add/remove/status/progress/rating/notes/rewatchable/specials/season-complete/season-reset/episode-toggle/season-rating). Backed by `state.actions: ActionEntry[]` embedded in the persisted store (schema 5 → 6, capped at 200), with `pushAction` hooks added across the matching `store.svelte.ts` methods. Background paths (`setBackdrop`, `syncTvSeasons`) and mass operations (`wipeLibrary`, `wipeAll`, `importJson` itself) intentionally skip the log. Each action snapshots the pre-mutation entry into `prev` so the deferred step 2 (undo + clear-all) can land without a migration. Settings → Activity links to the feed.
 - 2026-05-04 — **Bottom sheets dismiss with swipe-down across the app** — extracted the `swipeToDismiss` Svelte action into `src/lib/tactile.ts` and applied it to every dialog with a handle (watchlist sort/view, `CardActionsSheet`, `RandomPickerSheet`, `DiaryLogSheet`, `StatusMenu`, the new episode-actions sheet on the season page). Each sheet now has a generous `*-drag` zone (`touch-action: none`) wrapping a smaller visual handle pill so the gesture has a real touch target.
 - 2026-05-04 — **Per-episode tracking + split tap targets** — `watchedEpisodes?: Record<number, number[]>` on `TvEntry` plus `store.toggleEpisode` and `isEpisodeWatched()` helper. Episode rows in `src/routes/show/[id]/season/[season]/+page.svelte` are now `<li>` containers wrapping two adjacent `<button>`s (circle = per-ep toggle, body = mark-up-to-here). Season info page picks up the same helper for its watched indicator.
 - 2026-05-04 — **Rewatchable flag** — `rewatchable?: boolean` on `Entry`, schema bumped to 5, `store.setRewatchable`, toggle on show + movie pages, picker boost (2× slots), watchlist filter (`?rewatch=1` + chip in the sort/view sheet), and a profile shelf on `/stats/`.
