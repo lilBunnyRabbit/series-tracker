@@ -175,22 +175,51 @@
   // Strip ref so we can scroll the active tab into view when the picker opens
   // — saves a manual swipe to find your current selection in a long list.
   const STRIP_GUTTER_PX = 12; // matches the page's px-3 content gutter
+  // Hard cap in case the flex-grow transition doesn't fire (e.g. active
+  // already in its open-state position) — without it the scroll would
+  // never run.
+  const RESIZE_FALLBACK_MS = 400;
   let statusStrip = $state<HTMLDivElement>();
   $effect(() => {
     if (!pickerOpen || !statusStrip) return;
-    // Wait one frame so the picker's DOM has rendered before measuring.
-    requestAnimationFrame(() => {
-      const strip = statusStrip;
-      if (!strip) return;
+    const strip = statusStrip;
+
+    const doScroll = () => {
       const active = strip.querySelector<HTMLElement>('[aria-selected="true"]');
       if (!active) return;
       const stripRect = strip.getBoundingClientRect();
       const activeRect = active.getBoundingClientRect();
       const target = activeRect.left - stripRect.left + strip.scrollLeft - STRIP_GUTTER_PX;
-      // Instant rather than smooth: the strip only just appeared, so the user
-      // hasn't oriented yet — no animation to follow.
-      strip.scrollTo({ left: Math.max(0, target), behavior: "auto" });
-    });
+      // No-op when active is already at (or near) the gutter — saves a
+      // pointless tiny smooth-scroll on every open.
+      if (Math.abs(target - strip.scrollLeft) < 4) return;
+      strip.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+    };
+
+    // Wait specifically for the active tab's flex-grow transition to land —
+    // that's the one driving the active's resize from full-row to compact.
+    // Other transitions on the strip (colour, padding, max-width on the
+    // collapsed siblings) bubble through this listener too, so we filter on
+    // propertyName to avoid scrolling halfway through the resize.
+    const onTransitionEnd = (e: TransitionEvent) => {
+      if (e.propertyName !== "flex-grow") return;
+      cleanup();
+      doScroll();
+    };
+
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
+      strip.removeEventListener("transitionend", onTransitionEnd);
+      clearTimeout(timer);
+    };
+
+    strip.addEventListener("transitionend", onTransitionEnd);
+    timer = setTimeout(() => {
+      cleanup();
+      doScroll();
+    }, RESIZE_FALLBACK_MS);
+
+    return cleanup;
   });
   function pickStatus(f: Filter): void {
     setFilter(f);
@@ -267,83 +296,71 @@
       </div>
     </div>
   {:else}
-    <div>
-      <!-- Status row, two-state. The wrapper carries `pb-2.5` (replacing the
-           parent's `space-y-2.5`) so the spacing to the kind row lives on the
-           component itself — this keeps the layout stable even if the picker's
-           horizontal scrollbar becomes visible (e.g. on desktop browsers
-           where scrollbar hiding may not apply): the scrollbar sits inside
-           the padding gutter rather than overlapping the tabs.
-           CLOSED: the active filter renders as a full-width colour-filled bar
-                   with a chevron-down trigger on the right. Tapping anywhere
-                   on the row opens the picker.
-           OPEN:   the bar is replaced by a horizontally-scrollable strip of
-                   every status, all the same compact size. The currently-
-                   selected one is bg-filled (no border); the others wear a
-                   soft status-tinted border. Tapping any tab applies it and
-                   collapses back to CLOSED. -->
-      {#if pickerOpen}
-        <div
-          bind:this={statusStrip}
-          class="hero-strip -mx-3 overflow-x-auto px-3 pb-2.5 sm:mx-0 sm:overflow-visible"
-        >
-          <div class="flex w-max items-stretch gap-1 text-xs sm:w-auto" role="tablist" aria-label="Status filter">
-            {#each VALID_FILTER as f (f)}
-              {@const active = filter === f}
-              {@const c = f === "all" ? null : STATUS_COLOR[f as Status]}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={active}
-                use:tactile
-                onclick={() => pickStatus(f)}
-                class="hero-tab shrink-0 {active
-                  ? `${c ? c.bg : 'bg-primary'} border-transparent text-bg`
-                  : `bg-transparent ${c ? c.borderSoft : 'border-border/60'} text-muted hover-text-text`}"
-              >
-                {#if c}
-                  <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
-                {/if}
-                <span class="hero-tab-label">{f === "all" ? "All" : STATUS_LABEL[f as Status]}</span>
-                <span
-                  class="tabular-nums text-[10px] {active ? 'text-bg/85 font-semibold' : c ? c.text : 'text-muted'}"
-                >
-                  {counts[f]}
-                </span>
-              </button>
-            {/each}
-          </div>
-        </div>
-      {:else}
-        {@const c = filter === "all" ? null : STATUS_COLOR[filter as Status]}
-        <button
-          type="button"
-          use:tactile
-          onclick={() => (pickerOpen = true)}
-          aria-label="Change status filter, currently {filter === 'all' ? 'All' : STATUS_LABEL[filter as Status]}"
-          aria-haspopup="true"
-          aria-expanded="false"
-          class="tap-target tap-target--card mb-2.5 flex w-full items-stretch gap-1.5"
-        >
-          <span
-            class="hero-tab hero-tab-active flex-1 {c
-              ? `${c.bg} ${c.border}`
-              : 'border-primary bg-primary'} text-bg"
+      <!-- Status row, single structure with two visual states.
+           All six tabs + the chevron-down trigger are always rendered; CSS
+           on `.status-row.is-open / .is-closed` drives the visibility:
+           CLOSED — active gets `flex-1` and the bigger `hero-tab-active`
+                    treatment, every other tab collapses to `max-width: 0`,
+                    the chevron sits at the right.
+           OPEN   — every tab is content-sized, the active one becomes a
+                    bg-filled compact tab with no visible border, and the
+                    chevron itself collapses to `max-width: 0`.
+           CSS transitions on flex-grow, max-width, padding, border-width,
+           and opacity make the swap animate as a single resize gesture
+           rather than a hard DOM swap. -->
+      <div
+        bind:this={statusStrip}
+        class="status-row mb-2.5 -mx-3 flex items-stretch overflow-x-auto px-3 sm:mx-0 sm:overflow-visible {pickerOpen
+          ? 'is-open'
+          : 'is-closed'}"
+        role="tablist"
+        aria-label="Status filter"
+      >
+        {#each VALID_FILTER as f (f)}
+          {@const active = filter === f}
+          {@const c = f === "all" ? null : STATUS_COLOR[f as Status]}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={active}
+            aria-hidden={!pickerOpen && !active}
+            tabindex={!pickerOpen && !active ? -1 : 0}
+            use:tactile
+            onclick={() => {
+              if (pickerOpen) pickStatus(f);
+              else pickerOpen = true;
+            }}
+            class="status-tab hero-tab {active ? 'is-active' : 'is-inactive'} {active && !pickerOpen
+              ? 'hero-tab-active'
+              : ''} {active
+              ? `${c ? c.bg : 'bg-primary'} ${pickerOpen ? 'border-transparent' : c ? c.border : 'border-primary'} text-bg`
+              : `bg-transparent ${c ? c.borderSoft : 'border-border/60'} text-muted hover-text-text`}"
           >
             {#if c}
-              <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-bg" aria-hidden="true"></span>
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
             {/if}
-            <span class="hero-tab-label">{filter === "all" ? "All" : STATUS_LABEL[filter as Status]}</span>
-            <span class="ml-auto text-sm font-semibold tabular-nums text-bg/85">{counts[filter]}</span>
-          </span>
-          <span
-            class="flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted"
-            aria-hidden="true"
-          >
-            <Icon name="chevron-down" size={18} />
-          </span>
+            <span class="hero-tab-label">{f === "all" ? "All" : STATUS_LABEL[f as Status]}</span>
+            <span
+              class="status-tab-count tabular-nums {active && !pickerOpen
+                ? 'ml-auto text-sm font-semibold text-bg/85'
+                : `text-[10px] ${active ? 'text-bg/85 font-semibold' : c ? c.text : 'text-muted'}`}"
+            >
+              {counts[f]}
+            </span>
+          </button>
+        {/each}
+        <button
+          type="button"
+          use:tactile={{ haptic: false }}
+          onclick={() => (pickerOpen = true)}
+          aria-label="Open status picker"
+          aria-hidden={pickerOpen}
+          tabindex={pickerOpen ? -1 : 0}
+          class="status-chevron flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
+        >
+          <Icon name="chevron-down" size={18} />
         </button>
-      {/if}
+      </div>
 
       <!-- Kind row. Mirrors the closed-state status bar pattern: the active
            kind takes flex-1 to fill the row, inactives stay content-sized,
@@ -383,12 +400,11 @@
           onclick={openSheet}
           aria-label="Sort and view options"
           aria-haspopup="dialog"
-          class="tap-target tap-target--btn flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
+          class="flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
         >
           <Icon name="filter" size={18} />
         </button>
       </div>
-    </div>
 
     {#if filtered.length === 0}
       <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
@@ -506,18 +522,91 @@
          without a competing border)
        - the kind row (compact bordered tabs with `.hero-tab-active` reserved
          for the currently-selected category) */
-  /* Hide the horizontal scrollbar on the picker strip — its vertical
-     footprint (a few px on macOS / Windows) made the row taller than the
-     closed-state bar, so opening the picker pushed the rest of the page
-     down by that same amount. Touch devices already swipe by default; on
-     desktop the row is short enough that mouse-wheel + click-drag is
-     enough. */
-  .hero-strip {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* old Edge */
+  /* Status row, two-state with animated resize.
+     The same flex container holds every status tab + the chevron trigger;
+     `.is-closed` / `.is-open` swaps the geometry by toggling flex-grow on
+     the active tab and max-width / padding / border-width / opacity on the
+     elements that need to disappear. Each of those properties is in
+     `.hero-tab`'s transition list, so the swap reads as a single resize
+     gesture instead of a hard DOM swap. */
+  .status-row {
+    /* Hide the horizontal scrollbar — its vertical footprint (a few px on
+       macOS / Windows) made the row taller than the closed bar, so opening
+       the picker pushed the rest of the page down. Touch devices swipe by
+       default; on desktop mouse-wheel scrolls the strip. */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Column-gap is the only spacing between flex children. In open mode it
+       provides breathing room between visible tabs; in closed mode it drops
+       to 0 so the collapsed inactive tabs don't accumulate gap-pixels and
+       offset the active bar. The active tab adds its own margin-right in
+       closed to space itself from the chevron. Both column-gap and margin
+       are in the transition list, so the swap stays smooth. */
+    column-gap: 0.375rem;
+    transition: column-gap 280ms var(--ease-spring);
   }
-  .hero-strip::-webkit-scrollbar {
-    display: none; /* Chrome / Safari / new Edge */
+  .status-row::-webkit-scrollbar {
+    display: none;
+  }
+  .status-row.is-closed {
+    column-gap: 0;
+  }
+  .status-row.is-closed .status-tab.is-active {
+    margin-right: 0.375rem;
+  }
+
+  /* Closed state ─────────────────────────────────────────────────────── */
+  /* Active tab fills the row */
+  .status-row.is-closed .status-tab.is-active {
+    flex-grow: 1;
+    flex-basis: 0;
+  }
+  /* Inactives collapse to nothing — width, padding, border, dot all
+     shrink to zero; opacity hides the residual outline during the
+     transition. pointer-events: none keeps them un-clickable in case
+     a finger lands on the slim residual. */
+  .status-row.is-closed .status-tab.is-inactive {
+    flex-grow: 0;
+    flex-basis: 0;
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Open state ───────────────────────────────────────────────────────── */
+  /* All tabs sized to their content; user can swipe to scroll when total
+     overflows the viewport. */
+  .status-row.is-open .status-tab {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: auto;
+  }
+  /* Chevron collapses the same way inactives do in closed state — it's
+     a visual toggle that doesn't need to live in both states. */
+  .status-row.is-open .status-chevron {
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* The chevron piggy-backs on the .hero-tab transition list so its
+     collapse animates in sync with the surrounding tabs. */
+  .status-chevron {
+    transition:
+      max-width 280ms var(--ease-spring),
+      padding 280ms var(--ease-spring),
+      border-width 200ms var(--ease-out),
+      opacity 200ms var(--ease-out);
   }
 
   .hero-tab {
@@ -545,16 +634,24 @@
     /* Dot + label flow from the left so the eye scans reading order; the
        count gets `ml-auto` on the active bar to push it to the right edge. */
     justify-content: flex-start;
-    /* Smooth bg/border/colour swap + flex-grow transition so when the
-       selected tab in the kind row gains `flex-1` it eases into the
-       remaining space (and the previously-active tab eases back to its
-       content size) instead of snapping. */
+    /* Smooth bg/border/colour swap + flex-grow / max-width / padding /
+       border-width / opacity transitions. The flex-grow change drives the
+       active tab's resize between content-size (open picker) and flex-1
+       (closed bar / kind selection). The max-width + padding + border-width
+       + opacity changes drive the open/close picker animation: inactive
+       status tabs collapse to nothing in the closed state and ease back to
+       full size when the picker opens. */
     transition:
       background-color 200ms var(--ease-out),
       border-color 200ms var(--ease-out),
       color 200ms var(--ease-out),
       flex-grow 280ms var(--ease-spring),
-      padding 280ms var(--ease-spring);
+      flex-basis 280ms var(--ease-spring),
+      max-width 280ms var(--ease-spring),
+      padding 280ms var(--ease-spring),
+      margin 280ms var(--ease-spring),
+      border-width 200ms var(--ease-out),
+      opacity 200ms var(--ease-out);
   }
   .hero-tab-label {
     font-size: 0.75rem;
