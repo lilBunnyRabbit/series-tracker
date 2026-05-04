@@ -4,12 +4,31 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-04
+
 ### Added
-- New season info page (one tap from the show's More info → Seasons grid) with a hero, season cast, and a card per episode showing still, air date, runtime, TMDB rating, overview, director, writer, and a horizontal rail of guest stars. Each guest star links to their person page.
-- Show info page seasons grid redesigned as larger, clickable cards — each surfaces the season's poster, episode count, year, TMDB rating, and overview, and opens the new season info page on tap.
+- Dedicated season tracker page — tap any season on a show to open a full-screen view with the episode list, season rating, and a floating control island at the bottom for fast +/- adjustments. Each episode shows runtime, air date, description, and (for watched ones) the TMDB community rating.
+- Tapping any episode in the tracker marks watched up to and including that episode; tapping a watched episode unmarks it.
+- "Catch up" pill on the season tracker — jumps progress to the latest aired episode in one tap, so when a show resumes airing you don't have to walk through the gap manually.
+- Season info page — open from the show's More info → Seasons grid. Has a hero, season cast, and a card per episode with the still, air date, runtime, TMDB rating, overview, director, writer, and a horizontal rail of guest stars. Each guest star links to their person page.
+- Region picker built into the "Where to Watch" section on movie and show info pages — switch country inline to see what's streaming where you are without going to Settings.
+- Locale preference in Settings — controls the language of titles, overviews, and provider names from TMDB, and supplies the default region for Where to Watch.
+- Tagline, IMDb link, and TMDB rating chip now sit above the title on movie and show info pages.
 
 ### Changed
-- The season tracker page now has an "ⓘ More info" button next to the season title so you can jump from progress tracking to the full episode info view.
+- Movie and show info pages got a hero redesign — full-bleed backdrop fades into the page with the centered poster + title block in front of it. Library posters wear a status-coloured border and the title tints to match, so a glance at the hero tells you the entry's state. Action bar replaced with a row of round icon buttons (✓ watched, 🔖 plan, 📓 log a viewing, ▶ trailer, ⋯ more).
+- Show info page seasons grid redesigned as larger, clickable cards — each surfaces the season's poster, episode count, year, TMDB rating, and overview. Cards started or completed get a subtle status-coloured border tint, and tapping any card opens the new season info page.
+- Season cards on the show page slimmed to a single row with a status-tinted progress bar and inline +/- and Mark all / Reset buttons. The whole row taps through to the season tracker page.
+- "Mark complete" relabeled to "Mark all" — the action only marks every episode in a season as watched, so the new label matches what it does.
+- The season tracker page has an "ⓘ More info" button next to the season title so you can jump from progress tracking to the full episode info view.
+- Rating pickers, season counters, season-rating chips, and the season tracker controls all adopt the show's status colour, so each show stays in one colour family across the app.
+- "Where to Watch region" preference renamed "Locale" with a clearer description that it controls TMDB content language as well as the default region.
+
+### Fixed
+- Region picker now displays country names in your chosen UI language instead of always English.
+- Marking the last episode of a season smoothly scrolls the rating picker into view so you can rate without hunting for it.
+
+## [0.8.1] - 2026-05-04
 
 ### Changed
 - Watchlist status filter reworked into a two-state picker. The active filter renders as a full-width colour-filled bar with a chevron-down trigger on the right; tapping the bar expands a horizontally-scrollable strip of every status, with the selected one bg-filled and the others as soft status-tinted badges. Tapping a status applies it and collapses the bar back. The transition between the two states animates the resize end-to-end (active eases between full-row and compact size; inactives slide in/out; the chevron collapses).
