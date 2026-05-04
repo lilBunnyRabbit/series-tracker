@@ -113,6 +113,107 @@ export function tactile(node: HTMLElement, options: TactileOptions = {}) {
   };
 }
 
+type SwipeToDismissOptions = {
+  /** Element whose translateY mirrors the drag — typically the dialog itself.
+   *  Falls back to the node the action is on when omitted. */
+  target?: HTMLElement;
+  /** Distance in px past which a release triggers dismissal. Default 80. */
+  threshold?: number;
+  /** Fires once the drag releases past the threshold. */
+  onDismiss: () => void;
+};
+
+/** Extracted from the original inline StatusMenu impl so every bottom sheet can
+ *  share one tested gesture path. Touch-only (mouse/desktop have explicit close
+ *  buttons), pointer-captured so the drag survives the finger leaving the drag
+ *  zone, and self-cleans the inline transform/transition once the gesture
+ *  settles so the next open animation isn't stuck mid-translate.
+ *
+ *  Why the action mutates `target.style` directly instead of a Svelte-side
+ *  `$state` mirror: the action lives in `tactile.ts` (no rune scope) and the
+ *  consumers are dialogs whose only knob is style. Keeping it as imperative DOM
+ *  writes means each sheet just does `<div use:swipeToDismiss={{ target: dialog,
+ *  onDismiss: close }}>` — no per-component state plumbing. */
+const SWIPE_RELEASE_MS = 200;
+
+export function swipeToDismiss(node: HTMLElement, options: SwipeToDismissOptions) {
+  let opts = options;
+  let dragging = false;
+  let startY = 0;
+  let pointerId = -1;
+
+  function getTarget(): HTMLElement {
+    return opts.target ?? node;
+  }
+  function applyTransform(dy: number, animate: boolean): void {
+    const t = getTarget();
+    t.style.transition = animate ? `transform ${SWIPE_RELEASE_MS}ms var(--ease-spring)` : "none";
+    t.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+  }
+  function clearInline(): void {
+    const t = getTarget();
+    t.style.transition = "";
+    t.style.transform = "";
+  }
+
+  function down(e: PointerEvent): void {
+    if (e.pointerType !== "touch") return;
+    dragging = true;
+    pointerId = e.pointerId;
+    startY = e.clientY;
+    applyTransform(0, false);
+    try {
+      node.setPointerCapture(pointerId);
+    } catch {
+      // setPointerCapture can throw on some Safari versions if the pointer
+      // type isn't capturable — gesture still works via target tracking.
+    }
+  }
+  function move(e: PointerEvent): void {
+    if (!dragging || e.pointerId !== pointerId) return;
+    const dy = Math.max(0, e.clientY - startY);
+    applyTransform(dy, false);
+  }
+  function up(e: PointerEvent): void {
+    if (!dragging) return;
+    const dy = Math.max(0, e.clientY - startY);
+    dragging = false;
+    pointerId = -1;
+    const threshold = opts.threshold ?? 80;
+    if (dy > threshold) {
+      // Slide the sheet off the bottom of the viewport, then dismiss. The
+      // consumer's close path runs dialog.close() once onDismiss fires; we
+      // clear the inline transform on the next frame so a re-open of the
+      // dialog isn't pre-shifted.
+      applyTransform(window.innerHeight, true);
+      window.setTimeout(() => {
+        opts.onDismiss();
+        requestAnimationFrame(clearInline);
+      }, SWIPE_RELEASE_MS);
+    } else {
+      applyTransform(0, true);
+      window.setTimeout(clearInline, SWIPE_RELEASE_MS + 20);
+    }
+  }
+
+  node.addEventListener("pointerdown", down);
+  node.addEventListener("pointermove", move);
+  node.addEventListener("pointerup", up);
+  node.addEventListener("pointercancel", up);
+
+  return {
+    update(next: SwipeToDismissOptions) {
+      opts = next;
+    },
+    destroy() {
+      node.removeEventListener("pointerdown", down);
+      node.removeEventListener("pointermove", move);
+      node.removeEventListener("pointerup", up);
+      node.removeEventListener("pointercancel", up);
+    },
+  };
+}
+
 type LongPressOptions = {
   /** Milliseconds before fire. Default 400. */
   duration?: number;

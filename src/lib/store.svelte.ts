@@ -5,7 +5,7 @@ import type { DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } f
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 const SEARCH_HISTORY_LIMIT = 8;
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -20,6 +20,11 @@ type PersistedV3 = PersistedV2 & {
 type PersistedV4 = PersistedV3 & {
   diary?: DiaryEntry[];
 };
+// V5 — added optional `rewatchable: boolean` to TvEntry / MovieEntry. No
+// migration logic needed: undefined is the falsy default, and the field is
+// purely additive. The version bump is the marker so future migrations can
+// branch from here.
+type PersistedV5 = PersistedV4;
 
 const empty: Store = {
   apiKey: null,
@@ -30,7 +35,7 @@ const empty: Store = {
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV4): Store {
+function migrate(parsed: PersistedV5): Store {
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
@@ -50,7 +55,7 @@ function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV4);
+    return migrate(JSON.parse(raw) as PersistedV5);
   } catch {
     return null;
   }
@@ -68,6 +73,48 @@ function latestDate(a: string, b: string): string {
 }
 function earliestDate(a: string, b: string): string {
   return a <= b ? a : b;
+}
+
+/** Drops any explicit per-episode set for `season`. Used whenever a
+ *  contiguous-mode action (tap-to-here, complete, reset, +/- in counter mode)
+ *  fires — the season's representation reverts to the cheaper progress
+ *  counter alone. */
+function clearExplicit(e: TvEntry, season: number): void {
+  if (!e.watchedEpisodes) return;
+  if (!(season in e.watchedEpisodes)) return;
+  delete e.watchedEpisodes[season];
+  if (Object.keys(e.watchedEpisodes).length === 0) delete e.watchedEpisodes;
+}
+
+/** Materialise the current watched set for a season, regardless of whether
+ *  the entry is in counter or explicit mode. Counter mode produces {1..N}; in
+ *  explicit mode we return a copy so callers can mutate without aliasing the
+ *  stored array. */
+function currentWatchedSet(e: TvEntry, season: number): Set<number> {
+  const explicit = e.watchedEpisodes?.[season];
+  if (explicit && explicit.length > 0) return new Set(explicit);
+  const out = new Set<number>();
+  const cur = e.progress[season] ?? 0;
+  for (let i = 1; i <= cur; i++) out.add(i);
+  return out;
+}
+
+/** Persist a watched set for a season. Detects contiguous-from-E1 sets and
+ *  collapses them back into counter mode so the entry's storage stays compact
+ *  for the common case. Always keeps `progress[season]` equal to the watched
+ *  count so existing display code (which reads progress as a count) is
+ *  unaffected. */
+function applyWatchedSet(e: TvEntry, season: number, set: Set<number>): void {
+  const sorted = [...set].sort((a, b) => a - b);
+  const isContig = sorted.every((n, i) => n === i + 1);
+  if (isContig) {
+    e.progress[season] = sorted.length;
+    clearExplicit(e, season);
+    return;
+  }
+  e.watchedEpisodes ??= {};
+  e.watchedEpisodes[season] = sorted;
+  e.progress[season] = sorted.length;
 }
 
 function mergeEntries(a: Entry, b: Entry): Entry {
@@ -119,7 +166,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV4>(IDB_KEY);
+        let data = await idbGet<PersistedV5>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -301,8 +348,31 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
-      const next = (e.progress[season] ?? 0) + delta;
-      e.progress[season] = Math.max(0, Math.min(s.episodeCount, next));
+      // Honour any explicit set: +1 fills the lowest-numbered unwatched ep
+      // (advancing toward contiguous), -1 drops the highest watched. We
+      // recompute progress as the watched count and re-evaluate whether the
+      // resulting set is now contiguous from E1 — if so, the explicit set is
+      // dropped in favour of the cheaper counter representation.
+      const explicit = e.watchedEpisodes?.[season];
+      if (explicit && explicit.length > 0 && delta !== 0) {
+        const set = new Set(explicit);
+        if (delta > 0) {
+          for (let i = 1; i <= s.episodeCount; i++) {
+            if (!set.has(i)) {
+              set.add(i);
+              break;
+            }
+          }
+        } else {
+          let max = 0;
+          for (const v of set) if (v > max) max = v;
+          if (max > 0) set.delete(max);
+        }
+        applyWatchedSet(e, season, set);
+      } else {
+        const next = (e.progress[season] ?? 0) + delta;
+        e.progress[season] = Math.max(0, Math.min(s.episodeCount, next));
+      }
       withTimestamp(e);
       // Completion is judged against the seasons that count for this show —
       // specials are excluded unless includeSpecials is on.
@@ -319,7 +389,12 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
+      // setProgress is the explicit "I've watched the first N" lever (used by
+      // the row tap, the +/- island when contiguous, and the manual input).
+      // It always produces a contiguous {1..N} state — drop any explicit set
+      // for this season so the season's representation is clean.
       e.progress[season] = Math.max(0, Math.min(s.episodeCount, Math.floor(value || 0)));
+      clearExplicit(e, season);
       withTimestamp(e);
       const counted = effectiveSeasons(e);
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
@@ -328,12 +403,36 @@ function createStore() {
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
     },
 
+    /** Toggle a single episode's watched state without affecting the others.
+     *  If the toggle leaves the season as a contiguous run from E1 (e.g. the
+     *  user only ever ticks E1..EN in order) the season falls back to counter
+     *  mode; otherwise the explicit set is persisted on the entry. */
+    toggleEpisode(showId: number, season: number, episodeNumber: number) {
+      const e = state.library[entryKey("tv", showId)];
+      if (!e || e.kind !== "tv") return;
+      const s = e.seasons.find((x) => x.number === season);
+      if (!s) return;
+      if (episodeNumber < 1 || episodeNumber > s.episodeCount) return;
+      const set = currentWatchedSet(e, season);
+      if (set.has(episodeNumber)) set.delete(episodeNumber);
+      else set.add(episodeNumber);
+      applyWatchedSet(e, season, set);
+      withTimestamp(e);
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      const anyProgress = Object.values(e.progress).some((v) => v > 0);
+      if (allDone) e.status = "completed";
+      else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
+      else if (!anyProgress && e.status === "completed") e.status = "watching";
+    },
+
     completeSeason(showId: number, season: number) {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
       const s = e.seasons.find((x) => x.number === season);
       if (!s) return;
       e.progress[season] = s.episodeCount;
+      clearExplicit(e, season);
       withTimestamp(e);
       const counted = effectiveSeasons(e);
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
@@ -345,6 +444,7 @@ function createStore() {
       const e = state.library[entryKey("tv", showId)];
       if (!e || e.kind !== "tv") return;
       e.progress[season] = 0;
+      clearExplicit(e, season);
       withTimestamp(e);
       // Reset must demote from completed whenever the show is no longer fully
       // done — not just when every season is empty. Otherwise resetting one
@@ -379,10 +479,15 @@ function createStore() {
       // so any legacy export that still ships `watched` stays consistent.
       if (e.kind === "movie") e.watched = status === "completed";
       // For TV, "completed" implies every counted episode watched — fill
-      // progress for the seasons that count. Specials stay at their current
-      // value (typically 0) unless the user has opted into tracking them.
+      // progress for the seasons that count and drop any explicit per-episode
+      // sets (a fully-watched season is contiguous by definition). Specials
+      // stay at their current value (typically 0) unless the user has opted
+      // into tracking them.
       if (e.kind === "tv" && status === "completed") {
-        for (const s of effectiveSeasons(e)) e.progress[s.number] = s.episodeCount;
+        for (const s of effectiveSeasons(e)) {
+          e.progress[s.number] = s.episodeCount;
+          clearExplicit(e, s.number);
+        }
       }
       withTimestamp(e);
     },
@@ -435,12 +540,33 @@ function createStore() {
       const newTotal = freshSeasons.reduce((a, s) => a + s.episodeCount, 0);
 
       const nextProgress: Record<number, number> = {};
+      const nextExplicit: Record<number, number[]> = {};
+      const validSeasons = new Set(freshSeasons.map((s) => s.number));
       for (const s of freshSeasons) {
         const prev = e.progress[s.number];
         if (prev !== undefined) nextProgress[s.number] = Math.min(prev, s.episodeCount);
+        const prevExplicit = e.watchedEpisodes?.[s.number];
+        if (prevExplicit) {
+          // Drop any episode numbers that no longer exist (count shrank); keep
+          // sorted. If the trimmed set is now contiguous from E1 it collapses
+          // back to counter mode below.
+          const trimmed = prevExplicit.filter((n) => n >= 1 && n <= s.episodeCount);
+          const sortedTrimmed = trimmed.sort((a, b) => a - b);
+          const isContig = sortedTrimmed.every((n, i) => n === i + 1);
+          if (sortedTrimmed.length > 0 && !isContig) {
+            nextExplicit[s.number] = sortedTrimmed;
+          }
+          if (sortedTrimmed.length > 0) nextProgress[s.number] = sortedTrimmed.length;
+        }
+      }
+      // Drop progress entries for seasons that no longer exist (number changed).
+      for (const k of Object.keys(nextProgress)) {
+        if (!validSeasons.has(Number(k))) delete nextProgress[Number(k)];
       }
       e.seasons = freshSeasons;
       e.progress = nextProgress;
+      if (Object.keys(nextExplicit).length > 0) e.watchedEpisodes = nextExplicit;
+      else delete e.watchedEpisodes;
 
       if (newTotal > prevTotal && e.status === "completed") {
         const counted = effectiveSeasons(e);
@@ -461,6 +587,14 @@ function createStore() {
       const e = state.library[entryKey(kind, id)];
       if (!e || e.backdrop) return;
       e.backdrop = url;
+    },
+
+    setRewatchable(kind: "tv" | "movie", id: number, value: boolean) {
+      const e = state.library[entryKey(kind, id)];
+      if (!e) return;
+      if (value) e.rewatchable = true;
+      else delete e.rewatchable;
+      withTimestamp(e);
     },
 
     setRating(kind: "tv" | "movie", id: number, rating: number | null) {
@@ -518,7 +652,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV4);
+      const parsed = migrate(JSON.parse(text) as PersistedV5);
       let added = 0;
       let merged = 0;
 

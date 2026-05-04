@@ -2,7 +2,7 @@
   import { base } from "$app/paths";
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
+  import { swipeToDismiss, tactile } from "$lib/tactile";
   import { posterUrl } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
 
@@ -184,7 +184,13 @@
   onclose={close}
   class="picker-sheet w-[min(28rem,94vw)] max-w-[94vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
 >
-  <div class="picker-sheet-handle sm:hidden" aria-hidden="true"></div>
+  <div
+    class="picker-sheet-drag sm:hidden"
+    use:swipeToDismiss={{ target: dialog, onDismiss: close }}
+    aria-hidden="true"
+  >
+    <span class="picker-sheet-handle"></span>
+  </div>
   <div class="w-full p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
     <header class="mb-4 text-center">
       <p class="text-[10px] uppercase tracking-[0.2em] text-accent">Surprise</p>
@@ -333,8 +339,18 @@
     }
   }
 
+  .picker-sheet-drag {
+    padding: 0.625rem 0 0.5rem;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  .picker-sheet-drag:active {
+    cursor: grabbing;
+  }
   .picker-sheet-handle {
-    margin: 0.5rem auto 0;
+    display: block;
+    margin: 0 auto;
     width: 2.5rem;
     height: 0.25rem;
     border-radius: 9999px;

@@ -6,6 +6,7 @@
   import { initBackTracker, smartBack } from "$lib/back.svelte";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import UpdateProgressOverlay from "$lib/components/UpdateProgressOverlay.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { tactile } from "$lib/tactile";
 
@@ -273,6 +274,7 @@
   {/if}
 
   <UpdateToast />
+  <UpdateProgressOverlay />
 </div>
 
 <style>

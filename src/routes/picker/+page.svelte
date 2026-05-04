@@ -21,7 +21,7 @@
   // Long enough that the win/loss CSS animation lands before we swap matches.
   const PICK_DELAY_MS = 360;
 
-  let selectedStatuses = $state<Status[]>(["plan"]);
+  let selectedStatuses = $state<Status[]>([]);
   let kindFilter = $state<KindFilter>("all");
   let phase = $state<Phase>("setup");
 
@@ -37,15 +37,21 @@
   let picksMade = $state(0);
   let picksTotal = $state(0);
 
+  // Match log — appended on every pick so the final screen can optionally
+  // surface "who beat whom" as a tree view. Keyed entries (rather than a flat
+  // list) so the renderer can group by round.
+  type Match = { a: Entry; b: Entry; winnerSide: "a" | "b"; round: number };
+  let bracketLog = $state<Match[]>([]);
+  let showBracket = $state(false);
+
   let winner = $state<Entry | null>(null);
   let recs = $state<RecommendationItem[]>([]);
   let recsLoading = $state(false);
 
   function toggleStatus(s: Status): void {
-    const has = selectedStatuses.includes(s);
-    if (has && selectedStatuses.length > 1) {
+    if (selectedStatuses.includes(s)) {
       selectedStatuses = selectedStatuses.filter((x) => x !== s);
-    } else if (!has) {
+    } else {
       selectedStatuses = [...selectedStatuses, s];
     }
   }
@@ -98,7 +104,21 @@
   }
 
   function start(): void {
-    const pool = shuffle(filtered).slice(0, POOL_CAP);
+    // Rewatchable boost: each `rewatchable` entry takes up two slots in the
+    // pre-shuffle lottery so it's ~2× as likely to make the capped pool when
+    // the user has more candidates than POOL_CAP. Dedupe after sampling so the
+    // bracket never pits a title against itself.
+    const weighted = filtered.flatMap((e) => (e.rewatchable ? [e, e] : [e]));
+    const shuffled = shuffle(weighted);
+    const seen = new Set<string>();
+    const pool: Entry[] = [];
+    for (const e of shuffled) {
+      const key = `${e.kind}:${e.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pool.push(e);
+      if (pool.length >= POOL_CAP) break;
+    }
     if (pool.length === 0) return;
     if (pool.length === 1) {
       winner = pool[0];
@@ -148,6 +168,10 @@
     if (!currentMatch || pickedSide) return;
     pickedSide = side;
     picksMade += 1;
+    bracketLog = [
+      ...bracketLog,
+      { a: currentMatch.a, b: currentMatch.b, winnerSide: side, round },
+    ];
     const win = side === "a" ? currentMatch.a : currentMatch.b;
     vibrate("tick");
     setTimeout(() => {
@@ -179,7 +203,31 @@
     pickedSide = null;
     picksMade = 0;
     picksTotal = 0;
+    bracketLog = [];
+    showBracket = false;
     phase = "setup";
+  }
+
+  // Group log entries by round, ordered final → first round so the winner's
+  // last match reads at the top — matches how brackets are typically narrated
+  // ("the final was X vs Y…"). Within a round we keep insertion order so
+  // pairings tell the story they were played in.
+  const bracketByRound = $derived.by<{ round: number; matches: Match[] }[]>(() => {
+    const groups = new Map<number, Match[]>();
+    for (const m of bracketLog) {
+      const list = groups.get(m.round) ?? [];
+      list.push(m);
+      groups.set(m.round, list);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([r, matches]) => ({ round: r, matches }));
+  });
+  function roundLabel(r: number, total: number): string {
+    if (r === total) return "Final";
+    if (r === total - 1) return "Semifinal";
+    if (r === total - 2) return "Quarterfinal";
+    return `Round ${r}`;
   }
 
   function entryYear(e: Entry): string | undefined {
@@ -218,39 +266,39 @@
 
       <div class="space-y-2">
         <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Status</h2>
-        <div class="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
-          <div class="flex w-max gap-1.5 text-xs sm:w-auto sm:flex-wrap">
-            {#each STATUSES as s (s)}
-              {@const active = selectedStatuses.includes(s)}
-              {@const c = STATUS_COLOR[s]}
-              <button
-                type="button"
-                use:tactile
-                onclick={() => toggleStatus(s)}
-                aria-pressed={active}
-                class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
-                  ? `${c.border} ${c.bg} text-bg`
-                  : 'border-border text-muted hover-text-text'}"
-              >
-                <span class="h-1.5 w-1.5 rounded-full {active ? 'bg-bg' : c.dot}"></span>
-                <span>{STATUS_LABEL[s]}</span>
-                <span class="tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{counts[s]}</span>
-              </button>
-            {/each}
-          </div>
+        <div class="flex flex-wrap gap-1.5 text-xs">
+          {#each STATUSES as s (s)}
+            {@const active = selectedStatuses.includes(s)}
+            {@const c = STATUS_COLOR[s]}
+            <button
+              type="button"
+              use:tactile
+              onclick={() => toggleStatus(s)}
+              aria-pressed={active}
+              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
+                ? `${c.border} ${c.bg} text-bg`
+                : 'border-border text-muted hover-text-text'}"
+            >
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}"></span>
+                <span class="truncate">{STATUS_LABEL[s]}</span>
+              </span>
+              <span class="shrink-0 tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{counts[s]}</span>
+            </button>
+          {/each}
         </div>
       </div>
 
       <div class="space-y-2">
         <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Type</h2>
-        <div class="flex gap-1.5 text-xs">
+        <div class="flex flex-wrap gap-1.5 text-xs">
           {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
             <button
               type="button"
               use:tactile
               onclick={() => (kindFilter = k)}
               aria-pressed={kindFilter === k}
-              class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
+              class="tap-target tap-target--chip max-w-56 grow rounded-full border px-3 py-1.5 text-center transition-colors duration-150 {kindFilter === k
                 ? 'border-secondary bg-secondary text-bg'
                 : 'border-border text-muted hover-text-text'}"
             >
@@ -439,7 +487,54 @@
         >
           Pick again
         </button>
+        {#if bracketLog.length > 0}
+          <button
+            type="button"
+            use:tactile={{ haptic: false }}
+            onclick={() => (showBracket = !showBracket)}
+            aria-expanded={showBracket}
+            class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-accent"
+          >
+            {showBracket ? "Hide bracket" : "Show bracket"}
+          </button>
+        {/if}
       </div>
+
+      {#if showBracket && bracketLog.length > 0}
+        <section
+          in:fade={{ duration: 220 }}
+          class="space-y-4 rounded-lg border border-border bg-surface p-4"
+        >
+          <header class="space-y-0.5 text-center">
+            <h2 class="text-xs font-medium uppercase tracking-[0.2em] text-muted">Bracket</h2>
+            <p class="text-[11px] text-muted/80">
+              {bracketLog.length} match{bracketLog.length === 1 ? "" : "es"} · winner highlighted
+            </p>
+          </header>
+
+          <div class="space-y-4">
+            {#each bracketByRound as group (group.round)}
+              <div class="space-y-2">
+                <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">
+                  {roundLabel(group.round, totalRounds)}
+                </h3>
+                <div class="space-y-1.5">
+                  {#each group.matches as m, i (group.round + ":" + i)}
+                    {@const aWins = m.winnerSide === "a"}
+                    <div
+                      class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border border-border/60 bg-surface-2 p-2"
+                    >
+                      {@render bracketSide(m.a, aWins)}
+                      <span class="text-[10px] font-bold tracking-widest text-muted">VS</span>
+                      {@render bracketSide(m.b, !aWins)}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        </section>
+      {/if}
 
       {#if recsLoading}
         <p class="text-center text-xs text-muted">Finding more like this…</p>
@@ -473,6 +568,31 @@
     </div>
   {/if}
 </section>
+
+{#snippet bracketSide(e: Entry, won: boolean)}
+  <a
+    href={entryHref(e)}
+    use:tactile={{ haptic: false }}
+    class="tap-target group flex min-w-0 items-center gap-2 rounded p-1 {won
+      ? 'opacity-100'
+      : 'opacity-50'}"
+    aria-label="{won ? 'Winner: ' : 'Eliminated: '}{e.title}"
+  >
+    <div class="h-10 w-7 shrink-0 overflow-hidden rounded-sm border border-border/60 bg-surface">
+      {#if e.poster}
+        <img src={e.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
+      {/if}
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="truncate text-[11px] font-medium {won ? 'text-text' : 'text-muted line-through decoration-muted/40'}">
+        {e.title}
+      </div>
+      <div class="text-[9px] uppercase tracking-wider text-muted/70">
+        {won ? "Advanced" : "Eliminated"}
+      </div>
+    </div>
+  </a>
+{/snippet}
 
 {#snippet matchCard(e: Entry, side: "a" | "b")}
   {@const c = STATUS_COLOR[e.status]}

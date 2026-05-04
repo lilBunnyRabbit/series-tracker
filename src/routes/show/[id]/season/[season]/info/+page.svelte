@@ -9,7 +9,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { posterUrl, seasonDetailFull } from "$lib/tmdb";
-  import { STATUS_COLOR } from "$lib/types";
+  import { isEpisodeWatched, STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, SeasonDetailFull, TvEntry } from "$lib/types";
 
   const showId = $derived(Number(page.params.id));
@@ -217,8 +217,8 @@
         <div class="space-y-3">
           {#each detail.episodes as ep (ep.id)}
             {@const aired = ep.air_date && ep.air_date <= todayIso}
-            {@const watched = ep.episode_number <= current}
-            {@const isCurrent = entry && ep.episode_number === current + 1}
+            {@const watched = entry ? isEpisodeWatched(entry, season, ep.episode_number) : false}
+            {@const isCurrent = entry && !watched && ep.episode_number === current + 1}
             {@const directors = epDirectors(ep)}
             {@const writers = epWriters(ep)}
             {@const guests = ep.guest_stars ?? []}

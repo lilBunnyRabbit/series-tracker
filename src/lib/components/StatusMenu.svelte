@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
+  import { swipeToDismiss, tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_DESCRIPTION, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
@@ -135,44 +135,6 @@
   function onBackdropClick(e: MouseEvent): void {
     if (e.target === dialog) close();
   }
-
-  // Swipe-to-dismiss for the mobile bottom sheet. Touch starts on the drag
-  // zone (the area around the visual handle), follows the finger downward, and
-  // dismisses if the release is past `DISMISS_THRESHOLD` px.
-  const DISMISS_THRESHOLD = 80;
-  let dragStartY = 0;
-  let dragDelta = $state(0);
-  let dragging = $state(false);
-
-  function onDragPointerDown(e: PointerEvent): void {
-    if (e.pointerType !== "touch") return;
-    dragStartY = e.clientY;
-    dragDelta = 0;
-    dragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-
-  function onDragPointerMove(e: PointerEvent): void {
-    if (!dragging) return;
-    dragDelta = Math.max(0, e.clientY - dragStartY);
-  }
-
-  function onDragPointerUp(): void {
-    if (!dragging) return;
-    dragging = false;
-    if (dragDelta > DISMISS_THRESHOLD) {
-      // Animate the sheet off-screen then close. The transition is on so the
-      // jump from `dragDelta` to a large value tweens smoothly.
-      dragDelta = 600;
-      setTimeout(() => {
-        close();
-        dragDelta = 0;
-      }, 200);
-    } else {
-      // Snap back. Transition is enabled (dragging=false) so it eases.
-      dragDelta = 0;
-    }
-  }
 </script>
 
 {#if !hideTrigger}
@@ -186,16 +148,11 @@
   onclick={onBackdropClick}
   onclose={unlockBodyScroll}
   class="status-sheet m-auto w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
-  style:transform={dragDelta > 0 ? `translateY(${dragDelta}px)` : ""}
-  style:transition={dragging ? "none" : "transform 200ms var(--ease-spring)"}
 >
   <div
-    class="drag-zone sm:hidden"
+    class="status-sheet-drag sm:hidden"
+    use:swipeToDismiss={{ target: dialog, onDismiss: close }}
     aria-hidden="true"
-    onpointerdown={onDragPointerDown}
-    onpointermove={onDragPointerMove}
-    onpointerup={onDragPointerUp}
-    onpointercancel={onDragPointerUp}
   >
     <span class="status-sheet-handle"></span>
   </div>
@@ -275,13 +232,13 @@
 
   /* Drag zone — generous touch target around the visual handle so the user
      can grab anywhere near the top of the sheet to start a swipe-down. */
-  .drag-zone {
+  .status-sheet-drag {
     padding: 0.625rem 0 0.5rem;
     display: block;
     touch-action: none;
     cursor: grab;
   }
-  .drag-zone:active {
+  .status-sheet-drag:active {
     cursor: grabbing;
   }
 

@@ -129,6 +129,34 @@
   );
 
   const onBack = smartBack();
+
+  // Web Share — feature-detected so we don't render a button on browsers
+  // without the API (most desktop browsers, plus older mobile Safari).
+  let canShare = $state(false);
+  $effect(() => {
+    canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  });
+  async function shareShow(): Promise<void> {
+    if (!headerInfo) return;
+    try {
+      // Share the app's own URL so recipients open the show in Series Tracker
+      // (or land on the prerendered detail page if they don't have the PWA).
+      // Round-trips cleanly through our own share_target — the /share/ route
+      // matches `/series-tracker/show/{id}` and goto's the right page.
+      await navigator.share({
+        title: `${headerInfo.title} · Series Tracker`,
+        text: headerInfo.title,
+        url: `${location.origin}${base}/show/${id}/`,
+      });
+    } catch (err) {
+      // AbortError fires when the user dismisses the system share sheet —
+      // not actually an error. Other failures (NotAllowed, etc.) we just
+      // swallow rather than surfacing a toast for a non-critical action.
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.warn("[show] share failed", err);
+      }
+    }
+  }
 </script>
 
 <svelte:head>
@@ -244,13 +272,27 @@
             </a>
           </div>
         {:else}
-          <a
-            href="{base}/show/{id}/info/"
-            use:tactile={{ haptic: false }}
-            class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
-          >
-            ⓘ More info
-          </a>
+          <div class="flex flex-wrap justify-center gap-2">
+            <a
+              href="{base}/show/{id}/info/"
+              use:tactile={{ haptic: false }}
+              class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
+            >
+              ⓘ More info
+            </a>
+            {#if canShare}
+              <button
+                type="button"
+                use:tactile={{ haptic: false }}
+                onclick={shareShow}
+                aria-label="Share this show"
+                class="tap-target tap-target--btn inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+              >
+                <span aria-hidden="true">↗</span>
+                <span>Share</span>
+              </button>
+            {/if}
+          </div>
         {/if}
       </section>
     </div>
@@ -267,21 +309,6 @@
         <StatusSegmented value={tvEntry.status} onChange={(s) => store.setStatus("tv", id, s)} />
       </div>
 
-      <div class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Overall rating</h2>
-        <RatingPicker
-          value={tvEntry.rating ?? null}
-          onChange={(v) => store.setRating("tv", id, v)}
-          label="Your rating"
-          status={tvEntry.status}
-        />
-      </div>
-
-      <NotesEditor
-        value={tvEntry.notes ?? ""}
-        onCommit={(v) => store.setNotes("tv", id, v)}
-        placeholder="e.g. xyz recommended it, watched on a flight..."
-      />
     {/if}
 
     {#if regularSeasons.length > 0}
@@ -343,7 +370,50 @@
     {/if}
 
     {#if tvEntry}
-      <div class="flex justify-center border-t border-border pt-6">
+      <!-- Extras live below the seasons grid: stuff that informs but isn't
+           part of the per-visit watching loop. Rating is here because most
+           users only set it once (when they finish); rewatchable is a
+           one-shot flag; notes are a free-text field most users touch rarely.
+           Keeping them here keeps the top of the page focused on status +
+           seasons — the controls a user actually taps every visit. -->
+      <div class="space-y-3 border-t border-border pt-6">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Extras</h2>
+
+        <div class="rounded-md border border-border bg-surface px-3 py-3">
+          <RatingPicker
+            value={tvEntry.rating ?? null}
+            onChange={(v) => store.setRating("tv", id, v)}
+            label="Your rating"
+            status={tvEntry.status}
+          />
+        </div>
+
+        <label class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-3">
+          <span class="min-w-0">
+            <span class="flex items-center gap-2 text-sm font-medium">
+              <span aria-hidden="true">♻</span>
+              <span>Rewatchable</span>
+            </span>
+            <span class="mt-0.5 block text-xs text-muted">
+              Boosts this title in the picker and shelves it in your profile.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={tvEntry.rewatchable ?? false}
+            onchange={(e) => store.setRewatchable("tv", id, (e.currentTarget as HTMLInputElement).checked)}
+            class="h-5 w-5 shrink-0 cursor-pointer accent-secondary"
+          />
+        </label>
+
+        <NotesEditor
+          value={tvEntry.notes ?? ""}
+          onCommit={(v) => store.setNotes("tv", id, v)}
+          placeholder="e.g. xyz recommended it, watched on a flight..."
+        />
+      </div>
+
+      <div class="flex justify-center pt-2">
         <button
           type="button"
           use:tactile={{ haptic: "warn" }}

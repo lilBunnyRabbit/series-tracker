@@ -117,10 +117,22 @@ export type TvEntry = {
   runtime?: number;
   /** Captured at add time so stats can compute top genres locally. */
   genres?: { id: number; name: string }[];
+  /** Per-season explicit watched-episode set, only present when the user has
+   *  tracked episodes non-contiguously (e.g. watched E1 and E3 but not E2).
+   *  When absent for a season, episodes are derived contiguously from
+   *  `progress[season]` (E1..E{progress} are watched). The store keeps
+   *  `progress[season]` equal to the count either way, so display code that
+   *  reads progress as a number is still correct. */
+  watchedEpisodes?: Record<number, number[]>;
   /** When false / absent, season 0 (specials) is excluded from completion
    *  calculations and Mark complete — users can finish a show without ticking
    *  specials. Flip on per-show via the show page toggle to track them. */
   includeSpecials?: boolean;
+  /** When true, marks the title as something the user is happy to revisit.
+   *  Layered on top of `status` (a completed show can be rewatchable; a
+   *  dropped one usually isn't). Surfaces: 2× weight in the picker pool,
+   *  watchlist filter chip, profile shelf. */
+  rewatchable?: boolean;
   addedAt: string;
   updatedAt: string;
 };
@@ -136,6 +148,23 @@ export function isSpecialSeason(seasonNumber: number): boolean {
 export function effectiveSeasons(entry: TvEntry): Season[] {
   if (entry.includeSpecials) return entry.seasons;
   return entry.seasons.filter((s) => !isSpecialSeason(s.number));
+}
+
+/** Whether a specific episode is watched. Honors the explicit
+ *  `watchedEpisodes` set when present (non-contiguous), otherwise falls back
+ *  to the contiguous interpretation of `progress[season]`. */
+export function isEpisodeWatched(entry: TvEntry, season: number, episodeNumber: number): boolean {
+  const explicit = entry.watchedEpisodes?.[season];
+  if (explicit && explicit.length > 0) return explicit.includes(episodeNumber);
+  return (entry.progress[season] ?? 0) >= episodeNumber;
+}
+
+/** Returns the explicit watched-episode set for a season, or undefined if the
+ *  season is in contiguous (counter) mode. Useful when callers need to decide
+ *  between counter UI vs explicit set UI. */
+export function explicitWatched(entry: TvEntry, season: number): number[] | undefined {
+  const list = entry.watchedEpisodes?.[season];
+  return list && list.length > 0 ? list : undefined;
 }
 
 /** Sort seasons for display so specials (season 0) always render last. */
@@ -163,6 +192,8 @@ export type MovieEntry = {
   /** Movie length in minutes. */
   runtime?: number;
   genres?: { id: number; name: string }[];
+  /** See TvEntry — same flag, same surfaces. */
+  rewatchable?: boolean;
   addedAt: string;
   updatedAt: string;
 };

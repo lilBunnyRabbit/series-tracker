@@ -98,6 +98,28 @@
   );
 
   const onBack = smartBack();
+
+  // Web Share — feature-detected; share button hides on browsers without it.
+  let canShare = $state(false);
+  $effect(() => {
+    canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  });
+  async function shareMovie(): Promise<void> {
+    if (!headerInfo) return;
+    try {
+      // Same reasoning as the show page — share the in-app URL so recipients
+      // land on this app's detail page (the /share/ receiver round-trips it).
+      await navigator.share({
+        title: `${headerInfo.title} · Series Tracker`,
+        text: headerInfo.title,
+        url: `${location.origin}${base}/movie/${id}/`,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.warn("[movie] share failed", err);
+      }
+    }
+  }
 </script>
 
 <svelte:head>
@@ -207,13 +229,27 @@
             </a>
           </div>
         {:else}
-          <a
-            href="{base}/movie/{id}/info/"
-            use:tactile={{ haptic: false }}
-            class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
-          >
-            ⓘ More info
-          </a>
+          <div class="flex flex-wrap justify-center gap-2">
+            <a
+              href="{base}/movie/{id}/info/"
+              use:tactile={{ haptic: false }}
+              class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
+            >
+              ⓘ More info
+            </a>
+            {#if canShare}
+              <button
+                type="button"
+                use:tactile={{ haptic: false }}
+                onclick={shareMovie}
+                aria-label="Share this movie"
+                class="tap-target tap-target--btn inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+              >
+                <span aria-hidden="true">↗</span>
+                <span>Share</span>
+              </button>
+            {/if}
+          </div>
         {/if}
       </section>
     </div>
@@ -230,22 +266,47 @@
         <StatusSegmented value={movieEntry.status} onChange={(s) => store.setStatus("movie", id, s)} />
       </div>
 
-      <div class="space-y-3">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Your rating</h2>
-        <RatingPicker
-          value={movieEntry.rating ?? null}
-          onChange={(v) => store.setRating("movie", id, v)}
-          status={movieEntry.status}
+      <!-- Extras: rating + rewatchable flag + free-text notes. Mirrors the
+           show page — kept at the bottom so the top of the page stays focused
+           on the status the user just came to update. -->
+      <div class="space-y-3 border-t border-border pt-6">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Extras</h2>
+
+        <div class="rounded-md border border-border bg-surface px-3 py-3">
+          <RatingPicker
+            value={movieEntry.rating ?? null}
+            onChange={(v) => store.setRating("movie", id, v)}
+            label="Your rating"
+            status={movieEntry.status}
+          />
+        </div>
+
+        <label class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-3">
+          <span class="min-w-0">
+            <span class="flex items-center gap-2 text-sm font-medium">
+              <span aria-hidden="true">♻</span>
+              <span>Rewatchable</span>
+            </span>
+            <span class="mt-0.5 block text-xs text-muted">
+              Boosts this title in the picker and shelves it in your profile.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={movieEntry.rewatchable ?? false}
+            onchange={(e) => store.setRewatchable("movie", id, (e.currentTarget as HTMLInputElement).checked)}
+            class="h-5 w-5 shrink-0 cursor-pointer accent-secondary"
+          />
+        </label>
+
+        <NotesEditor
+          value={movieEntry.notes ?? ""}
+          onCommit={(v) => store.setNotes("movie", id, v)}
+          placeholder="e.g. xyz recommended it, watched in cinema..."
         />
       </div>
 
-      <NotesEditor
-        value={movieEntry.notes ?? ""}
-        onCommit={(v) => store.setNotes("movie", id, v)}
-        placeholder="e.g. xyz recommended it, watched in cinema..."
-      />
-
-      <div class="flex justify-center border-t border-border pt-6">
+      <div class="flex justify-center pt-2">
         <button
           type="button"
           use:tactile={{ haptic: "warn" }}

@@ -54,6 +54,20 @@ export default defineConfig({
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "maskable-icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
+        // Lets the OS / other apps surface "Series Tracker" in the system
+        // share sheet. Method=GET keeps the route prerenderable: the receiver
+        // route reads query params on the client and routes to the matching
+        // show/movie page (or falls back to a search). Android has full
+        // support; iOS/Safari is partial today.
+        share_target: {
+          action: `${SCOPE}share/`,
+          method: "GET",
+          params: {
+            title: "title",
+            text: "text",
+            url: "url",
+          },
+        },
       },
       workbox: {
         globPatterns: ["client/**/*.{js,css,ico,png,svg,webp,webmanifest}", "prerendered/**/*.html"],

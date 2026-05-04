@@ -4,7 +4,16 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+- Mark titles as **Rewatchable** from the show or movie page. Rewatchable entries are weighted ~2× in the picker's bracket pool, get a dedicated filter chip in the watchlist sort/view sheet, and surface as a poster shelf in your profile.
+- Per-episode toggling on the season tracker — tapping the small circle indicator on an episode row flips just that episode, so you can mark non-contiguous watches (e.g. E1 and E3 but not E2). Tapping the rest of the row keeps the original "mark watched up through here" flow.
+- "Show bracket" button on the picker's result screen reveals every match the bracket played, grouped by round (Final / Semifinal / …) with the winner highlighted and losers struck through.
+- Share button on movie and show pages — uses your device's system share sheet to send the title's TMDB link.
+- The PWA now appears in the system share sheet as a destination. Sharing a TMDB URL (or any link containing `themoviedb.org/tv/{id}` or `…/movie/{id}`) into Series Tracker opens the matching title; on miss, you get a one-tap search for the shared text.
+
 ### Changed
+- Applying an update now opens a non-dismissable full-screen overlay that shows the version transition (vA → vB) and steps through "Installing", "Clearing cache", and "Restarting" so it's clear what's happening while the app reloads itself.
+- Bottom sheets across the app (watchlist sort/view, card actions, status picker, diary log, random picker, episode actions) now dismiss with a swipe-down on the handle. Same gesture everywhere.
 - Recommendation rails ("Watch next" / "More like this") on movie and show info pages now show a status dot on titles already in your library, so you can spot what's already tracked at a glance.
 - Picker no longer offers titles that haven't aired yet — entries dated to a future year are excluded from the bracket pool and the status counts.
 - Search debounce bumped slightly so quick typing doesn't fire a request per keystroke.

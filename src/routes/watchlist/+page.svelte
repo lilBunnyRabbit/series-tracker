@@ -8,7 +8,7 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
+  import { swipeToDismiss, tactile } from "$lib/tactile";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
@@ -68,6 +68,7 @@
     const n = Number(page.url.searchParams.get("page"));
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   });
+  const rewatchableOnly = $derived(page.url.searchParams.get("rewatch") === "1");
 
   function updateParams(patch: Record<string, string | null>): void {
     const url = new URL(page.url);
@@ -93,6 +94,9 @@
   function setView(v: View): void {
     updateParams({ view: v === "list" ? null : v });
   }
+  function toggleRewatchable(): void {
+    updateParams({ rewatch: rewatchableOnly ? null : "1", page: null });
+  }
   function goToPage(n: number): void {
     updateParams({ page: n === 1 ? null : String(n) });
     // Match discover/browse: instant scroll-to-top so the new page lands at
@@ -116,7 +120,8 @@
   const filtered = $derived.by(() => {
     const list = store.entries
       .filter((e) => (filter === "all" ? true : e.status === filter))
-      .filter((e) => (kindFilter === "all" ? true : e.kind === kindFilter));
+      .filter((e) => (kindFilter === "all" ? true : e.kind === kindFilter))
+      .filter((e) => (rewatchableOnly ? e.rewatchable === true : true));
     return [...list].sort((a, b) => {
       switch (sort) {
         case "title":
@@ -393,16 +398,26 @@
         <!-- Sort & view trigger. Same outer styling as the chevron-down on
              the closed status bar — px-3, plain bordered box, stretches to
              match the row height — so both filter rows share one visual
-             vocabulary for "open more controls". -->
+             vocabulary for "open more controls". The corner dot lights up
+             when an "extra" filter is on (currently just rewatchable) so the
+             user knows to peek at the sheet without opening it. -->
         <button
           type="button"
           use:tactile={{ haptic: false }}
           onclick={openSheet}
           aria-label="Sort and view options"
           aria-haspopup="dialog"
-          class="flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
+          class="relative flex shrink-0 items-center justify-center rounded-md border px-3 text-muted hover-border-primary {rewatchableOnly
+            ? 'border-secondary text-secondary'
+            : 'border-border'}"
         >
           <Icon name="filter" size={18} />
+          {#if rewatchableOnly}
+            <span
+              class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-secondary"
+              aria-hidden="true"
+            ></span>
+          {/if}
         </button>
       </div>
 
@@ -446,7 +461,13 @@
   onclose={closeSheet}
   class="actions-sheet w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
 >
-  <div class="actions-sheet-handle sm:hidden" aria-hidden="true"></div>
+  <div
+    class="actions-sheet-drag sm:hidden"
+    use:swipeToDismiss={{ target: sheetDialog, onDismiss: closeSheet }}
+    aria-hidden="true"
+  >
+    <span class="actions-sheet-handle"></span>
+  </div>
   <div class="w-full p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
     <header class="mb-4 min-w-0">
       <p class="text-xs uppercase tracking-wider text-muted">Library</p>
@@ -470,6 +491,27 @@
         </button>
       {/each}
     </div>
+
+    <hr class="my-4 border-border" />
+
+    <p class="mb-2 text-xs uppercase tracking-wider text-muted">Filter</p>
+    <button
+      type="button"
+      use:tactile
+      onclick={toggleRewatchable}
+      aria-pressed={rewatchableOnly}
+      class="tap-target tap-target--btn flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {rewatchableOnly
+        ? 'border-secondary bg-secondary text-bg'
+        : 'border-border text-muted hover-text-text'}"
+    >
+      <span class="flex items-center gap-2">
+        <span aria-hidden="true">♻</span>
+        <span>Rewatchable only</span>
+      </span>
+      <span class="text-xs tabular-nums {rewatchableOnly ? 'opacity-80' : 'opacity-60'}">
+        {store.entries.filter((e) => e.rewatchable).length}
+      </span>
+    </button>
 
     <hr class="my-4 border-border" />
 
@@ -714,8 +756,23 @@
     }
   }
 
+  /* Drag zone — generous touch target around the visual handle so the user
+     can grab anywhere near the top of the sheet to start a swipe-down. The
+     `touch-action: none` is important: it stops the browser from claiming
+     vertical pans (incl. pull-to-refresh) before the swipeToDismiss action
+     gets a chance to handle them. */
+  .actions-sheet-drag {
+    padding: 0.625rem 0 0.5rem;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  .actions-sheet-drag:active {
+    cursor: grabbing;
+  }
   .actions-sheet-handle {
-    margin: 0.5rem auto 0;
+    display: block;
+    margin: 0 auto;
     width: 2.5rem;
     height: 0.25rem;
     border-radius: 9999px;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
+  import { swipeToDismiss, tactile } from "$lib/tactile";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
@@ -69,7 +69,13 @@
   onclose={close}
   class="actions-sheet w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
 >
-  <div class="actions-sheet-handle sm:hidden" aria-hidden="true"></div>
+  <div
+    class="actions-sheet-drag sm:hidden"
+    use:swipeToDismiss={{ target: dialog, onDismiss: close }}
+    aria-hidden="true"
+  >
+    <span class="actions-sheet-handle"></span>
+  </div>
   <div class="w-full p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
     <header class="mb-4 min-w-0">
       <p class="text-xs uppercase tracking-wider text-muted">Quick actions</p>
@@ -173,8 +179,18 @@
     }
   }
 
+  .actions-sheet-drag {
+    padding: 0.625rem 0 0.5rem;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  .actions-sheet-drag:active {
+    cursor: grabbing;
+  }
   .actions-sheet-handle {
-    margin: 0.5rem auto 0;
+    display: block;
+    margin: 0 auto;
     width: 2.5rem;
     height: 0.25rem;
     border-radius: 9999px;

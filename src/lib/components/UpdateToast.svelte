@@ -2,21 +2,11 @@
   import { tactile } from "$lib/tactile";
   import { applyUpdate, dismiss, isUpdateAvailable, version } from "$lib/version.svelte";
 
-  let updating = $state(false);
-
-  const show = $derived(isUpdateAvailable());
+  // Hide the toast as soon as applyUpdate moves the stage off "idle" — the
+  // full-screen UpdateProgressOverlay takes over from there, and we don't
+  // want the toast peeking through its blurred backdrop.
+  const show = $derived(isUpdateAvailable() && version.stage === "idle");
   const newVersion = $derived(version.latest?.version ?? null);
-
-  async function onUpdate(): Promise<void> {
-    if (updating) return;
-    updating = true;
-    try {
-      await applyUpdate();
-    } catch {
-      // applyUpdate triggers a reload on success — if we're still here, it failed.
-      updating = false;
-    }
-  }
 </script>
 
 {#if show}
@@ -40,11 +30,10 @@
         <button
           type="button"
           use:tactile={{ haptic: "tap" }}
-          onclick={onUpdate}
-          disabled={updating}
-          class="tap-target tap-target--btn rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg disabled:opacity-60"
+          onclick={() => void applyUpdate()}
+          class="tap-target tap-target--btn rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-bg"
         >
-          {updating ? "Updating..." : "Update now"}
+          Update now
         </button>
       </div>
     </div>

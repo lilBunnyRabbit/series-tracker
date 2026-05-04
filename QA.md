@@ -22,7 +22,7 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ## Bugs
 
-- [ ] `[M]` **Watchlist drawer slide-down not working** — bottom-sheet / drawer affordance on `src/routes/watchlist/+page.svelte` doesn't dismiss via swipe-down. Check `tactile.ts` swipe action vs. CSS `touch-action`; confirm gesture isn't being eaten by the inner scroll container. *Complexity: gesture debugging is unpredictable — could be one CSS line or a real refactor of the touch handler.*
+- [x] `[M]` **Watchlist drawer slide-down not working** — root cause was that the only swipe-to-dismiss impl lived inline in `StatusMenu.svelte`, so every other sheet had a handle bar but no gesture wired up. Extracted into a generic `swipeToDismiss` Svelte action in `tactile.ts` and applied to the watchlist sort/view sheet, `CardActionsSheet`, `RandomPickerSheet`, `DiaryLogSheet`, and the new episode-actions sheet on the season page. `StatusMenu` now uses the same shared action. See *Recently fixed*.
 - [x] `[S]` **Search result shows duplicate status badge** — root cause was in `PosterCard.svelte`, not search: the labelled pill under the title pushed the year onto a second row and read as a redundant badge whenever a card had a status. Replaced it with a small dot overlay on the poster image so the soft border + dot are the only library-state signals. See *Recently fixed*.
 - [x] `[S]` **Search result status is mispositioned after add** — fixed by the same `PosterCard` change. Year is back on a single line; the action-slot chip in search continues to act as the +Add slot replacement.
 - [x] `[XS]` **Settings locale description wraps to multiple lines** — copy tightened to a single line. See *Recently fixed*.
@@ -30,7 +30,7 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ## Friction / UX gaps
 
-- [ ] `[M]` **Manual episode toggle** — user wants to mark individual episodes watched, not just bump the counter. Per CLAUDE-stack reminder, counter is the design intent, but this is a recurring ask. Compromise: keep counter as primary, add a long-press / detail affordance on the season page to toggle a specific episode (jumps `progress` to that episode number). No per-episode boolean array yet — derive from `progress >= episode_number`. *Complexity: interaction + state-derivation logic, but no schema change.*
+- [x] `[M]` **Manual episode toggle** — added a per-episode boolean track via `watchedEpisodes?: Record<number, number[]>` on `TvEntry`, only persisted when the user goes non-contiguous (e.g. watched E1 + E3 but not E2). Episode rows now have two tap targets: the small circle indicator (`store.toggleEpisode`) flips just that episode, while the body of the row keeps the existing "mark watched up through E{N}" contiguous flow (`store.setProgress`). Helper `isEpisodeWatched(entry, season, ep)` in `types.ts` reads the explicit set when present, otherwise falls back to the progress counter — so other surfaces (season info page, library cards, stats) work unchanged. The store keeps `progress[season]` equal to the watched count regardless of mode, so all the existing display code that reads `progress` as a count is correct in both modes; contiguous-mode actions (setProgress, completeSeason, resetSeason, setStatus("completed"), syncTvSeasons trim, +/- when not in explicit mode) clear the explicit set, and `toggleEpisode` collapses back to counter mode whenever the resulting set is contiguous from E1. See *Recently fixed*.
 - [ ] `[L]` **Drop navbar, make the island dynamic** — replace fixed top bar with a Dynamic Island-style chip that morphs into a back button on detail routes and into the page title elsewhere. Likely lives in the layout (`src/routes/+layout.svelte`) and wraps `PageHeader.svelte`. Big visual change — scope as its own commit, ship under a minor bump. *Complexity: layout-level, route-aware, motion design — touches every page.*
 - [x] `[S]` **Watch next / More like this should show status dot** — `status={store.get(...)?.status}` now passed to `PosterCard` on both rails, on movie + show info pages. See *Recently fixed*.
 - [x] `[S]` **Picker: exclude unaired titles** — `hasAired()` predicate added to `src/routes/picker/+page.svelte`; applied to `filtered` and `counts`. Year-precision (we only store `year`, not full date), so a release later in the same year still passes — that's the conservative call. See *Recently fixed*.
@@ -40,12 +40,12 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ### Small (bundle-able)
 
-- [ ] `[M]` **"Rewatchable" status / flag** — boolean on `Entry` (`rewatchable: boolean`) marking shows likely to rewatch. Surfaces:
-  - boost weight in picker
-  - filter chip on watchlist
-  - section on stats / profile
-  Keep it as a **flag layered on top of status**, not a new status — a completed show can be rewatchable; a dropped one usually isn't. *Complexity: tiny IDB schema bump + UI hooks in 3 places; the schema migration is what makes it M, not S.*
-- [ ] `[M]` **Picker: tournament tree view after pick** — after a bracket-style pick, optionally reveal the tree (who beat whom). Aesthetic. Behind a settings toggle or a `Show bracket` button on the result screen. *Complexity: needs a tree-layout render + retaining the bracket history during the pick. Not hard, just non-trivial.*
+- [x] `[M]` **"Rewatchable" status / flag** — `rewatchable?: boolean` added to both `TvEntry` and `MovieEntry` (schema bumped 4 → 5; no migration logic — the field is purely additive). Surfaces wired:
+  - **Show / movie pages** — toggle row below the rating picker, just above the notes editor. Uses the secondary accent so it reads as a separate dimension from status colour.
+  - **Picker boost** — each rewatchable entry takes 2 slots in the pre-shuffle lottery; sampling is dedup'd so the bracket never pits a title against itself.
+  - **Watchlist filter** — `?rewatch=1` URL param + a chip in the sort/view sheet ("Rewatchable only" with live count). The sort/view trigger picks up a small dot when the filter is active so the user can see at a glance.
+  - **Profile** — new "Rewatchable" poster shelf on the stats page (top 8 by rating, then recency), with a "Browse all →" link to the filtered watchlist.
+- [x] `[M]` **Picker: tournament tree view after pick** — bracket history captured per pick (`{ a, b, winnerSide, round }`), and the result screen now has a "Show bracket" button that reveals every match grouped by round (Final / Semifinal / Quarterfinal / Round N). Each match is a 1fr_auto_1fr row with both posters and titles; loser is faded + struck-through, winner is full opacity. Cleared and re-built on Pick again.
 - [ ] `[L]` **Picker: more mechanics** — open question. Current is single-pick. Brainstorm:
   - mood-based ("short / long", "light / heavy", "comfort / challenge")
   - "spin again" with weighted re-roll
@@ -67,10 +67,15 @@ Each item is tagged `[XS]` / `[S]` / `[M]` / `[L]`. Rough budget so picking the 
 
 ### Speculative
 
-- [ ] `[M]` **Share / "Open with"** — Web Share API + share_target manifest entry so the PWA can receive shared links (e.g. share a TMDB URL → app opens to that show). PWA share-target is well-supported on Android, partial elsewhere. Worth a spike to confirm scope. *Complexity: manifest is small; the unknown is parsing inbound URLs and routing them to a show — could escalate if the share payload is messy.*
+- [x] `[M]` **Share / "Open with"** — both directions wired. Outbound: a `Share` button on movie and show pages calls `navigator.share` with the canonical TMDB URL (feature-detected; hidden on browsers without the API). Inbound: `share_target` added to the manifest (GET, action `${SCOPE}share/`, params { title, text, url }) and a new `/share/+page.svelte` parses any of the three carriers for `themoviedb.org/(tv|movie)/{id}` (also matches the app's own routes), then `goto(...)` with `replaceState: true` so the receiver step doesn't pollute the back stack. Misses fall back to a one-tap search using the shared text. Prerenders cleanly under the static adapter.
 
 ## Recently fixed
 
+- 2026-05-04 — **Bottom sheets dismiss with swipe-down across the app** — extracted the `swipeToDismiss` Svelte action into `src/lib/tactile.ts` and applied it to every dialog with a handle (watchlist sort/view, `CardActionsSheet`, `RandomPickerSheet`, `DiaryLogSheet`, `StatusMenu`, the new episode-actions sheet on the season page). Each sheet now has a generous `*-drag` zone (`touch-action: none`) wrapping a smaller visual handle pill so the gesture has a real touch target.
+- 2026-05-04 — **Per-episode tracking + split tap targets** — `watchedEpisodes?: Record<number, number[]>` on `TvEntry` plus `store.toggleEpisode` and `isEpisodeWatched()` helper. Episode rows in `src/routes/show/[id]/season/[season]/+page.svelte` are now `<li>` containers wrapping two adjacent `<button>`s (circle = per-ep toggle, body = mark-up-to-here). Season info page picks up the same helper for its watched indicator.
+- 2026-05-04 — **Rewatchable flag** — `rewatchable?: boolean` on `Entry`, schema bumped to 5, `store.setRewatchable`, toggle on show + movie pages, picker boost (2× slots), watchlist filter (`?rewatch=1` + chip in the sort/view sheet), and a profile shelf on `/stats/`.
+- 2026-05-04 — **Picker bracket reveal** — `bracketLog` captured per pick (a, b, winnerSide, round) and surfaced behind a "Show bracket" toggle on the result screen. Matches grouped by round with the named labels (Final / Semifinal / Quarterfinal).
+- 2026-05-04 — **Web Share + share_target** — outbound `Share` button on show + movie pages (`navigator.share`, feature-detected); inbound via manifest `share_target` (GET, params { title, text, url }) routed through the new prerendered `/share/+page.svelte`, which extracts a `(tv|movie)/{id}` from the payload and `goto(...)`s the matching detail page (replaceState).
 - 2026-05-04 — **Season rating scrolls to centre, not top** — `scrollIntoView` block changed `start` → `center` in `src/routes/show/[id]/season/[season]/+page.svelte`.
 - 2026-05-04 — **Settings locale description fits one line** — copy tightened to "Language for TMDB titles & default region. Detected: …" in `src/routes/settings/+page.svelte`.
 - 2026-05-04 — **Search debounce bumped to 350 ms** — `src/routes/search/+page.svelte`.

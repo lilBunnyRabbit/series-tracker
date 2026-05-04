@@ -2,7 +2,7 @@
   import RatingPicker from "$lib/components/RatingPicker.svelte";
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
-  import { tactile } from "$lib/tactile";
+  import { swipeToDismiss, tactile } from "$lib/tactile";
   import type { Entry, TvEntry } from "$lib/types";
 
   type Props = {
@@ -177,7 +177,13 @@
   onclose={close}
   class="diary-sheet w-[min(28rem,94vw)] max-w-[94vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
 >
-  <div class="diary-sheet-handle sm:hidden" aria-hidden="true"></div>
+  <div
+    class="diary-sheet-drag sm:hidden"
+    use:swipeToDismiss={{ target: dialog, onDismiss: close }}
+    aria-hidden="true"
+  >
+    <span class="diary-sheet-handle"></span>
+  </div>
   <div class="max-h-[80vh] w-full overflow-y-auto p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
     <header class="mb-4 flex items-start gap-3">
       {#if poster}
@@ -407,8 +413,18 @@
     }
   }
 
+  .diary-sheet-drag {
+    padding: 0.625rem 0 0.5rem;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  .diary-sheet-drag:active {
+    cursor: grabbing;
+  }
   .diary-sheet-handle {
-    margin: 0.5rem auto 0;
+    display: block;
+    margin: 0 auto;
     width: 2.5rem;
     height: 0.25rem;
     border-radius: 9999px;

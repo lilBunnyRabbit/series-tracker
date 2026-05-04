@@ -20,7 +20,6 @@
   let testMessage = $state<string | null>(null);
 
   let checkStatus = $state<"idle" | "checking" | "current" | "updated" | "error">("idle");
-  let updating = $state(false);
 
   let changelogHtml = $state<string | null>(null);
   let changelogLoading = $state(false);
@@ -101,14 +100,11 @@
     checkStatus = result;
   }
 
+  const updating = $derived(version.stage !== "idle");
+
   async function handleApplyUpdate(): Promise<void> {
     if (updating) return;
-    updating = true;
-    try {
-      await applyUpdate();
-    } catch {
-      updating = false;
-    }
+    await applyUpdate();
   }
 
   async function loadChangelog(): Promise<void> {

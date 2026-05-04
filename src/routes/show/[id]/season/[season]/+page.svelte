@@ -7,7 +7,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { posterUrl, seasonDetail } from "$lib/tmdb";
-  import { STATUS_COLOR } from "$lib/types";
+  import { isEpisodeWatched, STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, SeasonDetail, TvEntry } from "$lib/types";
   import { fade } from "svelte/transition";
 
@@ -127,14 +127,49 @@
     store.setProgress(showId, season, airedCount);
     scrollToEp(airedCount);
   }
-  function tickEpisode(ep: EpisodeBrief): void {
+  // Body tap = "mark up through this episode". This is the fast path for the
+  // common contiguous-watching flow: tap the latest episode you've reached and
+  // everything before it is marked too. For toggling a single episode (e.g.
+  // marking E3 watched while leaving E2 alone) the user taps the small circle
+  // indicator instead — see `toggleSingle`.
+  function markUpTo(ep: EpisodeBrief): void {
     if (!entry) return;
-    // Toggle: tapping a watched episode unmarks it (sets progress to ep-1);
-    // tapping an unwatched episode marks everything up to and including it.
-    if (current >= ep.episode_number) {
+    if (isEpisodeWatched(entry, season, ep.episode_number)) {
       store.setProgress(showId, season, ep.episode_number - 1);
     } else {
       store.setProgress(showId, season, ep.episode_number);
+    }
+    scrollToEp(ep.episode_number);
+  }
+  // Per-episode toggle. Only this episode's state flips; the rest of the
+  // season is untouched. If the result happens to be a contiguous run from E1
+  // the store quietly drops back to counter-mode so the season is no longer
+  // "explicit"; otherwise it sticks the explicit set on the entry.
+  function toggleSingle(ep: EpisodeBrief, e: Event): void {
+    e.stopPropagation();
+    if (!entry) return;
+    store.toggleEpisode(showId, season, ep.episode_number);
+  }
+
+  // Web Share — same feature-detect pattern as show + movie pages. Sharing a
+  // season points recipients at the in-app season tracker for that show; the
+  // /share/ route knows how to parse `/show/{id}/season/{n}/` and route there.
+  let canShare = $state(false);
+  $effect(() => {
+    canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  });
+  async function shareSeason(): Promise<void> {
+    if (!entry) return;
+    try {
+      await navigator.share({
+        title: `${heroTitle} · ${entry.title} · Series Tracker`,
+        text: `${entry.title} — ${heroTitle}`,
+        url: `${location.origin}${base}/show/${showId}/season/${season}/`,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.warn("[season] share failed", err);
+      }
     }
   }
 
@@ -217,13 +252,27 @@
           {/if}
         </div>
 
-        <a
-          href="{base}/show/{showId}/season/{season}/info/"
-          use:tactile={{ haptic: false }}
-          class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
-        >
-          ⓘ More info
-        </a>
+        <div class="flex flex-wrap justify-center gap-2">
+          <a
+            href="{base}/show/{showId}/season/{season}/info/"
+            use:tactile={{ haptic: false }}
+            class="tap-target tap-target--btn inline-flex rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent"
+          >
+            ⓘ More info
+          </a>
+          {#if canShare}
+            <button
+              type="button"
+              use:tactile={{ haptic: false }}
+              onclick={shareSeason}
+              aria-label="Share this season"
+              class="tap-target tap-target--btn inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+            >
+              <span aria-hidden="true">↗</span>
+              <span>Share</span>
+            </button>
+          {/if}
+        </div>
 
         {#if detail?.overview}
           <p class="max-w-prose text-left text-sm leading-relaxed text-text/90">
@@ -269,70 +318,85 @@
         {:else if detail}
           <ol class="space-y-1.5">
             {#each detail.episodes as ep (ep.id)}
-              {@const watched = ep.episode_number <= current}
-              {@const isCurrent = ep.episode_number === current}
+              {@const watched = entry ? isEpisodeWatched(entry, season, ep.episode_number) : false}
               {@const aired = ep.air_date && ep.air_date <= todayIso}
-              <li data-ep={ep.episode_number} class="scroll-mt-4">
+              <!-- Two-target row: circle button toggles only this episode
+                   (for non-contiguous tracking, e.g. watched E1 and E3 but
+                   not E2); body button marks the season as watched up
+                   through this episode (the common contiguous flow). -->
+              <li
+                data-ep={ep.episode_number}
+                class="scroll-mt-4 relative flex items-stretch overflow-hidden rounded-md border bg-surface transition-colors duration-150 {watched
+                  ? `${sc ? sc.borderSoft : 'border-primary/60'}`
+                  : 'border-border'} {aired ? '' : 'opacity-60'}"
+              >
+                <!-- Watched-episode backdrop: a faded still bleeds in from
+                     the right with a left-fade mask, matching the library
+                     row treatment. Lives on the <li> so it spans both
+                     buttons and never re-paints when the user taps. -->
+                {#if watched && ep.still_path}
+                  <div
+                    aria-hidden="true"
+                    transition:fade={{ duration: 220 }}
+                    class="pointer-events-none absolute inset-y-0 right-0 w-3/5 bg-cover bg-center opacity-25 [mask-image:linear-gradient(to_left,black,transparent)]"
+                    style="background-image: url('https://image.tmdb.org/t/p/w300{ep.still_path}')"
+                  ></div>
+                {/if}
+
                 <button
                   type="button"
                   use:tactile={{ haptic: "tick" }}
-                  onclick={() => tickEpisode(ep)}
+                  onclick={(e) => toggleSingle(ep, e)}
                   disabled={!entry}
-                  class="tap-target tap-target--card relative flex w-full items-start gap-3 overflow-hidden rounded-md border bg-surface px-3 py-2.5 text-left transition-colors duration-150 {watched
-                    ? `${sc ? sc.borderSoft : 'border-primary/60'}`
-                    : isCurrent
-                      ? 'border-accent/60'
-                      : 'border-border'} {aired ? '' : 'opacity-60'}"
+                  aria-label="Toggle E{ep.episode_number} watched"
+                  aria-pressed={watched}
+                  class="tap-target relative z-10 flex shrink-0 items-start py-2.5 pl-3 pr-2 active:bg-surface-2/50"
                 >
-                  <!-- Watched-episode backdrop: a faded still bleeds in from the
-                       right with a left-fade mask, matching the library row
-                       treatment. Unwatched/upcoming rows stay clean. Faded
-                       in/out so toggling watched state doesn't snap. -->
-                  {#if watched && ep.still_path}
-                    <div
-                      aria-hidden="true"
-                      transition:fade={{ duration: 220 }}
-                      class="pointer-events-none absolute inset-y-0 right-0 w-3/5 bg-cover bg-center opacity-25 [mask-image:linear-gradient(to_left,black,transparent)]"
-                      style="background-image: url('https://image.tmdb.org/t/p/w300{ep.still_path}')"
-                    ></div>
-                  {/if}
                   <span
-                    class="relative mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors duration-150 {watched
+                    class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors duration-150 {watched
                       ? `${sc ? `${sc.bg} ${sc.border} text-bg` : 'bg-primary border-primary text-bg'}`
                       : 'border-border bg-surface-2 text-muted'}"
                     aria-hidden="true"
                   >
                     {watched ? "✓" : ep.episode_number}
                   </span>
-                  <div class="relative min-w-0 flex-1">
-                    <div class="flex items-baseline gap-2">
-                      <span class="text-xs font-medium tabular-nums text-muted">E{ep.episode_number}</span>
-                      <span class="min-w-0 flex-1 truncate text-sm font-medium {watched ? 'text-text' : 'text-text/90'}">
-                        {ep.name}
-                      </span>
-                      {#if ep.runtime}
-                        <span class="shrink-0 text-[10px] tabular-nums text-muted">{ep.runtime}m</span>
-                      {/if}
-                    </div>
-                    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-muted">
-                      {#if ep.air_date}
-                        <span>{ep.air_date}{aired ? "" : " · upcoming"}</span>
-                      {/if}
-                      {#if watched && typeof ep.vote_average === "number" && ep.vote_average > 0 && (ep.vote_count ?? 0) > 0}
-                        <span
-                          transition:fade={{ duration: 180 }}
-                          class="inline-flex items-center gap-1"
-                        >
-                          <span class="text-accent">★</span>
-                          <span class="font-medium text-text/90">{ep.vote_average.toFixed(1)}</span>
-                          <span class="text-muted/80">({ep.vote_count})</span>
-                        </span>
-                      {/if}
-                    </div>
-                    {#if ep.overview}
-                      <p class="mt-1 line-clamp-2 text-xs text-muted">{ep.overview}</p>
+                </button>
+
+                <button
+                  type="button"
+                  use:tactile={{ haptic: "tick" }}
+                  onclick={() => markUpTo(ep)}
+                  disabled={!entry}
+                  aria-label="Mark watched up through E{ep.episode_number}"
+                  class="tap-target relative z-10 min-w-0 flex-1 py-2.5 pl-1 pr-3 text-left active:bg-surface-2/50"
+                >
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-xs font-medium tabular-nums text-muted">E{ep.episode_number}</span>
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium {watched ? 'text-text' : 'text-text/90'}">
+                      {ep.name}
+                    </span>
+                    {#if ep.runtime}
+                      <span class="shrink-0 text-[10px] tabular-nums text-muted">{ep.runtime}m</span>
                     {/if}
                   </div>
+                  <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-muted">
+                    {#if ep.air_date}
+                      <span>{ep.air_date}{aired ? "" : " · upcoming"}</span>
+                    {/if}
+                    {#if watched && typeof ep.vote_average === "number" && ep.vote_average > 0 && (ep.vote_count ?? 0) > 0}
+                      <span
+                        transition:fade={{ duration: 180 }}
+                        class="inline-flex items-center gap-1"
+                      >
+                        <span class="text-accent">★</span>
+                        <span class="font-medium text-text/90">{ep.vote_average.toFixed(1)}</span>
+                        <span class="text-muted/80">({ep.vote_count})</span>
+                      </span>
+                    {/if}
+                  </div>
+                  {#if ep.overview}
+                    <p class="mt-1 line-clamp-2 text-xs text-muted">{ep.overview}</p>
+                  {/if}
                 </button>
               </li>
             {/each}

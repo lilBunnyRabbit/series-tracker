@@ -97,6 +97,22 @@
       .slice(0, 6);
   });
 
+  // Rewatchable shelf: surface the user's flagged-for-rewatch titles, ordered
+  // by rating then most recently updated. Capped at 8 so the shelf reads as a
+  // curated snapshot, not the whole list — full list lives behind the
+  // watchlist's `?rewatch=1` filter.
+  const rewatchable = $derived.by<Entry[]>(() => {
+    return [...store.entries]
+      .filter((e) => e.rewatchable === true)
+      .sort((a, b) => {
+        const ra = a.rating ?? 0;
+        const rb = b.rating ?? 0;
+        if (ra !== rb) return rb - ra;
+        return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
+      })
+      .slice(0, 8);
+  });
+
   function fmtHours(minutes: number): string {
     if (minutes <= 0) return "0h";
     const days = Math.floor(minutes / (60 * 24));
@@ -257,6 +273,44 @@
       <p class="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted">
         Genre data is captured when you add new entries — older entries don't contribute yet.
       </p>
+    {/if}
+
+    <!-- Rewatchable shelf -->
+    {#if rewatchable.length > 0}
+      <div class="space-y-3">
+        <h2 class="flex items-baseline justify-between text-sm font-medium uppercase tracking-wider text-muted">
+          <span class="flex items-center gap-2">
+            <span aria-hidden="true">♻</span>
+            <span>Rewatchable</span>
+            <span class="font-normal normal-case text-muted/70">· {rewatchable.length}</span>
+          </span>
+          <a
+            href="{base}/watchlist/?rewatch=1"
+            use:tactile={{ haptic: false }}
+            class="tap-target text-[11px] font-normal normal-case text-muted hover-text-text"
+          >
+            Browse all →
+          </a>
+        </h2>
+        <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
+          {#each rewatchable as e (e.kind + ":" + e.id)}
+            {@const sc = STATUS_COLOR[e.status]}
+            <a
+              href={e.kind === "tv" ? `${base}/show/${e.id}/` : `${base}/movie/${e.id}/`}
+              use:tactile={{ haptic: false }}
+              title={e.title}
+              class="tap-target tap-target--card block"
+            >
+              <div class="aspect-[2/3] w-full overflow-hidden rounded-md border bg-surface-2 {sc.borderSoft}">
+                {#if e.poster}
+                  <img src={e.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
+                {/if}
+              </div>
+              <p class="mt-1 line-clamp-1 text-[10px] text-muted">{e.title}</p>
+            </a>
+          {/each}
+        </div>
+      </div>
     {/if}
 
     <!-- Top rated -->

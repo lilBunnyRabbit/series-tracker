@@ -9,6 +9,8 @@ export type VersionInfo = {
   buildTimestamp: number;
 };
 
+export type UpdateStage = "idle" | "installing" | "clearing" | "reloading";
+
 const POLL_INTERVAL_MS = 30 * 60 * 1000;
 const VISIBILITY_THROTTLE_MS = 60 * 1000;
 
@@ -26,6 +28,9 @@ const state = $state<{
   checking: boolean;
   dismissedTimestamp: number | null;
   initialized: boolean;
+  stage: UpdateStage;
+  fromVersion: string | null;
+  toVersion: string | null;
 }>({
   current: BUILT_IN,
   latest: null,
@@ -34,12 +39,24 @@ const state = $state<{
   checking: false,
   dismissedTimestamp: null,
   initialized: false,
+  stage: "idle",
+  fromVersion: null,
+  toVersion: null,
 });
 
 let updateSWFn: ((reload?: boolean) => Promise<void>) | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 export const version = state;
+
+// Dev-only handle for poking at the update overlay from the browser console:
+//   __version__.fromVersion = "0.9.0"; __version__.toVersion = "1.0.0"
+//   __version__.stage = "installing"  // then "clearing", "reloading", "idle"
+// The $state proxy makes these assignments reactive, so the overlay reflects
+// changes immediately. Stripped from production via the `dev` guard.
+if (browser && dev) {
+  (window as unknown as Record<string, unknown>).__version__ = state;
+}
 
 async function fetchVersion(): Promise<VersionInfo | null> {
   try {
@@ -108,9 +125,18 @@ export function markSWReady(): void {
 }
 
 export async function applyUpdate(): Promise<void> {
+  // Snapshot the version transition for the overlay UI before any state
+  // mutations or reloads. `fromVersion` is what's running right now;
+  // `toVersion` is what we're swapping in.
+  state.fromVersion = state.current.version;
+  state.toVersion = state.latest?.version ?? null;
+
   // Happy path: SW reported a waiting worker via onNeedRefresh. Let the
   // plugin-pwa updater swap the SW and reload — it handles skipWaiting +
-  // controllerchange races correctly.
+  // controllerchange races correctly. The reload usually fires inside
+  // updateSWFn, so the "installing" step is what the user sees right before
+  // the page navigates away.
+  state.stage = "installing";
   if (updateSWFn && state.swReady) {
     try {
       await updateSWFn(true);
@@ -120,6 +146,10 @@ export async function applyUpdate(): Promise<void> {
     } catch {
       // fall through to hard refresh
     }
+  } else {
+    // No SW to swap — give the overlay a beat to render the "installing" step
+    // before we move on, otherwise it blinks past too fast to read.
+    await new Promise((r) => setTimeout(r, 250));
   }
 
   // Hard-refresh fallback. Used when:
@@ -130,6 +160,7 @@ export async function applyUpdate(): Promise<void> {
   // Unregistering forces the next page load to bootstrap from the network
   // and re-register a fresh SW, which is the only reliable way to escape
   // a stale precache when the install cycle hasn't completed.
+  state.stage = "clearing";
   if ("serviceWorker" in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -146,6 +177,11 @@ export async function applyUpdate(): Promise<void> {
       // best-effort
     }
   }
+
+  state.stage = "reloading";
+  // Brief pause so the "reloading" step paints before the page navigates;
+  // otherwise users see a frozen "clearing" state right up until the reload.
+  await new Promise((r) => setTimeout(r, 250));
 
   // Cache-bust the navigation itself: some browsers will replay the old
   // navigation request from disk cache on a vanilla reload, even with the SW
