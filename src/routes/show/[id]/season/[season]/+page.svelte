@@ -64,10 +64,11 @@
 
   // When the season transitions into "complete" (last episode marked),
   // scroll the rating section into view so the user can rate it without
-  // hunting for the picker. Plain locals so the effect only re-runs on the
-  // tracked $derived (isComplete), not on bookkeeping writes. The
-  // `initialized` guard skips the very first run so an already-completed
-  // season doesn't auto-scroll on mount.
+  // hunting for the picker. `block: "center"` keeps the picker mid-viewport
+  // — `start` aligned the rating to the page header which buried it. Plain
+  // locals so the effect only re-runs on the tracked $derived (isComplete),
+  // not on bookkeeping writes. The `initialized` guard skips the very first
+  // run so an already-completed season doesn't auto-scroll on mount.
   let prevComplete = false;
   let completionInitialized = false;
   $effect(() => {
@@ -76,7 +77,7 @@
       requestAnimationFrame(() => {
         const el = document.querySelector("[data-section='rating']");
         if (el instanceof HTMLElement) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       });
     }

@@ -468,17 +468,21 @@
 
     <hr class="border-border" />
 
-    <label class="flex items-start justify-between gap-4">
+    <!-- Stacks on mobile because the option labels (e.g. "Português (Brasil)
+         (pt-BR)") force the browser-sized select wider than the row's right
+         column on narrow viewports, which pushed the select into the title /
+         description area. On sm+ the row layout matches the others. -->
+    <label class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span class="min-w-0">
         <span class="block text-sm font-medium">Locale</span>
         <span class="mt-0.5 block text-xs text-muted">
-          Sent to TMDB so titles, overviews, and provider names come back in your language. Also picks the default Where-to-Watch country. Detected: <span class="font-mono">{detectedLanguage}</span>.
+          Language for TMDB titles & default region. Detected: <span class="font-mono">{detectedLanguage}</span>.
         </span>
       </span>
       <select
         value={languagePref}
         onchange={setLanguage}
-        class="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
+        class="w-full rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent sm:w-auto sm:max-w-[12rem]"
       >
         <option value="">Auto ({detectedLanguage})</option>
         {#each LANGUAGE_OPTIONS as code (code)}

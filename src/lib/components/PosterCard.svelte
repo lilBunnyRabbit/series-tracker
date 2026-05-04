@@ -88,21 +88,24 @@
 
     <span class="absolute bottom-1.5 left-1.5 flex items-center gap-1.5">
       <TypeBadge {kind} variant="overlay" />
+      {#if c}
+        <!-- Status dot overlay — paired with the soft border under the poster,
+             this is the "in your library as X" signal. A labelled pill below
+             the title pushed the year onto a second row and read as a
+             duplicate badge, so the dot does all the work here. -->
+        <span
+          class="inline-flex items-center rounded bg-black/65 px-1.5 py-1 backdrop-blur-sm"
+          title={status ? STATUS_LABEL[status] : undefined}
+          aria-label={status ? STATUS_LABEL[status] : undefined}
+        >
+          <span class="h-1.5 w-1.5 rounded-full {c.dot}" aria-hidden="true"></span>
+        </span>
+      {/if}
     </span>
   </div>
 
   <div class="min-w-0 px-0.5">
     <div class="line-clamp-2 text-xs font-medium leading-snug text-text">{title}</div>
-    {#if c && status}
-      <!-- Labelled status pill replaces the bare-dot poster overlay we used to
-           show. Once a card is in the library, the user wants a clear "you've
-           got this as Watching/Plan/etc." readout below the title — a colored
-           dot in the corner wasn't legible enough to communicate state. -->
-      <div class="mt-1 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium {c.chip}">
-        <span class="h-1.5 w-1.5 rounded-full {c.dot}" aria-hidden="true"></span>
-        <span class="truncate">{STATUS_LABEL[status]}</span>
-      </div>
-    {/if}
     {#if year || meta}
       <div class="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
         {#if year}<span class="tabular-nums">{year}</span>{/if}

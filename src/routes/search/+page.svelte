@@ -96,7 +96,7 @@
         .finally(() => {
           if (!ctrl.signal.aborted) loading = false;
         });
-    }, 250);
+    }, 350);
 
     return () => {
       if (timer) clearTimeout(timer);

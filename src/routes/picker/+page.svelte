@@ -50,10 +50,21 @@
     }
   }
 
+  // Don't suggest titles that haven't aired yet — `year` is the only date field
+  // we capture, so this is year-precision (a release later this year still
+  // passes). Entries without a year fall through (we don't know).
+  const currentYear = new Date().getFullYear();
+  function hasAired(e: Entry): boolean {
+    if (!e.year) return true;
+    const y = Number(e.year);
+    return !Number.isFinite(y) || y <= currentYear;
+  }
+
   const filtered = $derived(
     store.entries.filter((e) => {
       if (!selectedStatuses.includes(e.status)) return false;
       if (kindFilter !== "all" && e.kind !== kindFilter) return false;
+      if (!hasAired(e)) return false;
       return true;
     })
   );
@@ -62,6 +73,7 @@
     const c: Record<Status, number> = { watching: 0, completed: 0, plan: 0, dropped: 0, tuned: 0 };
     for (const e of store.entries) {
       if (kindFilter !== "all" && e.kind !== kindFilter) continue;
+      if (!hasAired(e)) continue;
       c[e.status]++;
     }
     return c;

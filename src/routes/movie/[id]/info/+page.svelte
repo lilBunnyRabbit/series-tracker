@@ -368,6 +368,7 @@
               poster={posterUrl(r.poster_path, "w342")}
               year={r.first_air_date ? r.first_air_date.slice(0, 4) : undefined}
               voteAverage={r.vote_average}
+              status={store.get("tv", r.id)?.status}
             />
           {:else if r.media_type === "movie"}
             <PosterCard
@@ -377,6 +378,7 @@
               poster={posterUrl(r.poster_path, "w342")}
               year={r.release_date ? r.release_date.slice(0, 4) : undefined}
               voteAverage={r.vote_average}
+              status={store.get("movie", r.id)?.status}
             />
           {/if}
         {/each}
@@ -395,6 +397,7 @@
               poster={posterUrl(r.poster_path, "w342")}
               year={r.first_air_date ? r.first_air_date.slice(0, 4) : undefined}
               voteAverage={r.vote_average}
+              status={store.get("tv", r.id)?.status}
             />
           {:else if r.media_type === "movie"}
             <PosterCard
@@ -404,6 +407,7 @@
               poster={posterUrl(r.poster_path, "w342")}
               year={r.release_date ? r.release_date.slice(0, 4) : undefined}
               voteAverage={r.vote_average}
+              status={store.get("movie", r.id)?.status}
             />
           {/if}
         {/each}

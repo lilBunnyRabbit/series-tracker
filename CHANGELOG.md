@@ -4,6 +4,16 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Changed
+- Recommendation rails ("Watch next" / "More like this") on movie and show info pages now show a status dot on titles already in your library, so you can spot what's already tracked at a glance.
+- Picker no longer offers titles that haven't aired yet — entries dated to a future year are excluded from the bracket pool and the status counts.
+- Search debounce bumped slightly so quick typing doesn't fire a request per keystroke.
+- Locale row in Settings no longer wraps to several lines on narrow screens.
+
+### Fixed
+- Poster cards no longer show a status badge above the year. The labelled pill under the title was a duplicate of the soft border + dot the card already carried; library state is now signalled by the border colour and a small dot overlay on the poster, with the year and metadata back on a single line.
+- After completing a season, the rating picker centres in the viewport instead of getting pinned just under the page header.
+
 ## [0.9.0] - 2026-05-04
 
 ### Added
