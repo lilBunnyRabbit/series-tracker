@@ -103,16 +103,17 @@
 
     <p class="mb-2 text-xs uppercase tracking-wider text-muted">Status</p>
     <div class="grid grid-cols-2 gap-2">
-      {#each STATUSES as s (s)}
+      {#each STATUSES as s, i (s)}
         {@const c = STATUS_COLOR[s]}
         {@const active = entry.status === s}
+        {@const wide = i === STATUSES.length - 1 && STATUSES.length % 2 === 1}
         <button
           type="button"
           use:tactile
           onclick={() => changeStatus(s)}
-          class="tap-target tap-target--btn flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 [&:nth-child(odd):last-child]:col-span-2 [&:nth-child(odd):last-child]:justify-center {active
-            ? `${c.border} ${c.bg} text-bg`
-            : `border-border ${c.text}`}"
+          class="tap-target tap-target--btn flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {wide
+            ? 'col-span-2 justify-center'
+            : ''} {active ? `${c.border} ${c.bg} text-bg` : `border-border ${c.text}`}"
         >
           <span class="h-2 w-2 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
           {STATUS_LABEL[s]}

@@ -88,6 +88,10 @@
           results = r;
           store.pushSearchHistory(q);
           syncUrl(q);
+          // Bottom-docked search input + soft keyboard means new results
+          // appear above the keyboard; without this the page stays scrolled
+          // wherever the previous results sat and the first row is hidden.
+          window.scrollTo({ top: 0, behavior: "auto" });
         })
         .catch((e) => {
           if (e instanceof Error && e.name === "AbortError") return;

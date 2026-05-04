@@ -205,6 +205,7 @@
             year={yearOf(c)}
             meta={metaOf(c)}
             voteAverage={c.vote_average}
+            status={store.get(c.media_type, c.id)?.status}
           />
         {/each}
       </Rail>
@@ -222,6 +223,7 @@
               poster={posterUrl(c.poster_path, "w342")}
               year={yearOf(c)}
               voteAverage={c.vote_average}
+              status={store.get(c.media_type, c.id)?.status}
             />
           {/each}
         </Rail>

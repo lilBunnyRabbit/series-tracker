@@ -156,6 +156,15 @@
     .hover-border-accent:hover {
       border-color: var(--color-accent);
     }
+    .hover-border-secondary:hover {
+      border-color: var(--color-secondary);
+    }
+    .hover-border-tertiary:hover {
+      border-color: var(--color-tertiary);
+    }
+    .hover-border-muted:hover {
+      border-color: var(--color-muted);
+    }
     .hover-bg-surface:hover {
       background-color: var(--color-surface);
     }

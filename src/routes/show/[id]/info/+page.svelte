@@ -358,6 +358,46 @@
       </section>
     {/if}
 
+    <!-- NETWORKS / STUDIOS -->
+    {#if (detail.networks && detail.networks.length > 0) || (detail.production_companies && detail.production_companies.length > 0)}
+      <section class="space-y-3">
+        {#if detail.networks && detail.networks.length > 0}
+          <div class="space-y-2">
+            <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
+              {detail.networks.length === 1 ? "Network" : "Networks"}
+            </h2>
+            <div class="flex flex-wrap gap-2">
+              {#each detail.networks as n (n.id)}
+                <span class="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs">
+                  {#if n.logo_path}
+                    <img src={posterUrl(n.logo_path, "w92")} alt="" class="h-5 w-auto max-w-[70px] object-contain" loading="lazy" />
+                  {/if}
+                  <span class="text-text">{n.name}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
+        {#if detail.production_companies && detail.production_companies.length > 0}
+          <div class="space-y-2">
+            <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
+              {detail.production_companies.length === 1 ? "Studio" : "Studios"}
+            </h2>
+            <div class="flex flex-wrap gap-2">
+              {#each detail.production_companies as c (c.id)}
+                <span class="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs">
+                  {#if c.logo_path}
+                    <img src={posterUrl(c.logo_path, "w92")} alt="" class="h-5 w-auto max-w-[70px] object-contain" loading="lazy" />
+                  {/if}
+                  <span class="text-text">{c.name}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </section>
+    {/if}
+
     <!-- DIARY HISTORY for this title -->
     {#if titleHistory.length > 0}
       <section class="space-y-2">

@@ -46,7 +46,7 @@ export const STATUS_COLOR: Record<
     bg: "bg-primary",
     bgSoft: "bg-primary/15",
     chip: "border-primary text-primary",
-    hoverBorder: "hover:border-primary",
+    hoverBorder: "hover-border-primary",
   },
   completed: {
     dot: "bg-secondary",
@@ -56,7 +56,7 @@ export const STATUS_COLOR: Record<
     bg: "bg-secondary",
     bgSoft: "bg-secondary/15",
     chip: "border-secondary text-secondary",
-    hoverBorder: "hover:border-secondary",
+    hoverBorder: "hover-border-secondary",
   },
   plan: {
     dot: "bg-accent",
@@ -66,7 +66,7 @@ export const STATUS_COLOR: Record<
     bg: "bg-accent",
     bgSoft: "bg-accent/15",
     chip: "border-accent text-accent",
-    hoverBorder: "hover:border-accent",
+    hoverBorder: "hover-border-accent",
   },
   dropped: {
     dot: "bg-muted",
@@ -76,7 +76,7 @@ export const STATUS_COLOR: Record<
     bg: "bg-muted",
     bgSoft: "bg-muted/15",
     chip: "border-border text-muted",
-    hoverBorder: "hover:border-muted",
+    hoverBorder: "hover-border-muted",
   },
   tuned: {
     dot: "bg-tertiary",
@@ -86,7 +86,7 @@ export const STATUS_COLOR: Record<
     bg: "bg-tertiary",
     bgSoft: "bg-tertiary/15",
     chip: "border-tertiary text-tertiary",
-    hoverBorder: "hover:border-tertiary",
+    hoverBorder: "hover-border-tertiary",
   },
 };
 
@@ -341,6 +341,7 @@ export type TvDetail = {
     overview?: string;
     vote_average?: number;
   }[];
+  production_companies?: { id: number; name: string; logo_path: string | null }[];
 };
 
 export type MovieDetail = {

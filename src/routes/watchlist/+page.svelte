@@ -69,6 +69,22 @@
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   });
   const rewatchableOnly = $derived(page.url.searchParams.get("rewatch") === "1");
+  const titleQuery = $derived(page.url.searchParams.get("q") ?? "");
+  // Local state mirrors the URL but doesn't push every keystroke through goto —
+  // typing into a URL-synced input round-trips through navigation and loses the
+  // input focus on iOS. We keep the URL in sync via a debounced effect below.
+  let queryDraft = $state(page.url.searchParams.get("q") ?? "");
+  let queryDebounce: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    const next = queryDraft;
+    if (queryDebounce) clearTimeout(queryDebounce);
+    queryDebounce = setTimeout(() => {
+      if (next !== titleQuery) updateParams({ q: next.trim() || null, page: null });
+    }, 200);
+    return () => {
+      if (queryDebounce) clearTimeout(queryDebounce);
+    };
+  });
 
   function updateParams(patch: Record<string, string | null>): void {
     const url = new URL(page.url);
@@ -118,10 +134,17 @@
   }
 
   const filtered = $derived.by(() => {
+    const q = titleQuery.trim().toLowerCase();
     const list = store.entries
       .filter((e) => (filter === "all" ? true : e.status === filter))
       .filter((e) => (kindFilter === "all" ? true : e.kind === kindFilter))
-      .filter((e) => (rewatchableOnly ? e.rewatchable === true : true));
+      .filter((e) => (rewatchableOnly ? e.rewatchable === true : true))
+      .filter((e) => {
+        if (!q) return true;
+        if (e.title.toLowerCase().includes(q)) return true;
+        if (e.notes && e.notes.toLowerCase().includes(q)) return true;
+        return false;
+      });
     return [...list].sort((a, b) => {
       switch (sort) {
         case "title":
@@ -421,9 +444,37 @@
         </button>
       </div>
 
+      <!-- Title filter — narrows the visible list by title or notes. Debounced
+           through the URL so deep links stay shareable. -->
+      <label class="relative block">
+        <span class="sr-only">Filter library by title</span>
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+          <Icon name="search" size={14} />
+        </span>
+        <input
+          type="search"
+          bind:value={queryDraft}
+          placeholder="Filter by title..."
+          autocomplete="off"
+          spellcheck="false"
+          class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-9 text-sm outline-none transition-colors duration-150 focus:border-primary"
+        />
+        {#if queryDraft}
+          <button
+            type="button"
+            use:tactile={{ haptic: false }}
+            onclick={() => (queryDraft = "")}
+            aria-label="Clear filter"
+            class="tap-target tap-target--icon absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted hover-text-text"
+          >
+            ✕
+          </button>
+        {/if}
+      </label>
+
     {#if filtered.length === 0}
       <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
-        No items match this filter.
+        {titleQuery.trim() ? `No items match "${titleQuery.trim()}".` : "No items match this filter."}
       </p>
     {:else if view === "list"}
       <div class="space-y-1.5">

@@ -4,6 +4,20 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-05
+
+### Added
+- Network and studio chips on show info pages, and a studios chip row on movie info pages — logo + name surfaced right under the overview.
+- Filter watchlist by title — search input above the library list narrows by title (and notes). Synced to the URL so filtered views are shareable.
+
+### Changed
+- Person page rails ("Known for", "As Producer", etc.) now show the status dot + tinted border on titles already in your library, matching the rest of the app.
+- Search results scroll to the top automatically after each query so the first row stays visible above the soft keyboard.
+- Quick actions status grid renders consistently as plan / watching / tuned / dropped / completed (last row spans both columns).
+
+### Fixed
+- Status buttons inside the swipe-opened add picker register on the first tap instead of needing a second one (was an iOS sticky-hover quirk on the picker chips).
+
 ## [0.11.1] - 2026-05-05
 
 ### Changed
