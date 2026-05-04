@@ -26,7 +26,6 @@ const state = $state<{
   swReady: boolean;
   lastCheck: number;
   checking: boolean;
-  dismissedTimestamp: number | null;
   initialized: boolean;
   stage: UpdateStage;
   fromVersion: string | null;
@@ -37,7 +36,6 @@ const state = $state<{
   swReady: false,
   lastCheck: 0,
   checking: false,
-  dismissedTimestamp: null,
   initialized: false,
   stage: "idle",
   fromVersion: null,
@@ -186,18 +184,10 @@ export async function applyUpdate(): Promise<void> {
   }
 }
 
-export function dismiss(): void {
-  state.dismissedTimestamp = state.latest?.buildTimestamp ?? null;
-}
-
 export function isUpdateAvailable(): boolean {
   // SW signal trumps version.json: it means a new SW is installed and waiting,
   // even if the user hasn't visited /version.json yet.
-  if (state.swReady) {
-    const target = state.latest?.buildTimestamp ?? -1;
-    return state.dismissedTimestamp !== target;
-  }
+  if (state.swReady) return true;
   if (!state.latest) return false;
-  if (state.current.buildTimestamp === state.latest.buildTimestamp) return false;
-  return state.dismissedTimestamp !== state.latest.buildTimestamp;
+  return state.current.buildTimestamp !== state.latest.buildTimestamp;
 }

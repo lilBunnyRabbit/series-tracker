@@ -1,7 +1,8 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
+  import { tactile } from "$lib/tactile";
   import type { UpdateStage } from "$lib/version.svelte";
-  import { version } from "$lib/version.svelte";
+  import { applyUpdate, isUpdateAvailable, version } from "$lib/version.svelte";
 
   let dialogEl: HTMLDialogElement | null = $state(null);
 
@@ -14,8 +15,11 @@
   ];
   const STAGE_ORDER: UpdateStage[] = ["idle", "installing", "clearing", "reloading"];
 
-  const open = $derived(version.stage !== "idle");
+  const updating = $derived(version.stage !== "idle");
+  const open = $derived(updating || isUpdateAvailable());
   const currentIdx = $derived(STAGE_ORDER.indexOf(version.stage));
+  const newVersion = $derived(version.latest?.version ?? null);
+  const currentVersion = $derived(version.current.version);
 
   function statusFor(id: UpdateStage): "done" | "active" | "pending" {
     const idx = STAGE_ORDER.indexOf(id);
@@ -36,7 +40,7 @@
 
   // Esc would normally close a <dialog>; cancelling the event keeps it open.
   // Combined with no close button anywhere in the body, the overlay is
-  // genuinely non-dismissable while the update runs.
+  // genuinely non-dismissable.
   function blockCancel(e: Event): void {
     e.preventDefault();
   }
@@ -50,45 +54,75 @@
   aria-describedby="update-overlay-desc"
 >
   <div class="card">
-    <div class="header">
-      <h2 id="update-overlay-title">Updating Series Tracker</h2>
-      {#if version.fromVersion && version.toVersion && version.fromVersion !== version.toVersion}
-        <p class="versions" id="update-overlay-desc">
-          <span class="from">v{version.fromVersion}</span>
-          <span class="arrow" aria-hidden="true">
-            <Icon name="arrow-right" size={14} />
-          </span>
-          <span class="to">v{version.toVersion}</span>
-        </p>
-      {:else if version.toVersion}
-        <p class="versions" id="update-overlay-desc">
-          <span class="to">v{version.toVersion}</span>
-        </p>
-      {/if}
-    </div>
+    {#if updating}
+      <div class="header">
+        <h2 id="update-overlay-title">Updating Series Tracker</h2>
+        {#if version.fromVersion && version.toVersion && version.fromVersion !== version.toVersion}
+          <p class="versions" id="update-overlay-desc">
+            <span class="from">v{version.fromVersion}</span>
+            <span class="arrow" aria-hidden="true">
+              <Icon name="arrow-right" size={14} />
+            </span>
+            <span class="to">v{version.toVersion}</span>
+          </p>
+        {:else if version.toVersion}
+          <p class="versions" id="update-overlay-desc">
+            <span class="to">v{version.toVersion}</span>
+          </p>
+        {/if}
+      </div>
 
-    <ul class="steps">
-      {#each STEPS as step (step.id)}
-        {@const status = statusFor(step.id)}
-        <li class="step step--{status}">
-          <span class="indicator" aria-hidden="true">
-            {#if status === "done"}
-              <Icon name="check" size={14} />
-            {:else if status === "active"}
-              <span class="spinner"></span>
-            {:else}
-              <span class="dot"></span>
-            {/if}
-          </span>
-          <span class="text">
-            <span class="label">{step.label}</span>
-            <span class="sub">{step.sub}</span>
-          </span>
-        </li>
-      {/each}
-    </ul>
+      <ul class="steps">
+        {#each STEPS as step (step.id)}
+          {@const status = statusFor(step.id)}
+          <li class="step step--{status}">
+            <span class="indicator" aria-hidden="true">
+              {#if status === "done"}
+                <Icon name="check" size={14} />
+              {:else if status === "active"}
+                <span class="spinner"></span>
+              {:else}
+                <span class="dot"></span>
+              {/if}
+            </span>
+            <span class="text">
+              <span class="label">{step.label}</span>
+              <span class="sub">{step.sub}</span>
+            </span>
+          </li>
+        {/each}
+      </ul>
 
-    <p class="footer-note">Don't close this tab — it'll only take a moment.</p>
+      <p class="footer-note">Don't close this tab — it'll only take a moment.</p>
+    {:else}
+      <div class="header">
+        <h2 id="update-overlay-title">Update available</h2>
+        {#if newVersion && newVersion !== currentVersion}
+          <p class="versions" id="update-overlay-desc">
+            <span class="from">v{currentVersion}</span>
+            <span class="arrow" aria-hidden="true">
+              <Icon name="arrow-right" size={14} />
+            </span>
+            <span class="to">v{newVersion}</span>
+          </p>
+        {:else if newVersion}
+          <p class="versions" id="update-overlay-desc">
+            <span class="to">v{newVersion}</span>
+          </p>
+        {/if}
+      </div>
+
+      <p class="ready-note">A new version of Series Tracker is ready to install.</p>
+
+      <button
+        type="button"
+        use:tactile={{ haptic: "tap" }}
+        onclick={() => void applyUpdate()}
+        class="tap-target tap-target--btn update-btn"
+      >
+        Update now
+      </button>
+    {/if}
   </div>
 </dialog>
 
@@ -249,6 +283,26 @@
     font-size: 0.75rem;
     color: var(--color-muted);
     margin: 0;
+  }
+
+  .ready-note {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    margin: 0 0 1.25rem;
+  }
+
+  .update-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
   }
 
   @keyframes spin {

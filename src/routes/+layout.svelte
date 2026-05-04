@@ -7,7 +7,6 @@
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import UpdateProgressOverlay from "$lib/components/UpdateProgressOverlay.svelte";
-  import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { tactile } from "$lib/tactile";
 
   type IconName = "home" | "compass" | "bookmark" | "search" | "user";
@@ -273,7 +272,6 @@
     </nav>
   {/if}
 
-  <UpdateToast />
   <UpdateProgressOverlay />
 </div>
 
