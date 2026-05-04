@@ -1,5 +1,6 @@
 <script lang="ts">
   import { vibrate } from "$lib/haptics";
+  import { portal } from "$lib/portal";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
@@ -10,12 +11,13 @@
 
   let dialog = $state<HTMLDialogElement>();
 
-  // Open / close the dialog when the prop flips. The reactive effect mirrors
-  // dialog.open into our prop so backdrop / Escape close events propagate up.
+  // The dialog is mounted on demand (see `{#if open}` below) so library pages
+  // with hundreds of cards don't carry hundreds of hidden <dialog> siblings.
+  // When `open` flips true we mount + portal + showModal in one tick; on close
+  // the parent flips it false, which unmounts the element entirely.
   $effect(() => {
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    else if (!open && dialog.open) dialog.close();
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
   });
 
   // TV "next episode" hint — same logic as info page so the sheet button label
@@ -63,8 +65,10 @@
   }
 </script>
 
+{#if open}
 <dialog
   bind:this={dialog}
+  use:portal
   onclick={onBackdropClick}
   onclose={close}
   class="actions-sheet w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
@@ -137,6 +141,7 @@
     </button>
   </div>
 </dialog>
+{/if}
 
 <style>
   .actions-sheet {

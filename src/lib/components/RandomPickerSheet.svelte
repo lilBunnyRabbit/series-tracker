@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { vibrate } from "$lib/haptics";
+  import { portal } from "$lib/portal";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
   import { posterUrl } from "$lib/tmdb";
@@ -45,18 +46,15 @@
   // block resets and the in: transition replays.
   let pickGen = $state(0);
 
+  // Dialog mounts on demand (see `{#if open}`), so when `dialog` becomes set
+  // the parent has just flipped open=true. Reset state, showModal, and roll.
   $effect(() => {
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      recent = [];
-      pick = null;
-      kind = "all";
-      dialog.showModal();
-      // Defer one tick so the pool is computed off the latest props.
-      queueMicrotask(() => roll());
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
+    if (!dialog || dialog.open) return;
+    recent = [];
+    pick = null;
+    kind = "all";
+    dialog.showModal();
+    queueMicrotask(() => roll());
   });
 
   function libraryPlanItems(): PickerItem[] {
@@ -178,8 +176,10 @@
   const c = $derived(counts());
 </script>
 
+{#if open}
 <dialog
   bind:this={dialog}
+  use:portal
   onclick={onBackdropClick}
   onclose={close}
   class="picker-sheet w-[min(28rem,94vw)] max-w-[94vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
@@ -297,6 +297,7 @@
     </div>
   </div>
 </dialog>
+{/if}
 
 <style>
   .picker-sheet {

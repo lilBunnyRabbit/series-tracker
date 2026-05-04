@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
   import { vibrate } from "$lib/haptics";
+  import { portal } from "$lib/portal";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
   import { STATUS_COLOR, STATUS_DESCRIPTION, STATUS_LABEL } from "$lib/types";
@@ -62,20 +62,25 @@
   // tuned/dropped sit together as the low-engagement middle tier).
   const ADD_ORDER: Status[] = ["plan", "watching", "tuned", "dropped", "completed"];
 
+  // The dialog is mounted on demand so closed pickers add nothing to the DOM —
+  // discover/library pages can render hundreds of cards, and an always-rendered
+  // <dialog> per card would clutter the tree (and previously, with use:portal,
+  // bloat <body> with hidden siblings).
+  let mounted = $state(false);
   let dialog = $state<HTMLDialogElement>();
 
-  // Portal the dialog to <body> as soon as the bound ref is available so its
-  // CSS containing block resolves against the viewport, not whatever
-  // transformed/clipping/stacking ancestor it was rendered inside.
+  // Once the dialog mounts (and use:portal moves it under <body>), open it.
+  // Snapshot scroll first because showModal()'s focus-on-mount can scroll the
+  // page; restore once now and once next frame to catch the async focus jump.
   $effect(() => {
-    if (dialog && dialog.parentNode !== document.body) {
-      document.body.appendChild(dialog);
-    }
-  });
-  onDestroy(() => {
-    if (dialog && dialog.parentNode === document.body) {
-      document.body.removeChild(dialog);
-    }
+    if (!mounted || !dialog || dialog.open) return;
+    const scrollY = window.scrollY;
+    lockBodyScroll();
+    dialog.showModal();
+    if (window.scrollY !== scrollY) window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
+    requestAnimationFrame(() => {
+      if (window.scrollY !== scrollY) window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
+    });
   });
 
   const triggerClass = $derived(
@@ -107,23 +112,17 @@
       void pick(preset);
       return;
     }
-    // showModal() focuses the dialog (or its first focusable child) which
-    // triggers the browser's scroll-into-view for the natural DOM position
-    // of the <dialog> — mid-page in our case, so the page jumps. Snapshot
-    // the scroll, open, then restore (and restore again next frame because
-    // the focus scroll can land asynchronously).
-    const scrollY = window.scrollY;
-    lockBodyScroll();
-    dialog?.showModal();
-    if (window.scrollY !== scrollY) window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
-    requestAnimationFrame(() => {
-      if (window.scrollY !== scrollY) window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
-    });
+    mounted = true;
   }
 
   function close(): void {
+    if (dialog?.open) dialog.close();
+    else onDialogClose();
+  }
+
+  function onDialogClose(): void {
     unlockBodyScroll();
-    dialog?.close();
+    mounted = false;
   }
 
   async function pick(s: Status): Promise<void> {
@@ -143,48 +142,51 @@
   </button>
 {/if}
 
-<dialog
-  bind:this={dialog}
-  onclick={onBackdropClick}
-  onclose={unlockBodyScroll}
-  class="status-sheet m-auto w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
->
-  <div
-    class="status-sheet-drag sm:hidden"
-    use:swipeToDismiss={{ target: dialog, onDismiss: close }}
-    aria-hidden="true"
+{#if mounted}
+  <dialog
+    bind:this={dialog}
+    use:portal
+    onclick={onBackdropClick}
+    onclose={onDialogClose}
+    class="status-sheet m-auto w-[min(22rem,92vw)] max-w-[92vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
   >
-    <span class="status-sheet-handle"></span>
-  </div>
-  <div class="w-full p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
-    <h2 class="mb-5 text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
-    <div class="flex flex-col gap-3">
-      {#each ADD_ORDER as s (s)}
-        {@const c = STATUS_COLOR[s]}
-        <button
-          type="button"
-          use:tactile={{ haptic: "tap" }}
-          onclick={() => pick(s)}
-          class="tap-target tap-target--card group flex w-full items-center gap-3 overflow-hidden rounded-lg border border-border bg-surface-2 px-4 py-4 text-left {c.hoverBorder}"
-        >
-          <span class="h-3 w-3 shrink-0 rounded-full {c.dot}" aria-hidden="true"></span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-semibold {c.text}">{STATUS_LABEL[s]}</span>
-            <span class="mt-0.5 block truncate text-xs text-muted">{STATUS_DESCRIPTION[s]}</span>
-          </span>
-        </button>
-      {/each}
-    </div>
-    <button
-      type="button"
-      use:tactile={{ haptic: false }}
-      onclick={close}
-      class="tap-target tap-target--btn mt-5 w-full rounded-md px-4 py-2.5 text-xs text-muted hover-text-text"
+    <div
+      class="status-sheet-drag sm:hidden"
+      use:swipeToDismiss={{ target: dialog, onDismiss: close }}
+      aria-hidden="true"
     >
-      Cancel
-    </button>
-  </div>
-</dialog>
+      <span class="status-sheet-handle"></span>
+    </div>
+    <div class="w-full p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:pb-5">
+      <h2 class="mb-5 text-sm font-medium uppercase tracking-wider text-muted">{title}</h2>
+      <div class="flex flex-col gap-3">
+        {#each ADD_ORDER as s (s)}
+          {@const c = STATUS_COLOR[s]}
+          <button
+            type="button"
+            use:tactile={{ haptic: "tap" }}
+            onclick={() => pick(s)}
+            class="tap-target tap-target--card group flex w-full items-center gap-3 overflow-hidden rounded-lg border border-border bg-surface-2 px-4 py-4 text-left {c.hoverBorder}"
+          >
+            <span class="h-3 w-3 shrink-0 rounded-full {c.dot}" aria-hidden="true"></span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-semibold {c.text}">{STATUS_LABEL[s]}</span>
+              <span class="mt-0.5 block truncate text-xs text-muted">{STATUS_DESCRIPTION[s]}</span>
+            </span>
+          </button>
+        {/each}
+      </div>
+      <button
+        type="button"
+        use:tactile={{ haptic: false }}
+        onclick={close}
+        class="tap-target tap-target--btn mt-5 w-full rounded-md px-4 py-2.5 text-xs text-muted hover-text-text"
+      >
+        Cancel
+      </button>
+    </div>
+  </dialog>
+{/if}
 
 <style>
   /* Mobile: bottom sheet that slides up from the screen edge.

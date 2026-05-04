@@ -104,9 +104,24 @@
     }
   }
 
-  function onPointerUp(): void {
+  function onPointerUp(e: PointerEvent): void {
     if (!swiping) return;
     const fired = swipeAxis === "h" && swipeDx > SWIPE_TRIGGER;
+
+    if (fired) {
+      // Snap the card back to rest *instantly* — without the 220ms spring —
+      // before bumping the open trigger. If we let the slide-back transition
+      // run, the article still has a non-zero transform when the picker
+      // mounts and `showModal` fires, which (a) creates a containing block
+      // for fixed descendants, and (b) shifts surrounding layout while the
+      // dialog is opening. We want sliding-to-open to feel identical to
+      // clicking the +Add button: a stationary card + a clean modal.
+      const article = e.currentTarget as HTMLElement;
+      article.style.transition = "none";
+      article.style.transform = "";
+      void article.offsetHeight;
+    }
+
     swiping = false;
     swipeAxis = null;
     swipeDx = 0;

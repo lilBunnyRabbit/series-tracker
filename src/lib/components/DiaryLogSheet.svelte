@@ -1,6 +1,7 @@
 <script lang="ts">
   import RatingPicker from "$lib/components/RatingPicker.svelte";
   import { vibrate } from "$lib/haptics";
+  import { portal } from "$lib/portal";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
   import type { Entry, TvEntry } from "$lib/types";
@@ -23,14 +24,12 @@
 
   let dialog = $state<HTMLDialogElement>();
 
+  // Dialog mounts on demand (see `{#if open}`); reset state and showModal as
+  // soon as the bound ref is set.
   $effect(() => {
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      reset();
-      dialog.showModal();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
+    if (!dialog || dialog.open) return;
+    reset();
+    dialog.showModal();
   });
 
   function todayIso(): string {
@@ -171,8 +170,10 @@
   }
 </script>
 
+{#if open}
 <dialog
   bind:this={dialog}
+  use:portal
   onclick={onBackdropClick}
   onclose={close}
   class="diary-sheet w-[min(28rem,94vw)] max-w-[94vw] overflow-hidden border-border bg-surface p-0 text-text shadow-2xl"
@@ -371,6 +372,7 @@
     </div>
   </div>
 </dialog>
+{/if}
 
 <style>
   .diary-sheet {
