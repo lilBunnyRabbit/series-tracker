@@ -176,6 +176,8 @@ export type Preferences = {
   defaultAddStatus?: Status | null;
   /** Override for navigator.language-derived region used by Where to Watch. */
   region?: string | null;
+  /** Override for navigator.language-derived locale sent to TMDB (provider names, etc.). */
+  language?: string | null;
   /** Has the diary backfill prompt been answered (yes or dismissed)? Set after first /diary/ visit. */
   diaryBackfilled?: boolean;
 };

@@ -14,12 +14,14 @@
   import { tactile } from "$lib/tactile";
   import {
     backdropUrl,
+    defaultLanguage,
     defaultRegion,
     entryFromMovieDetail,
     movieDetail,
     movieDetailFull,
     posterUrl,
     recommendations,
+    regionFromLocale,
     similar,
     watchProviders,
   } from "$lib/tmdb";
@@ -28,15 +30,26 @@
   import type { MovieDetailFull, Status, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
-  const region = $derived(store.preferences.region ?? defaultRegion());
+  const language = $derived(store.preferences.language ?? defaultLanguage());
+  const localeRegion = $derived(regionFromLocale(language) ?? defaultRegion());
+  const effectiveRegion = $derived(store.preferences.region ?? localeRegion);
 
   let detail = $state<MovieDetailFull | null>(null);
   let related = $state<RecommendationItem[]>([]);
   let similarItems = $state<RecommendationItem[]>([]);
-  let providers = $state<WatchProviderRegion | null>(null);
+  let providerResults = $state<Record<string, WatchProviderRegion> | null>(null);
+  let selectedRegion = $state("");
   let loading = $state(false);
   let error = $state<string | null>(null);
   let trailerOpen = $state(false);
+
+  $effect(() => {
+    selectedRegion = effectiveRegion;
+  });
+
+  function handleRegionChange(code: string): void {
+    store.setPreference("region", code === localeRegion ? null : code);
+  }
 
   $effect(() => {
     if (!store.apiKey || !id || Number.isNaN(id)) return;
@@ -48,7 +61,7 @@
       movieDetailFull(id, apiKey, ctrl.signal),
       recommendations("movie", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
       similar("movie", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
-      watchProviders("movie", id, apiKey, ctrl.signal).catch(() => null),
+      watchProviders("movie", id, apiKey, language, ctrl.signal).catch(() => null),
     ])
       .then(([d, r, s, p]) => {
         if (ctrl.signal.aborted) return;
@@ -56,7 +69,7 @@
         related = r.slice(0, 16);
         const seen = new Set(r.map((x) => `${x.media_type}:${x.id}`));
         similarItems = s.filter((x) => !seen.has(`${x.media_type}:${x.id}`)).slice(0, 16);
-        providers = p?.results?.[region] ?? null;
+        providerResults = p?.results ?? null;
         if (store.has("movie", id)) store.setBackdrop("movie", id, backdropUrl(d.backdrop_path, "w780"));
       })
       .catch((e) => {
@@ -322,7 +335,12 @@
     {/if}
 
     <!-- WHERE TO WATCH -->
-    <WatchProviders region={providers} regionCode={region} />
+    <WatchProviders
+      results={providerResults}
+      {selectedRegion}
+      onSelectedRegionChange={handleRegionChange}
+      uiLocale={language}
+    />
 
     <!-- ACTORS RAIL -->
     {#if cast.length > 0}

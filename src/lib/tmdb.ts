@@ -386,71 +386,76 @@ export async function personCombinedCredits(id: number, key: string, signal?: Ab
 
 // ---- Watch providers (JustWatch data via TMDB) ----
 
-export const watchProviders = (kind: "tv" | "movie", id: number, apiKey: string, signal?: AbortSignal) =>
+export const watchProviders = (
+  kind: "tv" | "movie",
+  id: number,
+  apiKey: string,
+  language: string = defaultLanguage(),
+  signal?: AbortSignal
+) =>
   get<WatchProvidersResponse>(
     `/${kind}/${id}/watch/providers`,
     apiKey,
-    {},
+    { language },
     { signal, ttlMs: 12 * 60 * 60 * 1000 }
   );
 
 /** Best-effort country code derived from navigator.language ("en-US" → "US"). Falls back to "US". */
 export function defaultRegion(): string {
-  if (typeof navigator === "undefined") return "US";
-  const lang = navigator.language || "en-US";
-  const parts = lang.split("-");
-  const region = parts[1]?.toUpperCase();
-  return region && region.length === 2 ? region : "US";
+  return regionFromLocale(defaultLanguage()) ?? "US";
 }
 
-/** Two-letter ISO 3166-1 region codes TMDB has watch-provider data for (curated subset, alpha by name). */
-export const REGION_OPTIONS: { code: string; name: string }[] = [
-  { code: "AR", name: "Argentina" },
-  { code: "AU", name: "Australia" },
-  { code: "AT", name: "Austria" },
-  { code: "BE", name: "Belgium" },
-  { code: "BR", name: "Brazil" },
-  { code: "CA", name: "Canada" },
-  { code: "CL", name: "Chile" },
-  { code: "CO", name: "Colombia" },
-  { code: "CZ", name: "Czechia" },
-  { code: "DK", name: "Denmark" },
-  { code: "FI", name: "Finland" },
-  { code: "FR", name: "France" },
-  { code: "DE", name: "Germany" },
-  { code: "GR", name: "Greece" },
-  { code: "HK", name: "Hong Kong" },
-  { code: "HU", name: "Hungary" },
-  { code: "IN", name: "India" },
-  { code: "ID", name: "Indonesia" },
-  { code: "IE", name: "Ireland" },
-  { code: "IL", name: "Israel" },
-  { code: "IT", name: "Italy" },
-  { code: "JP", name: "Japan" },
-  { code: "MX", name: "Mexico" },
-  { code: "NL", name: "Netherlands" },
-  { code: "NZ", name: "New Zealand" },
-  { code: "NO", name: "Norway" },
-  { code: "PH", name: "Philippines" },
-  { code: "PL", name: "Poland" },
-  { code: "PT", name: "Portugal" },
-  { code: "RO", name: "Romania" },
-  { code: "RU", name: "Russia" },
-  { code: "SG", name: "Singapore" },
-  { code: "SK", name: "Slovakia" },
-  { code: "SI", name: "Slovenia" },
-  { code: "ZA", name: "South Africa" },
-  { code: "KR", name: "South Korea" },
-  { code: "ES", name: "Spain" },
-  { code: "SE", name: "Sweden" },
-  { code: "CH", name: "Switzerland" },
-  { code: "TW", name: "Taiwan" },
-  { code: "TH", name: "Thailand" },
-  { code: "TR", name: "Turkey" },
-  { code: "UA", name: "Ukraine" },
-  { code: "AE", name: "United Arab Emirates" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "US", name: "United States" },
+/** Browser locale in TMDB's expected `xx-YY` form. Falls back to "en-US". */
+export function defaultLanguage(): string {
+  if (typeof navigator === "undefined") return "en-US";
+  return navigator.language || "en-US";
+}
+
+/** Country part of a BCP-47 locale, uppercased ("sl-SI" → "SI"). null when absent or malformed. */
+export function regionFromLocale(locale: string | null | undefined): string | null {
+  if (!locale) return null;
+  const region = locale.split("-")[1]?.toUpperCase();
+  return region && region.length === 2 ? region : null;
+}
+
+/** BCP-47 locale codes TMDB accepts for the `language` query parameter (curated subset). */
+export const LANGUAGE_OPTIONS: string[] = [
+  "ar-SA",
+  "cs-CZ",
+  "da-DK",
+  "de-DE",
+  "el-GR",
+  "en-GB",
+  "en-US",
+  "es-ES",
+  "es-MX",
+  "fi-FI",
+  "fr-CA",
+  "fr-FR",
+  "he-IL",
+  "hi-IN",
+  "hu-HU",
+  "id-ID",
+  "it-IT",
+  "ja-JP",
+  "ko-KR",
+  "nb-NO",
+  "nl-NL",
+  "pl-PL",
+  "pt-BR",
+  "pt-PT",
+  "ro-RO",
+  "ru-RU",
+  "sk-SK",
+  "sl-SI",
+  "sv-SE",
+  "th-TH",
+  "tr-TR",
+  "uk-UA",
+  "vi-VN",
+  "zh-CN",
+  "zh-HK",
+  "zh-TW",
 ];
 
 export function clearCache(): void {

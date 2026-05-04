@@ -3,7 +3,7 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { clearCache, defaultRegion, ping, REGION_OPTIONS } from "$lib/tmdb";
+  import { clearCache, defaultLanguage, LANGUAGE_OPTIONS, ping } from "$lib/tmdb";
   import { STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
   import {
@@ -76,8 +76,23 @@
   // with the store helper without each control reaching back into setPreference.
   const hapticsMuted = $derived(store.preferences.hapticsMuted ?? false);
   const defaultAddStatus = $derived<Status | "">(store.preferences.defaultAddStatus ?? "");
-  const regionPref = $derived(store.preferences.region ?? "");
-  const detectedRegion = defaultRegion();
+  const languagePref = $derived(store.preferences.language ?? "");
+  const detectedLanguage = defaultLanguage();
+
+  // Display names rendered in the user's UI locale so the picker reads
+  // naturally regardless of which entries the user is browsing.
+  const languageDisplay = $derived.by(() => {
+    try {
+      return new Intl.DisplayNames([detectedLanguage], { type: "language" });
+    } catch {
+      return null;
+    }
+  });
+
+  function localeLabel(code: string): string {
+    const name = languageDisplay?.of(code);
+    return name ? `${name} (${code})` : code;
+  }
 
   async function handleCheckForUpdate(): Promise<void> {
     if (checkStatus === "checking") return;
@@ -224,10 +239,10 @@
     }
   }
 
-  function setRegion(e: Event): void {
+  function setLanguage(e: Event): void {
     const val = (e.currentTarget as HTMLSelectElement).value;
-    if (!val) store.setPreference("region", null);
-    else store.setPreference("region", val);
+    if (!val) store.setPreference("language", null);
+    else store.setPreference("language", val);
   }
 
   const ADD_STATUSES: Status[] = ["plan", "watching", "tuned", "completed", "dropped"];
@@ -455,19 +470,19 @@
 
     <label class="flex items-start justify-between gap-4">
       <span class="min-w-0">
-        <span class="block text-sm font-medium">Where to Watch region</span>
+        <span class="block text-sm font-medium">Locale</span>
         <span class="mt-0.5 block text-xs text-muted">
-          Country used for streaming-provider lookups. Detected: <span class="font-mono">{detectedRegion}</span>.
+          Sent to TMDB so titles, overviews, and provider names come back in your language. Also picks the default Where-to-Watch country. Detected: <span class="font-mono">{detectedLanguage}</span>.
         </span>
       </span>
       <select
-        value={regionPref}
-        onchange={setRegion}
+        value={languagePref}
+        onchange={setLanguage}
         class="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
       >
-        <option value="">Auto ({detectedRegion})</option>
-        {#each REGION_OPTIONS as r (r.code)}
-          <option value={r.code}>{r.name}</option>
+        <option value="">Auto ({detectedLanguage})</option>
+        {#each LANGUAGE_OPTIONS as code (code)}
+          <option value={code}>{localeLabel(code)}</option>
         {/each}
       </select>
     </label>

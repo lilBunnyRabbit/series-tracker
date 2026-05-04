@@ -14,10 +14,12 @@
   import { tactile } from "$lib/tactile";
   import {
     backdropUrl,
+    defaultLanguage,
     defaultRegion,
     entryFromTvDetail,
     posterUrl,
     recommendations,
+    regionFromLocale,
     similar,
     tvDetail,
     tvDetailFull,
@@ -28,15 +30,32 @@
   import type { Status, TvDetailFull, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
-  const region = $derived(store.preferences.region ?? defaultRegion());
+  const language = $derived(store.preferences.language ?? defaultLanguage());
+  // Default region resolves through: locale country (sl-SI → SI) → navigator → "US".
+  const localeRegion = $derived(regionFromLocale(language) ?? defaultRegion());
+  // Effective region = explicit override (set when user picks from inline dropdown) → locale fallback.
+  const effectiveRegion = $derived(store.preferences.region ?? localeRegion);
 
   let detail = $state<TvDetailFull | null>(null);
   let related = $state<RecommendationItem[]>([]);
   let similarItems = $state<RecommendationItem[]>([]);
-  let providers = $state<WatchProviderRegion | null>(null);
+  let providerResults = $state<Record<string, WatchProviderRegion> | null>(null);
+  let selectedRegion = $state("");
   let loading = $state(false);
   let error = $state<string | null>(null);
   let trailerOpen = $state(false);
+
+  // Sync the inline picker with preferences/locale changes (and across navigations
+  // — the same page component is reused when [id] changes).
+  $effect(() => {
+    selectedRegion = effectiveRegion;
+  });
+
+  function handleRegionChange(code: string): void {
+    // Persist as null when the choice matches the locale-derived default — that
+    // way changing locale later still moves the picker, instead of being pinned.
+    store.setPreference("region", code === localeRegion ? null : code);
+  }
 
   $effect(() => {
     if (!store.apiKey || !id || Number.isNaN(id)) return;
@@ -48,7 +67,7 @@
       tvDetailFull(id, apiKey, ctrl.signal),
       recommendations("tv", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
       similar("tv", id, apiKey, ctrl.signal).catch(() => [] as RecommendationItem[]),
-      watchProviders("tv", id, apiKey, ctrl.signal).catch(() => null),
+      watchProviders("tv", id, apiKey, language, ctrl.signal).catch(() => null),
     ])
       .then(([d, r, s, p]) => {
         if (ctrl.signal.aborted) return;
@@ -58,7 +77,7 @@
         // rails distinct (algorithmic vs keyword-overlap).
         const seen = new Set(r.map((x) => `${x.media_type}:${x.id}`));
         similarItems = s.filter((x) => !seen.has(`${x.media_type}:${x.id}`)).slice(0, 16);
-        providers = p?.results?.[region] ?? null;
+        providerResults = p?.results ?? null;
         if (store.has("tv", id)) store.setBackdrop("tv", id, backdropUrl(d.backdrop_path, "w780"));
       })
       .catch((e) => {
@@ -383,7 +402,12 @@
     {/if}
 
     <!-- WHERE TO WATCH -->
-    <WatchProviders region={providers} regionCode={region} />
+    <WatchProviders
+      results={providerResults}
+      {selectedRegion}
+      onSelectedRegionChange={handleRegionChange}
+      uiLocale={language}
+    />
 
     <!-- ACTORS RAIL -->
     {#if cast.length > 0}

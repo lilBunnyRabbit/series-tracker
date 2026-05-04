@@ -1,16 +1,41 @@
 <script lang="ts">
-  import Rail from "$lib/components/Rail.svelte";
   import { tactile } from "$lib/tactile";
   import { posterUrl } from "$lib/tmdb";
   import type { WatchProvider, WatchProviderRegion } from "$lib/types";
 
   type Props = {
-    region: WatchProviderRegion | null;
-    /** Resolved 2-letter region code (e.g. "US"). */
-    regionCode: string;
+    /** Full TMDB `results` map: region code → providers for that country. */
+    results: Record<string, WatchProviderRegion> | null | undefined;
+    /** Currently selected region (2-letter ISO code). */
+    selectedRegion: string;
+    /** Fired when the user picks a different region. Parent decides whether to persist. */
+    onSelectedRegionChange: (code: string) => void;
+    /** UI locale used to render country names (e.g. "United States" vs "Združene države Amerike"). */
+    uiLocale: string;
   };
 
-  let { region, regionCode }: Props = $props();
+  let { results, selectedRegion, onSelectedRegionChange, uiLocale }: Props = $props();
+
+  const regionDisplay = $derived.by(() => {
+    try {
+      return new Intl.DisplayNames([uiLocale], { type: "region" });
+    } catch {
+      return null;
+    }
+  });
+
+  function regionName(code: string): string {
+    return regionDisplay?.of(code) ?? code;
+  }
+
+  const availableRegions = $derived.by<string[]>(() => {
+    if (!results) return [];
+    return Object.keys(results).sort((a, b) => regionName(a).localeCompare(regionName(b), uiLocale));
+  });
+
+  const region = $derived<WatchProviderRegion | null>(
+    (selectedRegion && results?.[selectedRegion]) || null
+  );
 
   type Group = { kind: "Stream" | "Free" | "Rent" | "Buy"; providers: WatchProvider[] };
 
@@ -42,36 +67,82 @@
   });
 
   const link = $derived(region?.link ?? null);
+
+  function onChange(e: Event): void {
+    onSelectedRegionChange((e.currentTarget as HTMLSelectElement).value);
+  }
 </script>
 
-{#if flat.length > 0}
-  <Rail
-    title="Where to Watch"
-    subtitle="{regionCode} · via JustWatch"
-  >
-    {#each flat as item (item.provider.provider_id)}
-      <a
-        href={link ?? "#"}
-        target={link ? "_blank" : undefined}
-        rel={link ? "noopener" : undefined}
-        use:tactile
-        class="tap-target tap-target--card group flex w-[112px] flex-col items-center gap-1.5 rounded-lg border border-border bg-surface p-2 hover-border-primary"
+{#if availableRegions.length > 0}
+  <section class="space-y-2.5">
+    <div class="flex items-center gap-2">
+      <h2 class="shrink-0 text-base font-semibold tracking-tight text-text">Where to Watch</h2>
+      <select
+        value={selectedRegion}
+        onchange={onChange}
+        aria-label="Region"
+        class="region-select min-w-0 max-w-[12rem] rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs outline-none focus:border-accent"
       >
-        <div class="aspect-square w-full overflow-hidden rounded-md bg-surface-2">
-          {#if item.provider.logo_path}
-            <img
-              src={posterUrl(item.provider.logo_path, "w185")}
-              alt={item.provider.provider_name}
-              class="h-full w-full object-cover"
-              loading="lazy"
-            />
-          {/if}
+        {#each availableRegions as code (code)}
+          <option value={code}>{regionName(code)}</option>
+        {/each}
+      </select>
+      <span class="ml-auto shrink-0 text-xs text-muted">via JustWatch</span>
+    </div>
+
+    {#if flat.length > 0}
+      <div class="-mx-3 sm:-mx-4">
+        <div
+          class="rail-track flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-2 sm:scroll-px-4 sm:px-4"
+        >
+          {#each flat as item (item.provider.provider_id)}
+            <a
+              href={link ?? "#"}
+              target={link ? "_blank" : undefined}
+              rel={link ? "noopener" : undefined}
+              use:tactile
+              class="tap-target tap-target--card group flex w-[112px] flex-col items-center gap-1.5 rounded-lg border border-border bg-surface p-2 hover-border-primary"
+            >
+              <div class="aspect-square w-full overflow-hidden rounded-md bg-surface-2">
+                {#if item.provider.logo_path}
+                  <img
+                    src={posterUrl(item.provider.logo_path, "w185")}
+                    alt={item.provider.provider_name}
+                    class="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                {/if}
+              </div>
+              <div class="min-w-0 text-center">
+                <div class="line-clamp-1 text-[11px] font-medium leading-tight">{item.provider.provider_name}</div>
+                <div class="text-[10px] uppercase tracking-wider text-muted">{item.kind}</div>
+              </div>
+            </a>
+          {/each}
         </div>
-        <div class="min-w-0 text-center">
-          <div class="line-clamp-1 text-[11px] font-medium leading-tight">{item.provider.provider_name}</div>
-          <div class="text-[10px] uppercase tracking-wider text-muted">{item.kind}</div>
-        </div>
-      </a>
-    {/each}
-  </Rail>
+      </div>
+    {:else}
+      <p class="text-xs text-muted">No providers listed for {regionName(selectedRegion)}.</p>
+    {/if}
+  </section>
 {/if}
+
+<style>
+  .rail-track {
+    scrollbar-width: none;
+  }
+  .rail-track::-webkit-scrollbar {
+    display: none;
+  }
+  .rail-track > :global(*) {
+    scroll-snap-align: start;
+    flex: 0 0 auto;
+  }
+  /* Native <select> sizes itself to the longest <option>; clip to the chosen
+     value width so long country names don't blow out the row. */
+  .region-select {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+</style>
