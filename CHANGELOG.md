@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-05-05
+
+### Changed
+- The "update available" prompt is now a full-screen modal with a single Update now button instead of a dismissable toast. Once a new version is detected there's no way to defer it, so you always pick up the latest build on next interaction.
+
 ## [0.11.0] - 2026-05-04
 
 ### Added
