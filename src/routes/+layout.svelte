@@ -75,8 +75,19 @@
       relPath.startsWith("/style-guide")
   );
   // Hide the floating nav on /search — the bottom-docked search input would
-  // otherwise crowd it; users get a back button instead.
-  const hideFloatingNav = $derived(relPath.startsWith("/search"));
+  // otherwise crowd it; users get a back button instead. Season pages also
+  // hide it: they own the bottom edge with their own progress island.
+  const isSeasonRoute = $derived(/^\/show\/\d+\/season\/\d+/.test(relPath));
+  const hideFloatingNav = $derived(relPath.startsWith("/search") || isSeasonRoute);
+
+  // Routes that lock body scroll and let an internal flex column own scrolling
+  // (so the bottom island reaches the viewport edge). Layout.css picks up the
+  // .scroll-locked class on <html> and constrains body / main accordingly.
+  $effect(() => {
+    if (!isSeasonRoute) return;
+    document.documentElement.classList.add("scroll-locked");
+    return () => document.documentElement.classList.remove("scroll-locked");
+  });
 
   // Mobile-only: the floating nav slides away once the user has scrolled past
   // the top so the content owns the screen, and reappears when they're back
@@ -122,6 +133,7 @@
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.startsWith("/style-guide")) return "Style Guide";
     if (relPath.includes("/info")) return "Info";
+    if (/^\/show\/\d+\/season\/\d+/.test(relPath)) return "Season";
     if (relPath.startsWith("/show/")) return "Show";
     if (relPath.startsWith("/movie/")) return "Movie";
     if (relPath.startsWith("/person/")) return "Person";
@@ -129,6 +141,8 @@
   });
 
   const backHref = $derived.by(() => {
+    const seasonMatch = relPath.match(/^\/show\/(\d+)\/season\/\d+\/?$/);
+    if (seasonMatch) return `${base}/show/${seasonMatch[1]}/`;
     const info = relPath.match(/^\/(show|movie)\/(\d+)\/info\/?$/);
     if (info) return `${base}/${info[1]}/${info[2]}/`;
     const detail = relPath.match(/^\/(show|movie)\/\d+\/?$/);
@@ -154,7 +168,7 @@
   <title>{documentTitle}</title>
 </svelte:head>
 
-<div class="flex min-h-[100dvh] flex-col">
+<div class="app-shell flex min-h-[100dvh] flex-col">
   <!-- Mobile: only show the header when there's a back affordance to render —
        the floating island already covers primary nav, so the top bar would
        otherwise just be a logo + redundant page title. Desktop always shows

@@ -413,6 +413,7 @@ export type EpisodeBrief = {
   still_path: string | null;
   runtime: number | null;
   vote_average?: number;
+  vote_count?: number;
 };
 
 export type SeasonDetail = {

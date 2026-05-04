@@ -1,209 +1,115 @@
 <script lang="ts">
-  import { vibrate } from "$lib/haptics";
+  import { base } from "$app/paths";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { seasonDetail } from "$lib/tmdb";
   import { STATUS_COLOR } from "$lib/types";
-  import type { EpisodeBrief, TvEntry } from "$lib/types";
-  import RatingPicker from "./RatingPicker.svelte";
+  import type { TvEntry } from "$lib/types";
 
   type Props = { showId: number; season: number; name: string; total: number };
   let { showId, season, name, total }: Props = $props();
 
-  let expanded = $state(false);
-  let episodes = $state<EpisodeBrief[] | null>(null);
-  let loading = $state(false);
-  let error = $state<string | null>(null);
-
   const entry = $derived(store.get("tv", showId) as TvEntry | undefined);
   const current = $derived(entry?.progress[season] ?? 0);
   const seasonRating = $derived(entry?.seasonRatings?.[season] ?? null);
-  const currentEpisode = $derived(episodes && current > 0 ? (episodes.find((e) => e.episode_number === current) ?? null) : null);
-  const isComplete = $derived(current === total && total > 0);
-  // Counter chrome (✓ badge, + button) tints to the show's current status so
-  // a season's controls visually belong to its parent. "Mark complete" stays
-  // pinned to the completed-status color (secondary) since pressing it moves
-  // the show into that bucket — the action's color signals the destination.
+  const isComplete = $derived(total > 0 && current >= total);
   const sc = $derived(entry ? STATUS_COLOR[entry.status] : null);
+  const pct = $derived(total > 0 ? Math.round((current / total) * 100) : 0);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  // How many episodes have aired so far in this season — derived only when
-  // episode data is loaded (i.e. the season was expanded). Drives the
-  // "Catch up" button which fast-forwards progress to the latest aired ep.
-  const airedCount = $derived.by<number | null>(() => {
-    if (!episodes) return null;
-    let n = 0;
-    for (const ep of episodes) {
-      if (ep.air_date && ep.air_date <= todayIso) n++;
-    }
-    return n;
-  });
-  const canCatchUp = $derived(airedCount !== null && airedCount > current && airedCount < total);
-
-  function dec() {
+  function dec(): void {
     store.updateProgress(showId, season, -1);
   }
-  function inc() {
+  function inc(): void {
     store.updateProgress(showId, season, +1);
   }
-  function complete() {
-    vibrate("success");
+  function markAll(): void {
     store.completeSeason(showId, season);
   }
-  function reset() {
-    vibrate("warn");
+  function reset(): void {
     store.resetSeason(showId, season);
-  }
-  function catchUp() {
-    if (airedCount === null) return;
-    vibrate("success");
-    store.setProgress(showId, season, airedCount);
-  }
-
-
-  async function toggleExpand() {
-    expanded = !expanded;
-    if (expanded && !episodes && !loading && store.apiKey) {
-      loading = true;
-      error = null;
-      try {
-        const detail = await seasonDetail(showId, season, store.apiKey);
-        episodes = detail.episodes;
-      } catch (e) {
-        error = e instanceof Error ? e.message : String(e);
-      } finally {
-        loading = false;
-      }
-    }
   }
 </script>
 
-<div class="rounded-md border border-border bg-surface">
-  <div class="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+<!-- Whole row links to the season page; the +/- cluster on the right has its
+     own click handlers and sits next to the link as a sibling so taps on the
+     buttons don't navigate. -->
+<div class="flex items-stretch gap-3 rounded-md border border-border bg-surface px-3 py-2.5 hover-border-primary">
+  <a
+    href="{base}/show/{showId}/season/{season}/"
+    use:tactile
+    class="tap-target tap-target--card flex min-w-0 flex-1 items-stretch gap-2"
+    aria-label="Open {name}"
+  >
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-1.5">
+        <span class="truncate text-sm font-medium">{name}</span>
+        {#if isComplete}<span class="shrink-0 text-xs {sc?.text ?? 'text-primary'}" aria-label="Season complete">✓</span>{/if}
+        {#if typeof seasonRating === "number" && seasonRating > 0}
+          <span
+            class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums {sc
+              ? `${sc.bgSoft} ${sc.text}`
+              : 'bg-accent/15 text-accent'}"
+          >
+            ♥ {seasonRating}
+          </span>
+        {/if}
+      </div>
+      <div class="mt-0.5 truncate text-xs text-muted">
+        Season {season} · {current}/{total} ep{total === 1 ? "" : "s"}
+      </div>
+      {#if total > 0}
+        <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-2">
+          <div class="h-full transition-all {sc?.bg ?? 'bg-primary'}" style="width: {pct}%"></div>
+        </div>
+      {/if}
+    </div>
+  </a>
+
+  <!-- Quick controls so the user doesn't have to open the season page for
+       routine adjustments. Mirrors the season-page island for +/-, with mark
+       all / reset added here (the season page island has just +/- + catch up). -->
+  <div class="flex shrink-0 items-center gap-1.5">
     <button
       type="button"
-      use:tactile={{ haptic: false }}
-      onclick={toggleExpand}
-      class="tap-target flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 -my-1 -ml-1 pl-1 pr-2 text-left active:bg-surface-2/60"
-      aria-expanded={expanded}
+      use:tactile={{ haptic: "tick" }}
+      onclick={dec}
+      disabled={current === 0}
+      aria-label="Decrement {name}"
+      class="tap-target tap-target--btn h-9 w-9 rounded-md border border-border bg-surface-2 text-base leading-none disabled:opacity-40"
     >
-      <span
-        class="text-xs text-muted"
-        style="transition: transform var(--dur-base) var(--ease-spring); {expanded ? 'transform: rotate(90deg)' : ''}"
-      >▶</span>
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-1.5">
-          <span class="truncate text-sm font-medium">{name}</span>
-          {#if isComplete}<span class="shrink-0 text-xs {sc?.text ?? 'text-primary'}" aria-label="Season complete">✓</span>{/if}
-        </div>
-        <div class="truncate text-xs text-muted">
-          Season {season} · {total} ep{total === 1 ? "" : "s"}{currentEpisode ? ` · E${current} ${currentEpisode.name}` : ""}
-        </div>
-      </div>
+      −
     </button>
-    <div class="flex flex-shrink-0 items-center gap-2">
+    <button
+      type="button"
+      use:tactile={{ haptic: "tick" }}
+      onclick={inc}
+      disabled={current >= total}
+      aria-label="Increment {name}"
+      class="tap-target tap-target--btn h-9 w-9 rounded-md border border-border text-base leading-none text-bg disabled:opacity-40 {sc?.bg ?? 'bg-primary'}"
+    >
+      +
+    </button>
+    {#if isComplete}
       <button
         type="button"
-        use:tactile={{ haptic: "tick" }}
-        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border bg-surface-2 text-lg leading-none disabled:opacity-40"
-        onclick={dec}
-        disabled={current === 0}
-        aria-label="Decrement"
+        use:tactile={{ haptic: "warn" }}
+        onclick={reset}
+        aria-label="Reset {name}"
+        title="Reset progress"
+        class="tap-target tap-target--btn h-9 rounded-md border border-border px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted hover-border-error hover-text-error"
       >
-        −
+        Reset
       </button>
-      <input
-        type="number"
-        min="0"
-        max={total}
-        value={current}
-        oninput={(e) => store.setProgress(showId, season, +(e.currentTarget as HTMLInputElement).value)}
-        class="h-10 w-12 rounded-md border border-border bg-surface-2 px-1 text-center text-sm tabular-nums"
-      />
-      <span class="inline-block w-10 text-left text-sm tabular-nums text-muted">/ {total}</span>
+    {:else}
       <button
         type="button"
-        use:tactile={{ haptic: "tick" }}
-        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border text-lg leading-none text-bg disabled:opacity-40 {sc?.bg ?? 'bg-primary'}"
-        onclick={inc}
-        disabled={current >= total}
-        aria-label="Increment"
+        use:tactile={{ haptic: "success" }}
+        onclick={markAll}
+        aria-label="Mark all of {name} watched"
+        title="Mark all episodes watched"
+        class="tap-target tap-target--btn h-9 rounded-md border border-secondary px-2.5 text-[10px] font-semibold uppercase tracking-wider text-secondary transition-colors duration-150 active:bg-secondary active:text-bg"
       >
-        +
+        Mark all
       </button>
-    </div>
-    <div class="flex w-full items-center justify-end gap-1.5 sm:w-auto">
-      {#if canCatchUp}
-        <button
-          type="button"
-          use:tactile={{ haptic: "success" }}
-          onclick={catchUp}
-          title="Set progress to the latest aired episode ({airedCount} of {total})"
-          class="tap-target tap-target--btn h-10 rounded-md border border-accent px-3 text-xs text-accent transition-colors duration-150 active:bg-accent active:text-bg"
-        >
-          Catch up · E{airedCount}
-        </button>
-      {/if}
-      {#if isComplete}
-        <button
-          type="button"
-          use:tactile={{ haptic: "warn" }}
-          onclick={reset}
-          class="tap-target tap-target--btn h-10 rounded-md border border-border px-3 text-xs text-muted hover-border-error hover-text-error"
-        >
-          Reset
-        </button>
-      {:else}
-        <button
-          type="button"
-          use:tactile={{ haptic: "success" }}
-          onclick={complete}
-          class="tap-target tap-target--btn h-10 rounded-md border border-secondary px-3 text-xs text-secondary transition-colors duration-150 active:bg-secondary active:text-bg"
-        >
-          Mark complete
-        </button>
-      {/if}
-    </div>
+    {/if}
   </div>
-
-  {#if expanded}
-    <div class="space-y-3 border-t border-border px-3 py-2">
-      <RatingPicker
-        value={seasonRating}
-        onChange={(v) => store.setSeasonRating(showId, season, v)}
-        label="Season rating"
-        status={entry?.status}
-      />
-
-      {#if loading}
-        <p class="text-xs text-muted">Loading episodes...</p>
-      {:else if error}
-        <p class="text-xs text-error">{error}</p>
-      {:else if episodes && episodes.length > 0}
-        <ol class="space-y-1">
-          {#each episodes as ep (ep.id)}
-            {@const watched = ep.episode_number <= current}
-            {@const isCurrent = ep.episode_number === current}
-            <li
-              class="flex items-baseline gap-2 rounded px-2 py-1 text-xs {isCurrent
-                ? 'bg-accent/15 text-text'
-                : watched
-                  ? 'text-text'
-                  : 'text-muted'}"
-            >
-              <span class="w-8 shrink-0 tabular-nums {watched ? 'text-accent' : ''}">
-                {watched ? "✓" : ""}E{ep.episode_number}
-              </span>
-              <span class="min-w-0 flex-1 truncate">{ep.name}</span>
-              {#if ep.air_date}
-                <span class="shrink-0 text-[10px] text-muted">{ep.air_date}</span>
-              {/if}
-            </li>
-          {/each}
-        </ol>
-      {:else if episodes}
-        <p class="text-xs text-muted">No episodes listed.</p>
-      {/if}
-    </div>
-  {/if}
 </div>

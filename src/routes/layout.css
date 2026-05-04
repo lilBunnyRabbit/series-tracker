@@ -207,3 +207,27 @@
     filter: none !important;
   }
 }
+
+/* `scroll-locked` is toggled on <html> by the layout when a route owns the
+   bottom edge with its own UI (e.g. season pages). It pins the document to
+   exactly 100dvh and zeroes main's padding so an internal flex column can
+   reach the viewport bottom flush — and so the body itself never scrolls,
+   which keeps iOS's tap-to-top + pull-to-refresh out of the way.
+   Note: SvelteKit wraps the app in a `<div style="display: contents">`, so we
+   target the layout's outer wrapper by class (`.app-shell`) rather than via
+   `body > div`. */
+html.scroll-locked,
+html.scroll-locked body {
+  overflow: hidden;
+  height: 100dvh;
+}
+html.scroll-locked .app-shell {
+  height: 100dvh;
+  min-height: 0;
+}
+html.scroll-locked main {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
