@@ -268,7 +268,7 @@
         type="button"
         use:tactile={{ haptic: "warn" }}
         onclick={clearPeople}
-        class="tap-target tap-target--chip ml-auto rounded-full border border-border px-2 py-1 text-[11px] text-muted hover-border-danger hover-text-danger"
+        class="tap-target tap-target--chip ml-auto rounded-full border border-border px-2 py-1 text-[11px] text-muted hover-border-error hover-text-error"
       >
         × Clear
       </button>
@@ -284,7 +284,7 @@
             type="button"
             use:tactile={{ haptic: "warn" }}
             onclick={clearGenres}
-            class="tap-target rounded px-1 text-muted hover-text-danger"
+            class="tap-target rounded px-1 text-muted hover-text-error"
           >
             Clear · {selectedGenres.size}
           </button>
@@ -318,7 +318,7 @@
   {/if}
 
   {#if error}
-    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
+    <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">{error}</p>
   {/if}
 
   {#if !result && loading}

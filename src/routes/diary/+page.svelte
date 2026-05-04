@@ -5,6 +5,7 @@
   import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { STATUS_COLOR } from "$lib/types";
   import type { DiaryEntry } from "$lib/types";
 
   type KindFilter = "all" | "tv" | "movie" | "rewatch";
@@ -238,8 +239,10 @@
                         </span>
                       {/if}
                       {#if typeof d.rating === "number" && d.rating > 0}
+                        {@const dEntry = store.get(d.kind, d.refId)}
+                        {@const dSc = dEntry ? STATUS_COLOR[dEntry.status] : null}
                         <span aria-hidden="true">·</span>
-                        <span class="rounded-md bg-accent/15 px-1.5 py-0.5 font-semibold tabular-nums text-accent">♥ {d.rating}</span>
+                        <span class="rounded-md px-1.5 py-0.5 font-semibold tabular-nums {dSc ? `${dSc.bgSoft} ${dSc.text}` : 'bg-accent/15 text-accent'}">♥ {d.rating}</span>
                       {/if}
                     </div>
                     {#if d.note && editing?.id !== d.id}
@@ -324,7 +327,7 @@
                         use:tactile={{ haptic: "warn" }}
                         onclick={() => deleteEntry(d)}
                         aria-label="Delete entry"
-                        class="tap-target tap-target--icon flex h-7 w-7 items-center justify-center rounded-md border border-border text-[11px] text-muted hover:border-danger hover:text-danger"
+                        class="tap-target tap-target--icon flex h-7 w-7 items-center justify-center rounded-md border border-border text-[11px] text-muted hover:border-error hover:text-error"
                       >
                         ×
                       </button>

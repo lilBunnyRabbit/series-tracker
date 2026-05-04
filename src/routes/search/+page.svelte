@@ -259,7 +259,7 @@
   {:else if loading}
     <p class="text-sm text-muted">Searching...</p>
   {:else if error}
-    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">
+    <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">
       {error}
     </p>
   {:else if results && filtered.length === 0}

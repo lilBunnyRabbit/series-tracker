@@ -11,7 +11,14 @@
   --color-primary: oklch(0.745 0.0699 122.47);
   --color-secondary: oklch(0.745 0.0699 302.47);
   --color-tertiary: oklch(0.745 0.0699 212.47);
-  --color-danger: oklch(0.62 0.16 25);
+
+  /* Semantic colors. Share the same lightness/chroma envelope as primary
+     (l=0.745, c≈primary.c × 2) so they sit visually next to it; only the
+     hue distinguishes them. Used for status messaging and destructive UI. */
+  --color-success: oklch(0.745 0.1398 140);
+  --color-warning: oklch(0.745 0.1398 70);
+  --color-error: oklch(0.745 0.1398 30);
+  --color-info: oklch(0.745 0.1398 240);
 
   --font-sans:
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -140,11 +147,11 @@
     .hover-text-text:hover {
       color: var(--color-text);
     }
-    .hover-text-danger:hover {
-      color: var(--color-danger);
+    .hover-text-error:hover {
+      color: var(--color-error);
     }
-    .hover-border-danger:hover {
-      border-color: var(--color-danger);
+    .hover-border-error:hover {
+      border-color: var(--color-error);
     }
     .hover-border-accent:hover {
       border-color: var(--color-accent);

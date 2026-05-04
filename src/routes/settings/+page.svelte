@@ -286,7 +286,7 @@
             type="button"
             use:tactile={{ haptic: "warn" }}
             onclick={clear}
-            class="tap-target tap-target--btn ml-auto rounded-md border border-border px-3 py-2 text-xs text-muted hover-border-danger hover-text-danger"
+            class="tap-target tap-target--btn ml-auto rounded-md border border-border px-3 py-2 text-xs text-muted hover-border-error hover-text-error"
           >
             Forget key
           </button>
@@ -296,7 +296,7 @@
         <p class="text-xs text-primary">{savedNote}</p>
       {/if}
       {#if testMessage}
-        <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-danger'}">{testMessage}</p>
+        <p class="text-xs {testStatus === 'ok' ? 'text-primary' : 'text-error'}">{testMessage}</p>
       {/if}
     </div>
 
@@ -521,7 +521,7 @@
     {:else if checkStatus === "updated" || updateAvailable}
       <p class="text-xs text-accent">A new version is available.</p>
     {:else if checkStatus === "error"}
-      <p class="text-xs text-danger">Couldn't check for updates. Try again.</p>
+      <p class="text-xs text-error">Couldn't check for updates. Try again.</p>
     {/if}
 
     <details class="group" ontoggle={onChangelogToggle}>
@@ -533,7 +533,7 @@
         {#if changelogLoading}
           <p class="text-xs text-muted">Loading changelog...</p>
         {:else if changelogError}
-          <p class="text-xs text-danger">Couldn't load changelog: {changelogError}</p>
+          <p class="text-xs text-error">Couldn't load changelog: {changelogError}</p>
         {:else if changelogHtml}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           <div class="changelog-prose">{@html changelogHtml}</div>
@@ -543,14 +543,14 @@
   </div>
 
   <!-- Danger zone -->
-  <div class="space-y-3 rounded-lg border border-danger/40 bg-surface p-5">
-    <h2 class="text-sm font-medium uppercase tracking-wider text-danger">Danger zone</h2>
+  <div class="space-y-3 rounded-lg border border-error/40 bg-surface p-5">
+    <h2 class="text-sm font-medium uppercase tracking-wider text-error">Danger zone</h2>
     <p class="text-sm text-muted">Wipes the API key, library, search history, and preferences. There is no undo.</p>
     <button
       type="button"
       use:tactile={{ haptic: "warn" }}
       onclick={wipe}
-      class="tap-target tap-target--btn rounded-md border border-danger/60 px-4 py-2 text-sm text-danger transition-colors duration-150 active:bg-danger/10"
+      class="tap-target tap-target--btn rounded-md border border-error/60 px-4 py-2 text-sm text-error transition-colors duration-150 active:bg-error/10"
     >
       Wipe everything
     </button>

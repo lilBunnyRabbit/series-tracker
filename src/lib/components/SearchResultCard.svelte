@@ -215,7 +215,7 @@
         />
       {/if}
       {#if error}
-        <p class="relative z-10 mt-2 text-xs text-danger">{error}</p>
+        <p class="relative z-10 mt-2 text-xs text-error">{error}</p>
       {/if}
     </div>
   </article>

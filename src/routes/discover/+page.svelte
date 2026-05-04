@@ -198,7 +198,7 @@
 
 <section class="space-y-7">
   {#if error}
-    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">
+    <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">
       {error}
     </p>
   {/if}

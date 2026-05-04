@@ -3,6 +3,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { seasonDetail } from "$lib/tmdb";
+  import { STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
   import RatingPicker from "./RatingPicker.svelte";
 
@@ -19,6 +20,11 @@
   const seasonRating = $derived(entry?.seasonRatings?.[season] ?? null);
   const currentEpisode = $derived(episodes && current > 0 ? (episodes.find((e) => e.episode_number === current) ?? null) : null);
   const isComplete = $derived(current === total && total > 0);
+  // Counter chrome (✓ badge, + button) tints to the show's current status so
+  // a season's controls visually belong to its parent. "Mark complete" stays
+  // pinned to the completed-status color (secondary) since pressing it moves
+  // the show into that bucket — the action's color signals the destination.
+  const sc = $derived(entry ? STATUS_COLOR[entry.status] : null);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   // How many episodes have aired so far in this season — derived only when
@@ -88,7 +94,7 @@
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5">
           <span class="truncate text-sm font-medium">{name}</span>
-          {#if isComplete}<span class="shrink-0 text-xs text-primary" aria-label="Season complete">✓</span>{/if}
+          {#if isComplete}<span class="shrink-0 text-xs {sc?.text ?? 'text-primary'}" aria-label="Season complete">✓</span>{/if}
         </div>
         <div class="truncate text-xs text-muted">
           Season {season} · {total} ep{total === 1 ? "" : "s"}{currentEpisode ? ` · E${current} ${currentEpisode.name}` : ""}
@@ -112,13 +118,13 @@
         max={total}
         value={current}
         oninput={(e) => store.setProgress(showId, season, +(e.currentTarget as HTMLInputElement).value)}
-        class="w-12 rounded-md border border-border bg-surface-2 px-1 py-1 text-center text-sm tabular-nums"
+        class="h-10 w-12 rounded-md border border-border bg-surface-2 px-1 text-center text-sm tabular-nums"
       />
       <span class="inline-block w-10 text-left text-sm tabular-nums text-muted">/ {total}</span>
       <button
         type="button"
         use:tactile={{ haptic: "tick" }}
-        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border bg-primary text-lg leading-none text-bg disabled:opacity-40"
+        class="tap-target tap-target--btn h-10 w-10 rounded-md border border-border text-lg leading-none text-bg disabled:opacity-40 {sc?.bg ?? 'bg-primary'}"
         onclick={inc}
         disabled={current >= total}
         aria-label="Increment"
@@ -133,7 +139,7 @@
           use:tactile={{ haptic: "success" }}
           onclick={catchUp}
           title="Set progress to the latest aired episode ({airedCount} of {total})"
-          class="tap-target tap-target--btn rounded-md border border-accent px-2.5 py-1.5 text-[11px] text-accent transition-colors duration-150 active:bg-accent active:text-bg"
+          class="tap-target tap-target--btn h-10 rounded-md border border-accent px-3 text-xs text-accent transition-colors duration-150 active:bg-accent active:text-bg"
         >
           Catch up · E{airedCount}
         </button>
@@ -143,7 +149,7 @@
           type="button"
           use:tactile={{ haptic: "warn" }}
           onclick={reset}
-          class="tap-target tap-target--btn rounded-md border border-border px-2.5 py-1.5 text-[11px] text-muted hover-border-danger hover-text-danger"
+          class="tap-target tap-target--btn h-10 rounded-md border border-border px-3 text-xs text-muted hover-border-error hover-text-error"
         >
           Reset
         </button>
@@ -152,7 +158,7 @@
           type="button"
           use:tactile={{ haptic: "success" }}
           onclick={complete}
-          class="tap-target tap-target--btn rounded-md border border-primary px-2.5 py-1.5 text-[11px] text-primary transition-colors duration-150 active:bg-primary active:text-bg"
+          class="tap-target tap-target--btn h-10 rounded-md border border-secondary px-3 text-xs text-secondary transition-colors duration-150 active:bg-secondary active:text-bg"
         >
           Mark complete
         </button>
@@ -166,12 +172,13 @@
         value={seasonRating}
         onChange={(v) => store.setSeasonRating(showId, season, v)}
         label="Season rating"
+        status={entry?.status}
       />
 
       {#if loading}
         <p class="text-xs text-muted">Loading episodes...</p>
       {:else if error}
-        <p class="text-xs text-danger">{error}</p>
+        <p class="text-xs text-error">{error}</p>
       {:else if episodes && episodes.length > 0}
         <ol class="space-y-1">
           {#each episodes as ep (ep.id)}

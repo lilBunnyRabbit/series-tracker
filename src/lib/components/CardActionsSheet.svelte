@@ -116,7 +116,7 @@
       type="button"
       use:tactile={{ haptic: "warn" }}
       onclick={remove}
-      class="tap-target tap-target--btn w-full rounded-md border border-danger/40 px-4 py-2.5 text-sm font-medium text-danger transition-colors duration-150 active:bg-danger/10"
+      class="tap-target tap-target--btn w-full rounded-md border border-error/40 px-4 py-2.5 text-sm font-medium text-error transition-colors duration-150 active:bg-error/10"
     >
       Remove from library
     </button>

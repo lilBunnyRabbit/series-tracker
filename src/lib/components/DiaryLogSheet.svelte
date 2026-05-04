@@ -289,7 +289,12 @@
       {/if}
 
       <!-- Rating -->
-      <RatingPicker value={rating} onChange={(v) => (rating = v)} label="Rating (optional)" />
+      <RatingPicker
+        value={rating}
+        onChange={(v) => (rating = v)}
+        label="Rating (optional)"
+        status={entry?.status}
+      />
 
       <!-- Note -->
       <label class="block">
@@ -335,7 +340,7 @@
       </div>
 
       {#if error}
-        <p class="rounded-md border border-danger bg-danger/15 p-2 text-xs text-danger">{error}</p>
+        <p class="rounded-md border border-error bg-error/15 p-2 text-xs text-error">{error}</p>
       {/if}
 
       <div class="flex items-center gap-2 pt-1">

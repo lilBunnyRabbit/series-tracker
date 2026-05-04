@@ -120,7 +120,7 @@
 {#if loading && !detail}
   <Skeleton variant="infoPage" />
 {:else if error}
-  <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
+  <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">{error}</p>
 {:else if detail}
   <div class="space-y-8">
     <!-- HERO -->

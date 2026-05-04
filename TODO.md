@@ -63,3 +63,42 @@ The press / haptic / sheet pass shipped in 0.2.0. These were scoped out and are 
 `#1 (Continue watching) → #5 (skeletons) → #3 (Top rated) → #2 (Stats) → #6 (Upcoming) → #7 (Mark caught up) → #8 (Where to watch)`
 
 That's ~80% of the perceived-value lift in 1–2 focused sessions before getting into person pages or niche features.
+
+## Implementation plan (post-0.2.x)
+
+Pulls still-open items from this file + `DESIGN_TODO.md`, grouped into shippable chunks ordered by effort × impact.
+
+### Phase 1 — quick polish wins (~30 min, no version bump)
+
+One-touch fixes on infrastructure that already exists.
+
+- [ ] Wire `episodeCount={c.episode_count}` on `PersonCard` in `show/[id]/info/+page.svelte` — `PersonCard` already accepts the prop.
+- [ ] Pass `onAction` to the `Watch next` and `More like this` `Rail`s on info pages so the `⊕` quick-add affordance shows there too.
+- [ ] Fire `success` haptic on enable / `warn` on disable in the Settings haptics toggle.
+- [ ] Counter flip animation in `SeasonCounter` — key the number `<span>` on `current`; `@starting-style` for the entry transform.
+
+### Phase 2 — tactile pass, ship as 0.3.0 (~half day)
+
+Group these because they share the "movement / feedback" vocabulary and are user-visible enough to warrant a `CHANGELOG` entry.
+
+- [ ] **View Transitions API for navigation** — `document.startViewTransition` wrap; `view-transition-name: card-{kind}-{id}` on poster wrappers and detail hero.
+- [ ] **Pull-to-refresh** on `/`, `/watchlist`, `/upcoming` — Svelte action with touch handler + threshold + haptic; per-route `onRefresh`.
+- [ ] **Page-load stagger on rails** — `--i: {index}` on each Rail wrapper, single `@keyframes` with `animation-delay: calc(var(--i) * 40ms)`.
+- [ ] **Long-press hint toast** — add `seenLongPressHint` to `preferences`; show on home after ~3 sessions.
+- [ ] **Card border pulse on status change** — `$effect` in `LibraryCard` watches `entry.status`, sets transient class, removes after animation.
+- [ ] **44×44 hit-target audit** — manual sweep with Chrome DevTools "Tap target" audit; bump stragglers.
+
+### Phase 3 — Continue Watching + Upcoming go landscape (~half day)
+
+- [ ] **Swap Continue Watching rail to `EpisodeCard`** on home. Component exists (currently only in style-guide). Wire `backdrop` (still or show backdrop), `topLeft` (runtime), `bottomLeft` (`{remaining} remaining · {daysSinceUpdate}d`), `episodeLabel`, `watched`, `onMenu`. May need to fetch episode stills.
+- [ ] **Add Upcoming Schedule rail to home** — pulls from `getUpcomingEpisodes`, renders `EpisodeCard` with "In Nd" badge as `topLeft`. Sits between Continue Watching and Start Watching.
+
+### Phase 4 — new feature work (~day each)
+
+- [ ] **Keyword/theme browsing** — `/keyword/{id}/movies` route; surface keyword chips on info pages from `detail.keywords`; integrate with discover/browse.
+- [ ] **Genre tag on watchlist rows** — schema change: store `genreIds: number[]` on `Entry`, backfill via TMDB on next visit. Surface as small tag under title in `ListCard`. Pairs with Stats genre breakdown.
+- [ ] **ListCard "status under poster" layout** — move status chip out of metadata row into the poster column.
+
+### Suggested ship order
+
+`Phase 1` (commit, no bump) → `Phase 2` (0.3.0) → `Phase 3` (0.3.1 or 0.4.0) → `Phase 4` items individually as picked up.

@@ -253,7 +253,11 @@
     { name: "accent", className: "bg-accent" },
     { name: "primary", className: "bg-primary" },
     { name: "secondary", className: "bg-secondary" },
-    { name: "danger", className: "bg-danger" },
+    { name: "tertiary", className: "bg-tertiary" },
+    { name: "success", className: "bg-success" },
+    { name: "warning", className: "bg-warning" },
+    { name: "error", className: "bg-error" },
+    { name: "info", className: "bg-info" },
   ] as const;
 </script>
 
@@ -362,9 +366,9 @@
       </button>
       <button
         type="button"
-        class="tap-target tap-target--btn rounded-md border border-danger/40 px-4 py-2 text-sm text-danger"
+        class="tap-target tap-target--btn rounded-md border border-error/40 px-4 py-2 text-sm text-error"
       >
-        Danger
+        Error
       </button>
       <button
         type="button"

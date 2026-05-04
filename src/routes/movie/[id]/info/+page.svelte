@@ -24,6 +24,7 @@
     watchProviders,
   } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
+  import { STATUS_COLOR } from "$lib/types";
   import type { MovieDetailFull, Status, WatchProviderRegion } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -96,6 +97,14 @@
 
   let logOpen = $state(false);
   const titleHistory = $derived(detail ? store.diaryFor("movie", id) : []);
+
+  const posterBorder = $derived(
+    entry ? STATUS_COLOR[entry.status].border : "border-border"
+  );
+  const titleColor = $derived(
+    entry ? STATUS_COLOR[entry.status].text : "text-text"
+  );
+  const ratingTint = $derived(entry ? STATUS_COLOR[entry.status] : null);
 </script>
 
 <svelte:head>
@@ -105,13 +114,27 @@
 {#if loading && !detail}
   <Skeleton variant="infoPage" />
 {:else if error}
-  <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
+  <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">{error}</p>
 {:else if detail}
   <div class="space-y-8">
-    <!-- HERO: poster-only, centered, drop-shadow -->
-    <section class="flex flex-col items-center gap-4 pt-2 text-center">
+    <!-- HERO: optional full-bleed backdrop pinned to the top, with the centered
+         poster + title block sitting in front of it. -->
+    <div class="relative">
+      {#if detail.backdrop_path}
+        <div
+          class="absolute inset-x-0 -top-4 -mx-3 h-44 overflow-hidden bg-surface-2 sm:-top-6 sm:-mx-4 sm:h-56 md:h-64"
+          aria-hidden="true"
+        >
+          <img src={backdropUrl(detail.backdrop_path, "w780")} alt="" class="h-full w-full object-cover object-top" />
+          <div
+            class="absolute inset-0"
+            style="background: linear-gradient(to top, var(--color-bg) 0%, color-mix(in oklab, var(--color-bg) 50%, transparent) 45%, transparent 90%);"
+          ></div>
+        </div>
+      {/if}
+      <section class="relative flex flex-col items-center gap-4 text-center {detail.backdrop_path ? 'pt-24 sm:pt-28 md:pt-32' : 'pt-2'}">
       <div class="w-44 sm:w-52 md:w-60">
-        <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border border-border/60 bg-surface-2 shadow-2xl">
+        <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border-2 bg-surface-2 shadow-2xl {posterBorder}">
           {#if detail.poster_path}
             <img src={posterUrl(detail.poster_path, "w500")} alt="" class="h-full w-full object-cover" />
           {/if}
@@ -142,7 +165,7 @@
 
       <!-- Title block -->
       <div class="max-w-prose space-y-1.5">
-        <h1 class="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{detail.title}</h1>
+        <h1 class="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl {titleColor}">{detail.title}</h1>
 
         {#if director}
           <p class="text-xs text-muted">
@@ -241,6 +264,7 @@
         </a>
       </div>
     </section>
+    </div>
 
     <!-- TRAILER (collapsible) -->
     {#if trailerOpen && trailers.length > 0}
@@ -284,7 +308,7 @@
                     <span class="rounded-full border border-accent/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-accent">Rewatch</span>
                   {/if}
                   {#if typeof h.rating === "number" && h.rating > 0}
-                    <span class="ml-auto rounded-md bg-accent/15 px-1.5 py-0.5 font-semibold tabular-nums text-accent">♥ {h.rating}</span>
+                    <span class="ml-auto rounded-md px-1.5 py-0.5 font-semibold tabular-nums {ratingTint ? `${ratingTint.bgSoft} ${ratingTint.text}` : 'bg-accent/15 text-accent'}">♥ {h.rating}</span>
                   {/if}
                 </div>
                 {#if h.note}

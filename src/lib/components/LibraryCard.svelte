@@ -74,7 +74,7 @@
     <div class="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1.5">
       <TypeBadge kind={entry.kind} variant="chip" />
       {#if typeof entry.rating === "number" && entry.rating > 0}
-        <span class="rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-accent">
+        <span class="rounded-md {c.bgSoft} px-1.5 py-0.5 text-[10px] font-semibold tabular-nums {c.text}">
           ★ {entry.rating}
         </span>
       {/if}
@@ -109,9 +109,7 @@
           </div>
         {/if}
         {#if typeof entry.rating === "number" && entry.rating > 0}
-          <div
-            class="absolute left-1.5 top-1.5 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-bg"
-          >
+          <div class="absolute left-1.5 top-1.5 rounded-md {c.bg} px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-bg">
             ♥ {entry.rating}
           </div>
         {/if}

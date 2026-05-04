@@ -194,7 +194,7 @@
         </button>
       {/if}
       {#if !store.apiKey}
-        <span class="text-xs text-danger">Set your TMDB API key in settings first.</span>
+        <span class="text-xs text-error">Set your TMDB API key in settings first.</span>
       {/if}
     </div>
   </div>
@@ -211,7 +211,7 @@
         {:else if g.error}
           <div class="space-y-2">
             <h2 class="text-sm font-medium">
-              {g.query} <span class="text-xs text-danger">— {g.error}</span>
+              {g.query} <span class="text-xs text-error">— {g.error}</span>
             </h2>
           </div>
         {:else if g.results.length === 0}

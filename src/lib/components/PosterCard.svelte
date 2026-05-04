@@ -75,7 +75,7 @@
     {/if}
 
     {#if typeof rating === "number" && rating > 0}
-      <div class="absolute left-1.5 top-1.5 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-bg">
+      <div class="absolute left-1.5 top-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-bg {c ? c.bg : 'bg-accent'}">
         ♥ {rating}
       </div>
     {/if}

@@ -11,6 +11,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { backdropUrl, entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
+  import { STATUS_COLOR } from "$lib/types";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -53,10 +54,12 @@
   });
 
   const headerInfo = $derived.by(() => {
+    const detailBackdrop = detail ? backdropUrl(detail.backdrop_path, "w780") : null;
     if (movieEntry) {
       return {
         title: movieEntry.title,
         poster: movieEntry.poster,
+        backdrop: movieEntry.backdrop ?? detailBackdrop,
         overview: detail?.overview ?? "",
         date: detail?.release_date ?? movieEntry.year ?? "",
       };
@@ -65,6 +68,7 @@
       return {
         title: detail.title,
         poster: posterUrl(detail.poster_path, "w342"),
+        backdrop: detailBackdrop,
         overview: detail.overview,
         date: detail.release_date,
       };
@@ -83,6 +87,16 @@
     void goto(`${base}/`);
   }
 
+  // In-library posters wear the full status border so the preview hero reads
+  // its state at a glance; unfiled stays neutral so a "not yet added" preview
+  // doesn't fake a status. Title gets the same status tint.
+  const posterBorder = $derived(
+    movieEntry ? STATUS_COLOR[movieEntry.status].border : "border-border"
+  );
+  const titleColor = $derived(
+    movieEntry ? STATUS_COLOR[movieEntry.status].text : "text-text"
+  );
+
   const onBack = smartBack();
 </script>
 
@@ -90,39 +104,63 @@
   <title>{headerInfo ? `${headerInfo.title} · Series Tracker` : "Movie · Series Tracker"}</title>
 </svelte:head>
 
-<section class="space-y-6">
+<div class="space-y-6">
   <a href="{base}/" onclick={onBack} class="hidden text-sm text-muted hover-text-text sm:inline-block">← Back</a>
 
   {#if loading && !headerInfo}
-    <div class="flex flex-col gap-6 md:flex-row">
-      <div class="w-full max-w-[200px] flex-shrink-0">
+    <div class="flex flex-col items-center gap-4 pt-2">
+      <div class="w-36 sm:w-44 md:w-52">
         <Skeleton variant="poster" />
       </div>
-      <div class="min-w-0 flex-1 space-y-3">
+      <div class="w-full max-w-prose space-y-3">
         <Skeleton variant="line" />
         <Skeleton variant="line" />
         <Skeleton variant="line" />
       </div>
     </div>
   {:else if error}
-    <p class="rounded-md border border-danger bg-danger/15 p-3 text-sm text-danger">{error}</p>
+    <p class="rounded-md border border-error bg-error/15 p-3 text-sm text-error">{error}</p>
   {:else if headerInfo}
-    <div class="flex flex-col gap-6 md:flex-row">
-      <div class="w-full max-w-[200px] flex-shrink-0">
-        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface-2">
-          {#if headerInfo.poster}
-            <img src={headerInfo.poster} alt="" class="h-full w-full object-cover" />
-          {/if}
+    <!-- HERO: optional full-bleed backdrop pinned to the top, with the centered
+         poster + title block sitting in front of it. Backdrop fades into the
+         page bg so the poster emerges from it. When no backdrop is available
+         the section just centers from the page top. -->
+    <div class="relative">
+      {#if headerInfo.backdrop}
+        <div
+          class="absolute inset-x-0 -top-4 -mx-3 h-40 overflow-hidden bg-surface-2 sm:-top-6 sm:-mx-4 sm:h-48 md:h-56"
+          aria-hidden="true"
+        >
+          <img src={headerInfo.backdrop} alt="" class="h-full w-full object-cover object-top" />
+          <div
+            class="absolute inset-0"
+            style="background: linear-gradient(to top, var(--color-bg) 0%, color-mix(in oklab, var(--color-bg) 50%, transparent) 45%, transparent 90%);"
+          ></div>
         </div>
-      </div>
-      <div class="min-w-0 flex-1 space-y-4">
-        <div>
-          <h1 class="text-2xl font-semibold">{headerInfo.title}</h1>
+      {/if}
+
+      <section class="relative flex flex-col items-center gap-3 text-center {headerInfo.backdrop ? 'pt-20 sm:pt-24 md:pt-28' : 'pt-2'}">
+        <a
+          href="{base}/movie/{id}/info/"
+          use:tactile={{ haptic: false }}
+          aria-label="More info about {headerInfo.title}"
+          class="tap-target tap-target--card block w-36 sm:w-44 md:w-52"
+        >
+          <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border-2 bg-surface-2 shadow-2xl {posterBorder}">
+            {#if headerInfo.poster}
+              <img src={headerInfo.poster} alt="" class="h-full w-full object-cover" />
+            {/if}
+          </div>
+        </a>
+
+        <div class="max-w-prose space-y-2">
+          <h1 class="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl {titleColor}">{headerInfo.title}</h1>
+
           {#if !movieEntry && detail}
             {#if detail.original_title && detail.original_title !== detail.title}
-              <p class="mt-0.5 text-sm italic text-muted">{detail.original_title}</p>
+              <p class="text-sm italic text-muted">{detail.original_title}</p>
             {/if}
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted">
               {#if detail.release_date}<span>{detail.release_date.slice(0, 4)}</span>{/if}
               {#if detail.runtime}
                 <span aria-hidden="true">·</span>
@@ -134,34 +172,27 @@
               {/if}
             </div>
             {#if detail.status && detail.status !== "Released"}
-              <p class="mt-1.5 text-xs font-medium uppercase tracking-wider text-accent">{detail.status}</p>
+              <p class="text-xs font-medium uppercase tracking-wider text-accent">{detail.status}</p>
+            {/if}
+            {#if typeof detail.vote_average === "number" && detail.vote_average > 0 && (detail.vote_count ?? 0) >= 50}
+              <div class="flex items-center justify-center gap-2 pt-0.5 text-xs">
+                <span class="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
+                  <span class="text-accent">★</span>
+                  <span class="tabular-nums">{Math.round(detail.vote_average * 10)}%</span>
+                  <span class="text-muted">TMDB</span>
+                </span>
+              </div>
+            {/if}
+            {#if detail.tagline}
+              <p class="text-sm italic text-muted">"{detail.tagline}"</p>
             {/if}
           {:else if headerInfo.date}
-            <p class="mt-1 text-sm text-muted">{headerInfo.date}</p>
+            <p class="text-sm text-muted">{headerInfo.date}</p>
           {/if}
         </div>
 
-        {#if !movieEntry && detail}
-          {#if typeof detail.vote_average === "number" && detail.vote_average > 0 && (detail.vote_count ?? 0) >= 50}
-            <div class="flex items-center gap-2 text-xs">
-              <span class="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
-                <span class="text-accent">★</span>
-                <span class="tabular-nums">{Math.round(detail.vote_average * 10)}%</span>
-                <span class="text-muted">TMDB</span>
-              </span>
-            </div>
-          {/if}
-          {#if detail.tagline}
-            <p class="text-sm italic text-muted">"{detail.tagline}"</p>
-          {/if}
-        {/if}
-
-        {#if headerInfo.overview}
-          <p class="text-sm text-muted">{headerInfo.overview}</p>
-        {/if}
-
         {#if !movieEntry}
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap justify-center gap-2 pt-1">
             <StatusMenu
               label="+ Add to library"
               onSelect={addToLibrary}
@@ -184,8 +215,14 @@
             ⓘ More info
           </a>
         {/if}
-      </div>
+      </section>
     </div>
+
+    {#if headerInfo.overview}
+      <p class="mx-auto max-w-prose text-sm leading-relaxed text-text/90 sm:text-base">
+        {headerInfo.overview}
+      </p>
+    {/if}
 
     {#if movieEntry}
       <div class="space-y-3">
@@ -198,6 +235,7 @@
         <RatingPicker
           value={movieEntry.rating ?? null}
           onChange={(v) => store.setRating("movie", id, v)}
+          status={movieEntry.status}
         />
       </div>
 
@@ -212,11 +250,11 @@
           type="button"
           use:tactile={{ haptic: "warn" }}
           onclick={remove}
-          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm text-muted hover-border-danger hover-text-danger"
+          class="tap-target tap-target--btn rounded-md border border-error/40 px-4 py-2 text-sm font-medium text-error transition-colors duration-150 active:bg-error/10 hover-border-error"
         >
           Remove from library
         </button>
       </div>
     {/if}
   {/if}
-</section>
+</div>

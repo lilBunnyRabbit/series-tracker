@@ -5,6 +5,7 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { STATUS_COLOR } from "$lib/types";
   import type { Entry } from "$lib/types";
 
   type KindFilter = "both" | "tv" | "movie";
@@ -103,6 +104,7 @@
     {:else}
       <ol class="space-y-1.5">
         {#each list as e, i (e.kind + ":" + e.id)}
+          {@const sc = STATUS_COLOR[e.status]}
           {@const rankClass = i === 0
             ? "border-accent bg-accent text-bg"
             : i === 1
@@ -133,7 +135,7 @@
                   {e.kind === "tv" ? "TV" : "Movie"}{e.year ? ` · ${e.year}` : ""}
                 </div>
               </div>
-              <span class="shrink-0 rounded-md bg-accent/15 px-2.5 py-1 text-sm font-semibold tabular-nums text-accent">
+              <span class="shrink-0 rounded-md {sc.bgSoft} px-2.5 py-1 text-sm font-semibold tabular-nums {sc.text}">
                 ♥ {e.rating}
               </span>
             </a>

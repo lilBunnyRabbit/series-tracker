@@ -1,6 +1,9 @@
 export type Status = "watching" | "completed" | "plan" | "dropped" | "tuned";
 
-export const STATUSES: Status[] = ["watching", "completed", "plan", "dropped", "tuned"];
+// Order matches the StatusMenu add-flow drawer (plan → watching → tuned →
+// dropped → completed) so every list-style picker reads identically. In 2-col
+// grids the 5th item ("completed") sits alone in row 3 with col-span-2.
+export const STATUSES: Status[] = ["plan", "watching", "tuned", "dropped", "completed"];
 
 export const STATUS_LABEL: Record<Status, string> = {
   watching: "Watching",
@@ -20,9 +23,20 @@ export const STATUS_DESCRIPTION: Record<Status, string> = {
 
 // Tailwind class fragments mapping each status to a colour family.
 // Kept as a single source of truth so cards, dots, and the picker stay in sync.
+// `bgSoft` is the /15-tinted background (rating chips); kept as a literal
+// string so Tailwind's content scanner can see every variant.
 export const STATUS_COLOR: Record<
   Status,
-  { dot: string; text: string; border: string; borderSoft: string; bg: string; chip: string; hoverBorder: string }
+  {
+    dot: string;
+    text: string;
+    border: string;
+    borderSoft: string;
+    bg: string;
+    bgSoft: string;
+    chip: string;
+    hoverBorder: string;
+  }
 > = {
   watching: {
     dot: "bg-primary",
@@ -30,6 +44,7 @@ export const STATUS_COLOR: Record<
     border: "border-primary",
     borderSoft: "border-primary/60",
     bg: "bg-primary",
+    bgSoft: "bg-primary/15",
     chip: "border-primary text-primary",
     hoverBorder: "hover:border-primary",
   },
@@ -39,6 +54,7 @@ export const STATUS_COLOR: Record<
     border: "border-secondary",
     borderSoft: "border-secondary/60",
     bg: "bg-secondary",
+    bgSoft: "bg-secondary/15",
     chip: "border-secondary text-secondary",
     hoverBorder: "hover:border-secondary",
   },
@@ -48,6 +64,7 @@ export const STATUS_COLOR: Record<
     border: "border-accent",
     borderSoft: "border-accent/60",
     bg: "bg-accent",
+    bgSoft: "bg-accent/15",
     chip: "border-accent text-accent",
     hoverBorder: "hover:border-accent",
   },
@@ -57,6 +74,7 @@ export const STATUS_COLOR: Record<
     border: "border-muted",
     borderSoft: "border-muted/60",
     bg: "bg-muted",
+    bgSoft: "bg-muted/15",
     chip: "border-border text-muted",
     hoverBorder: "hover:border-muted",
   },
@@ -66,6 +84,7 @@ export const STATUS_COLOR: Record<
     border: "border-tertiary",
     borderSoft: "border-tertiary/60",
     bg: "bg-tertiary",
+    bgSoft: "bg-tertiary/15",
     chip: "border-tertiary text-tertiary",
     hoverBorder: "hover:border-tertiary",
   },

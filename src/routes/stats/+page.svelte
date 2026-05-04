@@ -274,6 +274,7 @@
         </h2>
         <div class="space-y-1.5">
           {#each topRated as e, i (e.kind + ":" + e.id)}
+            {@const sc = STATUS_COLOR[e.status]}
             <a
               href={e.kind === "tv" ? `${base}/show/${e.id}/` : `${base}/movie/${e.id}/`}
               use:tactile
@@ -291,7 +292,7 @@
                   {e.kind === "tv" ? "TV" : "Movie"}{e.year ? ` · ${e.year}` : ""}
                 </div>
               </div>
-              <span class="shrink-0 rounded-md bg-accent/15 px-2 py-1 text-xs font-semibold tabular-nums text-accent">
+              <span class="shrink-0 rounded-md {sc.bgSoft} px-2 py-1 text-xs font-semibold tabular-nums {sc.text}">
                 ♥ {e.rating}
               </span>
             </a>

@@ -346,8 +346,13 @@ function createStore() {
       if (!e || e.kind !== "tv") return;
       e.progress[season] = 0;
       withTimestamp(e);
-      const anyProgress = Object.values(e.progress).some((v) => v > 0);
-      if (!anyProgress && e.status === "completed") e.status = "watching";
+      // Reset must demote from completed whenever the show is no longer fully
+      // done — not just when every season is empty. Otherwise resetting one
+      // season of a 3-season "completed" show keeps the (now-stale) completed
+      // badge. Mirrors the allDone check in updateProgress/setProgress.
+      const counted = effectiveSeasons(e);
+      const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
+      if (!allDone && e.status === "completed") e.status = "watching";
     },
 
     incrementCurrent(showId: number): boolean {
