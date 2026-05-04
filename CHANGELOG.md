@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-05-04
+
+### Fixed
+- Swipe-to-add on discover cards now opens the status picker docked correctly to the viewport, matching the +Add button. Previously the swipe-triggered picker could render offset or overflow the screen, and the surrounding list could visibly shift while the sheet was opening.
+
 ## [0.10.0] - 2026-05-04
 
 ### Added
