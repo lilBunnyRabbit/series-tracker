@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-05-05
+
+### Changed
+- Feed scroll reverted to native browser scroll-snap. The JS-driven and library-based variants we tried over the last few releases all hit mobile main-thread limits and felt laggy on phones; native scroll-snap runs entirely on the compositor thread and is the smoothest path available.
+
 ## [0.14.0] - 2026-05-05
 
 ### Changed

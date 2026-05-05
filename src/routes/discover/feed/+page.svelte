@@ -12,8 +12,6 @@
   import { discover, genreList, entryFromSearchResult } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import type { DiscoverSort, FeedSession, Genre, Status } from "$lib/types";
-  import emblaCarouselSvelte from "embla-carousel-svelte";
-  import type { EmblaCarouselType, EmblaOptionsType } from "embla-carousel";
   import { untrack } from "svelte";
 
   const onBack = smartBack();
@@ -170,7 +168,7 @@
     "title.desc": "Z–A",
   };
 
-  // ---- Feed phase: data + carousel ----
+  // ---- Feed phase: data + scroller ----
 
   /** Pure equality check for whether a saved session was scrolling against the
    *  same query space we're entering now. Genres are normalised to a sorted
@@ -238,72 +236,8 @@
   let totalPages = $state(1);
   let loading = $state(false);
   let feedError = $state<string | null>(null);
-
-  // Embla owns the entire vertical motion. Past in-house implementations
-  // hit two walls: native scroll-snap felt "too much like normal scrolling"
-  // (browser-driven post-release physics), and a JS-driven track ran into
-  // mobile main-thread lag we couldn't escape. Embla's drag handling lives
-  // in well-tuned C-like JS that's been stress-tested across phones —
-  // momentum + snap commit feel continuous instead of "stop, then snap".
-  let emblaApi = $state<EmblaCarouselType>();
+  let scroller = $state<HTMLDivElement>();
   let currentIndex = $state(0);
-  let isMoving = $state(false);
-  // Set by runResume once the saved-session item has been located in
-  // `items`. A dedicated effect picks up the (emblaApi, idx) pair and
-  // does the instant scroll — decoupling avoids racing against Embla's
-  // mutation-observer-based slide registration.
-  let pendingResumeIndex = $state<number | null>(null);
-
-  const emblaOptions: EmblaOptionsType = {
-    axis: "y",
-    align: "start",
-    // `trimSnaps` clamps to first / last instead of letting the user pull
-    // past the edges with rubber-band momentum.
-    containScroll: "trimSnaps",
-    // Each release resolves to exactly one card; a fast flick can't fly
-    // past two slides — same TikTok intent as our previous custom impl.
-    skipSnaps: false,
-    // Embla's "duration" is in arbitrary units, default 25. Lower = sharper
-    // snap. 22 is the sweet spot in testing — quick enough to feel decisive,
-    // long enough that the eye reads the transition.
-    duration: 22,
-  };
-
-  function onEmblaInit(e: CustomEvent<EmblaCarouselType>): void {
-    const api = e.detail;
-    emblaApi = api;
-    api.on("select", () => {
-      currentIndex = api.selectedScrollSnap();
-    });
-    // `scroll` fires throughout drag + momentum, `settle` fires once
-    // motion stops (drag commit, programmatic scroll, or snap-back). The
-    // `is-moving` class drops the rail's backdrop-filter for the duration.
-    api.on("scroll", () => {
-      isMoving = true;
-    });
-    api.on("settle", () => {
-      isMoving = false;
-    });
-    api.on("pointerDown", () => {
-      isMoving = true;
-    });
-  }
-
-  // After resume identifies the target index AND Embla is ready, jump there
-  // without animation. reInit() forces Embla to re-scan the slide DOM so a
-  // freshly-pushed item that hadn't yet flown through its mutation observer
-  // is still in scope for scrollTo.
-  $effect(() => {
-    const api = emblaApi;
-    const idx = pendingResumeIndex;
-    if (!api) return;
-    if (idx === null) return;
-    untrack(() => {
-      api.reInit();
-      api.scrollTo(idx, true);
-      pendingResumeIndex = null;
-    });
-  });
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -398,9 +332,13 @@
     }
     const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
     if (finalIdx < 0) return;
-    // Hand off to the resume effect — it'll wait for emblaApi to be ready
-    // before scrollTo. This decouples runResume from Embla's init timing.
-    pendingResumeIndex = finalIdx;
+    // Wait for the layout to settle before measuring clientHeight — items
+    // were just pushed into state but may not have painted yet.
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const s = scroller;
+    if (!s || s.clientHeight <= 0) return;
+    s.scrollTo({ top: finalIdx * s.clientHeight, behavior: "instant" as ScrollBehavior });
+    currentIndex = finalIdx;
   }
 
   // Reset and reload whenever the feed-phase filters change (or we re-enter
@@ -422,14 +360,6 @@
     void genres.join(",");
 
     untrack(() => {
-      currentIndex = 0;
-      isMoving = false;
-      pendingResumeIndex = null;
-      // The carousel will unmount when items=[] because the {:else} render
-      // branch swaps to skeleton/empty UI. Clearing emblaApi here makes
-      // sure the resume / wheel / key effects don't fire against a
-      // destroyed instance during the unmount → remount window.
-      emblaApi = undefined;
       if (ph !== "feed") {
         if (dataCtrl) {
           dataCtrl.abort();
@@ -438,6 +368,7 @@
         items = [];
         nextPage = 1;
         totalPages = 1;
+        currentIndex = 0;
         feedError = null;
         loading = false;
         return;
@@ -449,6 +380,7 @@
       items = [];
       nextPage = 1;
       totalPages = 1;
+      currentIndex = 0;
       feedError = null;
       loading = false;
       void (async () => {
@@ -461,81 +393,124 @@
     });
   });
 
-  // Persist the last-seen item when currentIndex changes. Filters / page
-  // count are read untracked so a re-render from items growing doesn't churn
-  // the session record.
-  $effect(() => {
-    const idx = currentIndex;
-    untrack(() => {
-      const item = items[idx];
-      if (!item) return;
-      store.setFeedSession({
-        kind,
-        sort,
-        genres: [...genres],
-        hideAdded,
-        lastSeenKey: `${item.media_type}:${item.id}`,
-        lastSeenPagesLoaded: Math.max(1, nextPage - 1),
-        updatedAt: new Date().toISOString(),
-      });
+  function onScroll(): void {
+    const s = scroller;
+    if (!s) return;
+    const h = s.clientHeight;
+    if (h <= 0) return;
+    const idx = Math.round(s.scrollTop / h);
+    if (idx === currentIndex) return;
+    if (idx < 0 || idx >= items.length) return;
+    currentIndex = idx;
+    const item = items[idx];
+    if (!item) return;
+    // Persist the last-seen item for next-session resume. Filters are
+    // snapshotted alongside so resume runs against the same query space.
+    // `lastSeenPagesLoaded` is how many pages we'd fetched at this point —
+    // resume re-fetches that many to guarantee the item is in scope, instead
+    // of blindly trying the first few pages and giving up.
+    store.setFeedSession({
+      kind,
+      sort,
+      genres: [...genres],
+      hideAdded,
+      lastSeenKey: `${item.media_type}:${item.id}`,
+      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
+      updatedAt: new Date().toISOString(),
     });
-  });
-
-  // Pre-fetch when within 3 of the end. Re-runs when currentIndex or
-  // items.length changes — once the buffer grows past the threshold the
-  // effect goes quiet on its own.
-  $effect(() => {
-    if (!store.apiKey) return;
-    if (phase !== "feed") return;
-    const idx = currentIndex;
-    const len = items.length;
-    if (len === 0) return;
-    if (idx >= len - 3) {
-      untrack(() => void loadNext());
+    // Pre-fetch the next page well before the user reaches the end so the
+    // scroll never stalls.
+    if (idx >= items.length - 3) {
+      void loadNext();
     }
-  });
+  }
 
-  // Wheel + keyboard navigation. Trackpad scrolls fire many small wheel
-  // events per gesture; the cooldown caps the result to one card per
-  // gesture. Embla itself only handles touch + mouse drag — wheels and
-  // keys are still on us.
-  const WHEEL_LOCK_MS = 260;
+  // ---- Snappy snap (JS-driven) ----
+  // Native touch scroll handles the in-gesture follow. On release we INSTANTLY
+  // jump scrollTop to the target card — no animation, just a hard cut. The
+  // visible "swipe" is the user's own finger drag; the post-release transition
+  // is a discrete page flip. Wheel events use the same instant snap with a
+  // short cooldown so trackpad scrolls don't fire faster than one card per
+  // gesture.
+  const WHEEL_LOCK_MS = 160;
+  // Px traveled before a swipe is treated as an intent to advance. Velocity
+  // threshold below picks up confident flicks below this distance.
+  const SWIPE_DISTANCE_PX = 22;
+  // px/ms — ~"confident phone flick". Lower would advance on accidental slides.
+  const SWIPE_VELOCITY_PX_MS = 0.35;
+
+  let touchStartY = 0;
+  let touchStartScroll = 0;
+  let touchStartTime = 0;
+  let touchActive = false;
   let wheelLockedUntil = 0;
 
+  function snapTo(target: number): void {
+    const s = scroller;
+    if (!s) return;
+    s.scrollTop = target;
+  }
+
+  function onPointerDown(e: PointerEvent): void {
+    if (e.pointerType !== "touch") return;
+    const s = scroller;
+    if (!s) return;
+    touchActive = true;
+    touchStartY = e.clientY;
+    touchStartScroll = s.scrollTop;
+    touchStartTime = performance.now();
+  }
+
+  function onPointerUp(e: PointerEvent): void {
+    if (!touchActive) return;
+    if (e.pointerType !== "touch") return;
+    touchActive = false;
+    const s = scroller;
+    if (!s) return;
+    const h = s.clientHeight;
+    if (h <= 0) return;
+    const dy = touchStartY - e.clientY;
+    const dt = Math.max(1, performance.now() - touchStartTime);
+    // px/ms; positive = swipe up. Used so a fast flick always advances even
+    // when the finger barely moved — same feel as TikTok's gesture.
+    const velocity = dy / dt;
+    // Compute the index the user STARTED from so a partial mid-card swipe
+    // still resolves to a clean ±1 step rather than landing the user where
+    // their drag happened to stop.
+    const startIdx = Math.round(touchStartScroll / h);
+    let target = startIdx;
+    if (Math.abs(dy) > SWIPE_DISTANCE_PX || Math.abs(velocity) > SWIPE_VELOCITY_PX_MS) {
+      target = startIdx + (dy > 0 ? 1 : -1);
+    }
+    target = Math.max(0, Math.min(items.length - 1, target));
+    snapTo(target * h);
+  }
+
+  function onPointerCancel(): void {
+    touchActive = false;
+  }
+
+  // Wheel handler is attached imperatively in an effect so we can pass
+  // `passive: false` and call preventDefault — Svelte's onwheel attaches
+  // passive by default on some setups.
   $effect(() => {
-    const api = emblaApi;
-    if (!api) return;
-    const root = api.rootNode();
+    const s = scroller;
+    if (!s) return;
     const handler = (e: WheelEvent): void => {
       if (Math.abs(e.deltaY) < 4) return;
       e.preventDefault();
       const now = performance.now();
       if (now < wheelLockedUntil) return;
       wheelLockedUntil = now + WHEEL_LOCK_MS;
-      if (e.deltaY > 0) api.scrollNext();
-      else api.scrollPrev();
+      const h = s.clientHeight;
+      if (h <= 0) return;
+      const dir = e.deltaY > 0 ? 1 : -1;
+      const target = Math.max(0, Math.min(items.length - 1, currentIndex + dir));
+      snapTo(target * h);
     };
-    root.addEventListener("wheel", handler, { passive: false });
-    return () => root.removeEventListener("wheel", handler);
+    s.addEventListener("wheel", handler, { passive: false });
+    return () => s.removeEventListener("wheel", handler);
   });
-
-  function onKeyDown(e: KeyboardEvent): void {
-    const api = emblaApi;
-    if (!api) return;
-    if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") {
-      e.preventDefault();
-      api.scrollNext();
-    } else if (e.key === "ArrowUp" || e.key === "PageUp") {
-      e.preventDefault();
-      api.scrollPrev();
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      api.scrollTo(0);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      api.scrollTo(items.length - 1);
-    }
-  }
 
   async function handleAdd(item: RecommendationItem, status: Status): Promise<void> {
     if (!store.apiKey) throw new Error("API key not set");
@@ -697,11 +672,10 @@
   </section>
 {:else}
   <!-- Feed phase. Body scroll is locked by the layout (`isFeedActive`); the
-       carousel below owns the entire vertical motion via JS-driven transform
-       (no native scroll), so the in-gesture feel is 1:1 finger-follow with no
-       browser momentum / rubber-band. The floating nav and top header are
-       hidden so each card reaches the screen edge — back lives inside each
-       card's action rail. -->
+       scroller below owns vertical scroll with snap-to-card, and the floating
+       nav and top header are hidden so each card reaches the screen edge.
+       Back lives inside each card's action rail so the viewport has nothing
+       on top — TikTok-like. -->
   <div class="feed-shell">
     {#if feedError}
       <div class="feed-error">
@@ -734,40 +708,34 @@
         </a>
       </div>
     {:else}
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
-        class="embla"
-        class:is-moving={isMoving}
+        bind:this={scroller}
+        class="feed-scroller"
         role="region"
         aria-label="Feed"
-        aria-roledescription="carousel"
-        tabindex="-1"
-        onkeydown={onKeyDown}
-        use:emblaCarouselSvelte={{ options: emblaOptions, plugins: [] }}
-        onemblaInit={onEmblaInit}
+        onscroll={onScroll}
+        onpointerdown={onPointerDown}
+        onpointerup={onPointerUp}
+        onpointercancel={onPointerCancel}
       >
-        <div class="embla__container">
-          {#each items as item (item.media_type + ":" + item.id)}
-            <div class="embla__slide">
-              <FeedCard
-                {item}
-                {genreById}
-                isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
-                onAdd={handleAdd}
-                backHref="{base}/discover/feed/"
-                {onBack}
-              />
-            </div>
-          {/each}
-        </div>
-
-        <!-- Status pill: overlays the bottom of the viewport when more is
-             loading or we've hit the end, so the user gets feedback without
-             us inserting a non-content slide they have to swipe past. -->
-        {#if loading && currentIndex >= items.length - 1}
-          <div class="feed-status-pill" aria-live="polite">Loading more…</div>
-        {:else if nextPage > totalPages && currentIndex >= items.length - 1}
-          <div class="feed-status-pill" aria-live="polite">End of feed</div>
+        {#each items as item (item.media_type + ":" + item.id)}
+          <FeedCard
+            {item}
+            {genreById}
+            isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
+            onAdd={handleAdd}
+            backHref="{base}/discover/feed/"
+            {onBack}
+          />
+        {/each}
+        {#if loading}
+          <div class="feed-tail">
+            <span class="text-xs text-muted">Loading more…</span>
+          </div>
+        {:else if nextPage > totalPages && items.length > 0}
+          <div class="feed-tail">
+            <span class="text-xs text-muted">You've reached the end of the feed.</span>
+          </div>
         {/if}
       </div>
     {/if}
@@ -784,63 +752,28 @@
     background: var(--color-bg);
   }
 
-  /* Embla viewport. Embla itself sets `touch-action` and the transform on
-     the container; we just give it a sized, clipped box to live in. */
-  .embla {
+  .feed-scroller {
     flex: 1;
     min-height: 0;
-    position: relative;
-    overflow: hidden;
-    /* Tab-focusable but no visible ring — the cards' own interactive
-       elements provide the focus story. */
-    outline: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
+    /* Hide scrollbar visuals so the cards read full-bleed. The track still
+       takes pointer events for desktop wheel scrolling. */
+    scrollbar-width: none;
+  }
+  .feed-scroller::-webkit-scrollbar {
+    display: none;
   }
 
-  .embla__container {
+  .feed-tail {
+    height: 6rem;
     display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  /* Each slide fills the viewport vertically. flex-basis: 100% on a column
-     flex container = 100% of the container's height. */
-  .embla__slide {
-    flex: 0 0 100%;
-    min-height: 0;
-  }
-
-  /* While the carousel is actively moving (drag in progress, momentum
-     coast, or the snap commit), kill the rail buttons' backdrop-filter.
-     The blur runs against the content directly under each button, and
-     that content is what's translating every frame — so backdrop-filter
-     re-rasterizes per-frame across ~15 button-sized regions on mobile.
-     Restoring at rest costs nothing: the content is static, blur cached.
-     `:global` is needed because `.feed-action-circle` is scoped to
-     FeedCard's component CSS. */
-  .embla.is-moving :global(.feed-action-circle) {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
-  /* Bottom-anchored pill for "loading more" / "end of feed". Overlays so
-     the user never has to swipe past a non-content slot to see it. */
-  .feed-status-pill {
-    position: absolute;
-    left: 50%;
-    bottom: max(env(safe-area-inset-bottom), 1.25rem);
-    transform: translateX(-50%);
-    z-index: 6;
-    padding: 0.375rem 0.875rem;
-    border-radius: 9999px;
-    border: 1px solid var(--color-border);
-    background: color-mix(in oklab, var(--color-surface) 85%, transparent);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    font-size: 0.6875rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-muted);
-    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: end;
+    background: var(--color-bg);
   }
 
   .feed-loading,
