@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-05-05
+
+### Changed
+- Feed swipes now feel sharper on iPhone — momentum scrolling is disabled on the carousel so the scroll stops the instant your finger lifts, and the pointerup snap actually feels like a snap. Smaller flicks also commit to the next card.
+
 ## [0.14.1] - 2026-05-05
 
 ### Changed

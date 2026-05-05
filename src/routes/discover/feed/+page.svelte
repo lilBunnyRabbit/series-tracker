@@ -432,12 +432,19 @@
   // is a discrete page flip. Wheel events use the same instant snap with a
   // short cooldown so trackpad scrolls don't fire faster than one card per
   // gesture.
-  const WHEEL_LOCK_MS = 160;
+  //
+  // Thresholds are tuned aggressively so the feed reads as "page flip" rather
+  // than "scroll": small flicks advance, low velocity counts as intent.
+  // Combined with `-webkit-overflow-scrolling: auto` on the scroller (kills
+  // iOS momentum) and `scroll-snap-stop: always` (one card per gesture), the
+  // gesture-to-commit window is as tight as native scroll allows.
+  const WHEEL_LOCK_MS = 100;
   // Px traveled before a swipe is treated as an intent to advance. Velocity
   // threshold below picks up confident flicks below this distance.
-  const SWIPE_DISTANCE_PX = 22;
-  // px/ms — ~"confident phone flick". Lower would advance on accidental slides.
-  const SWIPE_VELOCITY_PX_MS = 0.35;
+  const SWIPE_DISTANCE_PX = 14;
+  // px/ms — even a casual finger flick clears this. We want intent over
+  // accident, but we want intent to commit easily.
+  const SWIPE_VELOCITY_PX_MS = 0.22;
 
   let touchStartY = 0;
   let touchStartScroll = 0;
@@ -759,6 +766,13 @@
     overflow-x: hidden;
     scroll-snap-type: y mandatory;
     overscroll-behavior-y: contain;
+    /* iOS: `auto` kills momentum scrolling on this element. Without it,
+       releasing the finger lets the scroll glide before snap kicks in —
+       that's the "feels like normal scrolling" sensation. With momentum
+       off, release is crisp: scroll stops where the finger lifted, then
+       our pointerup handler sets scrollTop to the target instantly. The
+       property is technically deprecated but Safari still honours it. */
+    -webkit-overflow-scrolling: auto;
     /* Hide scrollbar visuals so the cards read full-bleed. The track still
        takes pointer events for desktop wheel scrolling. */
     scrollbar-width: none;
