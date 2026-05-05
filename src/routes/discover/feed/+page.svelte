@@ -12,7 +12,7 @@
   import { discover, genreList, entryFromSearchResult } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import type { DiscoverSort, FeedSession, Genre, Status } from "$lib/types";
-  import { untrack } from "svelte";
+  import { flushSync, untrack } from "svelte";
 
   const onBack = smartBack();
 
@@ -225,12 +225,35 @@
   let captured = false;
 
   let items = $state<RecommendationItem[]>([]);
-  let nextPage = $state(1);
+  // Parallel to `items`: the TMDB page each item came from. We need this so
+  // the save records the page the user is actually on (not just the deepest
+  // page we'd fetched), and resume can jump straight to the right one.
+  // Non-reactive — only read inside event handlers, never in templates.
+  let itemPages: number[] = [];
+  // First/last TMDB pages currently held in `items`. 0 = nothing loaded yet.
+  // Scrolling forward pulls `lastLoadedPage + 1` and appends; scrolling
+  // backward pulls `firstLoadedPage - 1` and prepends. This sparse-window
+  // model means resume can jump straight to the saved page (one fetch)
+  // instead of loading every preceding page just to find the marker.
+  let firstLoadedPage = $state(0);
+  let lastLoadedPage = $state(0);
+  // Two different "totals" from TMDB. `totalPages` is what we can actually
+  // paginate through — TMDB's discover endpoint 422s past page 500, so the
+  // cap is what bounds loadNext. `totalResults` is the size of the matching
+  // universe regardless of pagination — that's what the position counter
+  // displays so users see the real feed size, not the artificial 10000 cap.
   let totalPages = $state(1);
+  let totalResults = $state(0);
   let loading = $state(false);
   let feedError = $state<string | null>(null);
   let scroller = $state<HTMLDivElement>();
   let currentIndex = $state(0);
+
+  // How many items either side of `currentIndex` are mounted as full
+  // <FeedCard>s. Items outside this window render as empty placeholder divs
+  // of the same snap-height so the scroll geometry is preserved without
+  // building 600+ heavy components for a deep session.
+  const RENDER_WINDOW = 2;
 
   // Flash-on-scroll position counter. Toggles to true when currentIndex
   // changes, then back to false ~1.5s later. CSS does the fade.
@@ -256,128 +279,214 @@
   // with no further fetches. 5 covers realistic dup runs without hanging.
   const MAX_EMPTY_ATTEMPTS = 5;
 
+  /** Fetch a single TMDB page and place its items into `items` according to
+   *  `position`. Caller is responsible for `loading` and the dup-skip retry
+   *  loop — this just does one network round-trip and one mutation. Returns
+   *  the count of fresh (post-filter, post-dedup) items added. */
+  async function fetchPage(
+    pageNum: number,
+    position: "append" | "prepend" | "replace"
+  ): Promise<number> {
+    if (!store.apiKey) return 0;
+    if (pageNum < 1) return 0;
+    const ctrl = dataCtrl;
+    if (!ctrl || ctrl.signal.aborted) return 0;
+    try {
+      const r = await discover(
+        feedKind,
+        store.apiKey,
+        { sort: feedSort, genres: feedGenres, page: pageNum, withPeople: [] },
+        ctrl.signal
+      );
+      if (ctrl.signal.aborted) return 0;
+      totalPages = Math.min(r.total_pages, 500);
+      totalResults = r.total_results;
+
+      // Filter at fetch-time so items added later in this session stay
+      // visible — we don't re-filter on render. Items the user added FROM
+      // this feed (tracked in `addedKeys`) bypass the filter so a remount
+      // doesn't make them vanish.
+      const filtered = feedHideAdded
+        ? r.results.filter((x) => {
+            if (!store.has(x.media_type as Kind, x.id)) return true;
+            return addedKeys.includes(`${x.media_type}:${x.id}`);
+          })
+        : r.results;
+
+      // Dedup against currently-loaded items. `replace` blows away the list
+      // so seen-set is empty there.
+      const seen =
+        position === "replace" ? new Set<string>() : new Set(items.map((i) => `${i.media_type}:${i.id}`));
+      const fresh = filtered.filter((x) => {
+        const key = `${x.media_type}:${x.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const pageTags = new Array<number>(fresh.length).fill(pageNum);
+      if (position === "replace") {
+        items = fresh;
+        itemPages = pageTags;
+        firstLoadedPage = pageNum;
+        lastLoadedPage = pageNum;
+      } else if (position === "append") {
+        items.push(...fresh);
+        itemPages.push(...pageTags);
+        if (firstLoadedPage === 0) firstLoadedPage = pageNum;
+        lastLoadedPage = pageNum;
+      } else {
+        // Prepend. Items shift down by `fresh.length` slots; we have to
+        // pin the scroller's scrollTop in lock-step so the user stays on
+        // the card they were viewing instead of jumping back by the prepend
+        // size. flushSync forces Svelte to apply the items mutation to the
+        // DOM synchronously so the new scrollHeight is in place before we
+        // adjust scrollTop. We then write scrollTop ABSOLUTELY (not via
+        // `+=`) because the browser's scroll-anchoring may have already
+        // tried to compensate during layout — a `+=` on top of that double-
+        // counts the shift and lands the user near the bottom (or, after
+        // clamp, near the top), which retriggers prev-prefetch and runs
+        // away through every page. `overflow-anchor: none` on the scroller
+        // disables the browser-side anchoring so this absolute set is
+        // authoritative.
+        if (fresh.length > 0) {
+          const s = scroller;
+          const h = s ? s.clientHeight : 0;
+          const shift = fresh.length;
+          // Update derived position state BEFORE the DOM mutation so that
+          // onScroll's `idx === currentIndex` early-bail is in place by the
+          // time the scrollTop assignment fires its scroll event.
+          currentIndex += shift;
+          if (mountFloorIdx >= 0) mountFloorIdx += shift;
+          flushSync(() => {
+            items = [...fresh, ...items];
+            itemPages = [...pageTags, ...itemPages];
+          });
+          if (s && h > 0) s.scrollTop = currentIndex * h;
+        }
+        firstLoadedPage = pageNum;
+      }
+      return fresh.length;
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return 0;
+      if (ctrl.signal.aborted) return 0;
+      feedError = e instanceof Error ? e.message : String(e);
+      return 0;
+    }
+  }
+
   async function loadNext(): Promise<void> {
     if (loading) return;
     if (!store.apiKey) return;
-    if (nextPage > 1 && nextPage > totalPages) return;
+    if (lastLoadedPage > 0 && lastLoadedPage >= totalPages) return;
     const ctrl = dataCtrl;
     if (!ctrl || ctrl.signal.aborted) return;
     loading = true;
     feedError = null;
     try {
-      // Build the dedup set once — TMDB discover can repeat items across
-      // adjacent pages and we use `${media_type}:${id}` as the keyed-each key,
-      // so duplicates would otherwise crash the render with each_key_duplicate.
-      const seen = new Set(items.map((i) => `${i.media_type}:${i.id}`));
+      // Empty/dup-only retry loop: TMDB sometimes returns near-identical
+      // results on adjacent pages, and `hideAdded` can leave a page entirely
+      // filtered out. Walk forward up to MAX_EMPTY_ATTEMPTS pages until we
+      // get something fresh, so the user never lands on a stale stuck card.
       let attempts = 0;
-      // In-call loop so a page that produces zero NEW items (all dups, or all
-      // already-in-library when hideAdded is on) automatically pulls the next
-      // page in the same fetch cycle. Replaces the previous recursive
-      // `loadNext()` call which was a no-op (it bailed on `if (loading) return`
-      // because the outer call hadn't cleared `loading` yet).
       while (attempts < MAX_EMPTY_ATTEMPTS) {
-        if (nextPage > 1 && nextPage > totalPages) break;
-        const r = await discover(
-          feedKind,
-          store.apiKey,
-          { sort: feedSort, genres: feedGenres, page: nextPage, withPeople: [] },
-          ctrl.signal
-        );
-        if (ctrl.signal.aborted) return;
-        // Filter at fetch-time so items added later in this session stay
-        // visible — we don't re-filter on render. Items the user added
-        // FROM this feed (tracked in `addedKeys`) bypass the filter so a
-        // remount doesn't make them vanish: without this, tapping Add →
-        // Details → back drops the item because the re-fetch sees it's
-        // now in store.library and filters it out.
-        const filtered = feedHideAdded
-          ? r.results.filter((x) => {
-              if (!store.has(x.media_type as Kind, x.id)) return true;
-              return addedKeys.includes(`${x.media_type}:${x.id}`);
-            })
-          : r.results;
-        const fresh = filtered.filter((x) => {
-          const key = `${x.media_type}:${x.id}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        items.push(...fresh);
-        totalPages = Math.min(r.total_pages, 500);
-        nextPage++;
-        if (fresh.length > 0) break;
+        const target = lastLoadedPage + 1;
+        if (lastLoadedPage > 0 && target > totalPages) break;
+        if (ctrl.signal.aborted) break;
+        const added = await fetchPage(target, "append");
+        if (ctrl.signal.aborted) break;
+        if (added > 0) break;
         attempts++;
       }
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") return;
-      if (ctrl.signal.aborted) return;
-      feedError = e instanceof Error ? e.message : String(e);
     } finally {
       if (!ctrl.signal.aborted) loading = false;
     }
   }
 
-  async function runResume(ctrl: AbortController): Promise<void> {
+  async function loadPrev(): Promise<void> {
+    if (loading) return;
+    if (!store.apiKey) return;
+    if (firstLoadedPage <= 1) return;
+    const ctrl = dataCtrl;
+    if (!ctrl || ctrl.signal.aborted) return;
+    loading = true;
+    feedError = null;
+    try {
+      let attempts = 0;
+      while (attempts < MAX_EMPTY_ATTEMPTS) {
+        const target = firstLoadedPage - 1;
+        if (target < 1) break;
+        if (ctrl.signal.aborted) break;
+        const added = await fetchPage(target, "prepend");
+        if (ctrl.signal.aborted) break;
+        if (added > 0) break;
+        attempts++;
+      }
+    } finally {
+      if (!ctrl.signal.aborted) loading = false;
+    }
+  }
+
+  /** First fetch on entering feed phase. Loads only the resume target page
+   *  (or 1 for a fresh session) — no walking through every preceding page.
+   *  If that page came back empty after filtering, fall back to page 1 so
+   *  a stale session can't strand the user on an empty feed. */
+  async function loadInitial(targetPage: number): Promise<void> {
+    if (loading) return;
+    if (!store.apiKey) return;
+    const ctrl = dataCtrl;
+    if (!ctrl || ctrl.signal.aborted) return;
+    loading = true;
+    feedError = null;
+    try {
+      const startPage = Math.max(1, targetPage);
+      const added = await fetchPage(startPage, "replace");
+      if (ctrl.signal.aborted) return;
+      // Saved page is no longer producing results (TMDB drift, total_pages
+      // shrunk, or all items now filtered). Restart cleanly at page 1.
+      if (added === 0 && startPage > 1) {
+        await fetchPage(1, "replace");
+      }
+    } finally {
+      if (!ctrl.signal.aborted) loading = false;
+    }
+  }
+
+  async function tryResumeScroll(ctrl: AbortController): Promise<void> {
     if (!resumeTargetKey) return;
     if (ctrl.signal.aborted) return;
-    // Hard ceiling so a stale session whose key has been filtered out of TMDB
-    // results doesn't pull down all 500 pages before giving up. 30 pages
-    // (~600 items) covers any realistic human scroll.
-    const MAX_RESUME_PAGES = 30;
-    const target = Math.min(Math.max(resumeTargetPages, 1), MAX_RESUME_PAGES);
-    // First catch up to the page count the user had reached — the saved item
-    // is guaranteed to be inside this range as long as TMDB pagination is
-    // stable (cached for 5 min on our side, plus TMDB's own day-scale stability).
-    while (nextPage <= target && nextPage <= totalPages) {
-      if (ctrl.signal.aborted) return;
-      const before = nextPage;
-      await loadNext();
-      if (ctrl.signal.aborted) return;
-      // loadNext bails (aborted, error) without bumping nextPage — break to
-      // avoid spinning.
-      if (nextPage === before) break;
-    }
-    // Then keep paging only if the key still hasn't surfaced (e.g. ordering
-    // drift between sessions pushed it just past `target`).
-    while (nextPage <= MAX_RESUME_PAGES && nextPage <= totalPages) {
-      if (ctrl.signal.aborted) return;
-      const idx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
-      if (idx >= 0) break;
-      const before = nextPage;
-      await loadNext();
-      if (ctrl.signal.aborted) return;
-      if (nextPage === before) break;
-    }
-    const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
-    if (finalIdx < 0) return;
-    // Wait for layout to settle before measuring clientHeight. Two things
-    // can leave it at 0 on the first frame: items were just pushed and
-    // haven't painted, OR the layout's `scroll-locked` $effect hasn't yet
-    // sized the flex chain (sibling component, same flush). Retry across a
-    // few frames so a slightly slow paint doesn't silently abort resume —
-    // this was the silent-fail mode that landed deep-scrolled users back
-    // at item 0.
+    const idx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
+    if (idx < 0) return;
+    // Wait for layout to settle before measuring clientHeight. On first
+    // mount the scroll-locked layout may not have sized the flex chain in
+    // the same flush as our items assignment, so clientHeight reads as 0.
+    // The RAF loop covers up to ~8 frames of slow paint without silently
+    // dropping the user back at idx 0.
     let h = 0;
-    let s: HTMLDivElement | undefined;
-    for (let attempt = 0; attempt < 8; attempt++) {
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      if (ctrl.signal.aborted) return;
-      s = scroller;
-      if (s && s.clientHeight > 0) {
-        h = s.clientHeight;
-        break;
+    let s: HTMLDivElement | undefined = scroller;
+    if (s && s.clientHeight > 0) {
+      h = s.clientHeight;
+    } else {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        if (ctrl.signal.aborted) return;
+        s = scroller;
+        if (s && s.clientHeight > 0) {
+          h = s.clientHeight;
+          break;
+        }
       }
     }
     if (!s || h <= 0) return;
-    s.scrollTo({ top: finalIdx * h, behavior: "instant" as ScrollBehavior });
-    currentIndex = finalIdx;
-    // Pin the floor at the actual resumed index — onScroll fires from the
-    // scrollTo above and will compare against this floor going forward.
-    // Using finalIdx (not the saved lastSeenIndex) handles TMDB drift: if
-    // the saved key is now at a slightly different position, the floor
-    // tracks where we actually are, so the user can update the save by
-    // scrolling forward from here.
-    mountFloorIdx = finalIdx;
+    // Update window state synchronously with the scroll. Without flushSync,
+    // there'd be a frame where currentIndex points at the resumed item but
+    // the render still has the window centred at 0 — the user would briefly
+    // see a placeholder where the card belongs.
+    flushSync(() => {
+      currentIndex = idx;
+      mountFloorIdx = idx;
+    });
+    s.scrollTo({ top: idx * h, behavior: "instant" as ScrollBehavior });
   }
 
   // Reset and reload whenever we enter feed phase. Filters are snapshotted
@@ -413,8 +522,11 @@
         mountFloorIdx = -1;
         addedKeys = [];
         items = [];
-        nextPage = 1;
+        itemPages = [];
+        firstLoadedPage = 0;
+        lastLoadedPage = 0;
         totalPages = 1;
+        totalResults = 0;
         currentIndex = 0;
         feedError = null;
         loading = false;
@@ -435,17 +547,25 @@
       const s = store.feedSession;
       if (feedSessionMatches(s, feedKind, feedSort, feedGenres, feedHideAdded)) {
         resumeTargetKey = s!.lastSeenKey;
-        // Legacy sessions (saved before pagesLoaded was tracked) fall back
-        // to 1, which combined with the safety cap below still tries hard
-        // enough for shallow scrolls.
-        resumeTargetPages = s!.lastSeenPagesLoaded ?? 1;
+        // `lastSeenPage` is the page actually containing the saved item
+        // (new field). Legacy sessions only have `lastSeenPagesLoaded`,
+        // which was the deepest page reached at save time — usually NOT
+        // where the saved item lives, so we estimate the page from the
+        // index instead. Math.floor(idx / 20) + 1 is exact for unfiltered
+        // sessions (TMDB pages are 20 items) and slightly underestimates
+        // when `hideAdded` was on; tryResumeScroll silently no-ops if the
+        // key isn't on the chosen page, so an off-by-one falls through
+        // to "land at top of fetched page" rather than crashing.
+        const legacyIdx = s!.lastSeenIndex ?? 0;
+        resumeTargetPages =
+          s!.lastSeenPage ?? Math.max(1, Math.floor(legacyIdx / 20) + 1);
         // Initialise the floor from the saved index. Legacy sessions with
-        // no index get 0 — the runResume's post-scroll bump will then pin
-        // the floor to the actual resumed idx, restoring the regression
-        // protection. While runResume is in flight the saved item itself
+        // no index get 0 — tryResumeScroll's post-scroll bump will then
+        // pin the floor to the actual resumed idx, restoring the regression
+        // protection. While the resume is in flight the saved item itself
         // is still protected: the only items above the floor (= 0) in the
         // typical flow are loaded but not scrolled to.
-        mountFloorIdx = s!.lastSeenIndex ?? 0;
+        mountFloorIdx = legacyIdx;
         // Keys added during the previous mount of this session — the
         // hideAdded filter bypasses these so re-fetch produces the same
         // items list and resume can find its target.
@@ -461,18 +581,28 @@
       if (dataCtrl) dataCtrl.abort();
       dataCtrl = new AbortController();
       items = [];
-      nextPage = 1;
+      itemPages = [];
+      firstLoadedPage = 0;
+      lastLoadedPage = 0;
       totalPages = 1;
+      totalResults = 0;
       currentIndex = 0;
       feedError = null;
       loading = false;
 
       const ctrl = dataCtrl;
       void (async () => {
-        await loadNext();
-        // runResume bails on aborted ctrl, so a follow-up reset (e.g. user
-        // bouncing back to setup) doesn't scroll into stale items.
-        if (!ctrl.signal.aborted) await runResume(ctrl);
+        // Resume target = the saved page directly. No paging through 1..N
+        // just to find a marker; if the saved page is now stale, loadInitial
+        // falls back to page 1 internally.
+        await loadInitial(resumeTargetKey ? resumeTargetPages || 1 : 1);
+        if (!ctrl.signal.aborted) await tryResumeScroll(ctrl);
+        // Resumed mid-feed (firstLoadedPage > 1)? The user can't scroll up
+        // until earlier items are loaded — and if their saved card was at
+        // idx 0 of the fetched page they can't even nudge to idx<=2 to
+        // trigger the in-scroll prev-prefetch. Pull the previous page in
+        // proactively so the upward swipe just works.
+        if (!ctrl.signal.aborted && firstLoadedPage > 1) await loadPrev();
       })();
     });
   });
@@ -492,6 +622,14 @@
     // want fetches to keep flowing even on shallow scrolls.
     if (idx >= items.length - 3) {
       void loadNext();
+    }
+    // Mirror prefetch in the other direction. When the user resumed mid-feed
+    // (firstLoadedPage > 1), scrolling toward the top should pull the
+    // previous TMDB page in so they can keep going backward without hitting
+    // a wall. loadPrev handles the scroll-position adjustment for the
+    // prepended items so the user stays on the card they were viewing.
+    if (idx <= 2 && firstLoadedPage > 1) {
+      void loadPrev();
     }
     // Monotonic save: persist a new lastSeenKey ONLY when we've reached a
     // strictly NEW high water mark. Without this gate, any scroll event
@@ -515,7 +653,12 @@
       hideAdded: feedHideAdded,
       lastSeenKey: `${item.media_type}:${item.id}`,
       lastSeenIndex: idx,
-      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
+      // The actual TMDB page containing this item — NOT the deepest page
+      // we've fetched. Saving the deepest page would mislead resume into
+      // loading a page that doesn't contain the saved item (e.g. user
+      // scrolled to page 25, then back to item 200 on page 11, then quit;
+      // resume would load page 25 and never find the marker).
+      lastSeenPage: itemPages[idx] ?? lastLoadedPage,
       // Preserve the session-added bypass list so a scroll save doesn't
       // wipe it out from under handleAdd.
       addedDuringSession: addedKeys.length > 0 ? [...addedKeys] : undefined,
@@ -648,7 +791,10 @@
       hideAdded: feedHideAdded,
       lastSeenKey: cur?.lastSeenKey ?? anchorKey,
       lastSeenIndex: cur?.lastSeenIndex ?? idx,
-      lastSeenPagesLoaded: cur?.lastSeenPagesLoaded ?? Math.max(1, nextPage - 1),
+      // Match onScroll: store the page of the actual saved item, not the
+      // deepest page. Falls back to the current item's page if we don't
+      // have a `cur` to preserve (i.e. add fired before any scroll).
+      lastSeenPage: cur?.lastSeenPage ?? itemPages[idx] ?? lastLoadedPage,
       addedDuringSession: [...addedKeys],
       updatedAt: new Date().toISOString(),
     });
@@ -656,6 +802,37 @@
 
   const savedSession = $derived<FeedSession | null>(store.feedSession ?? null);
   const isFreshlyLoaded = $derived(items.length > 0);
+
+  // Position counter ("3142 / 11921") in absolute-feed terms, not relative to
+  // whatever sparse window we currently have loaded. Using `currentIndex /
+  // items.length` would jump from "201 / 482" before resume to "1 / 20"
+  // after, which misrepresents how far into the feed the user actually is.
+  // Numerator is computed from TMDB's nominal 20-items-per-page (exact for
+  // unfiltered sessions, off by the per-page filter count when `hideAdded`
+  // is on); denominator is `total_results` straight from TMDB so it matches
+  // what the API says is in the matching universe. Note: TMDB's discover
+  // pagination caps at page 500, so the user can only realistically reach
+  // ~10000 items — but we display the full universe size since that's
+  // what the user expects (they don't think about API quirks).
+  const TMDB_PAGE_SIZE = 20;
+  const counterText = $derived.by(() => {
+    if (items.length === 0) return "";
+    const page = itemPages[currentIndex];
+    // No page tag (shouldn't happen post-load) or out-of-bounds: fall back
+    // to the relative counter so we still show *something* truthy.
+    if (!page || currentIndex < 0 || currentIndex >= items.length) {
+      return `${currentIndex + 1} / ${items.length}`;
+    }
+    // Walk back through itemPages to find where this page started in the
+    // loaded list — gives us the user's index within their current TMDB
+    // page (0..19), which combines with page number for the absolute idx.
+    let pageStart = currentIndex;
+    while (pageStart > 0 && itemPages[pageStart - 1] === page) pageStart--;
+    const positionInPage = currentIndex - pageStart;
+    const numerator = (page - 1) * TMDB_PAGE_SIZE + positionInPage + 1;
+    if (totalResults <= 0) return `${numerator}`;
+    return `${numerator} / ${totalResults}`;
+  });
 </script>
 
 <svelte:head>
@@ -854,21 +1031,29 @@
         onpointerup={onPointerUp}
         onpointercancel={onPointerCancel}
       >
-        {#each items as item (item.media_type + ":" + item.id)}
-          <FeedCard
-            {item}
-            {genreById}
-            isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
-            onAdd={handleAdd}
-            backHref="{base}/discover/feed/"
-            {onBack}
-          />
+        {#each items as item, index (item.media_type + ":" + item.id)}
+          {#if Math.abs(index - currentIndex) <= RENDER_WINDOW}
+            <FeedCard
+              {item}
+              {genreById}
+              isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
+              onAdd={handleAdd}
+              backHref="{base}/discover/feed/"
+              {onBack}
+            />
+          {:else}
+            <!-- Off-window slot. Same height + snap rules as a real card so
+                 the scroll geometry is identical, but no images, no event
+                 handlers, no children — keeps the DOM small even at 600+
+                 items in a deep session. -->
+            <div class="feed-item-placeholder" aria-hidden="true"></div>
+          {/if}
         {/each}
         {#if loading}
           <div class="feed-tail">
             <span class="text-xs text-muted">Loading more…</span>
           </div>
-        {:else if nextPage > totalPages && items.length > 0}
+        {:else if lastLoadedPage >= totalPages && lastLoadedPage > 0 && items.length > 0}
           <div class="feed-tail">
             <span class="text-xs text-muted">You've reached the end of the feed.</span>
           </div>
@@ -884,7 +1069,7 @@
         aria-live="polite"
         aria-atomic="true"
       >
-        {currentIndex + 1} / {items.length}
+        {counterText}
       </div>
     {/if}
   </div>
@@ -940,6 +1125,14 @@
     overflow-x: hidden;
     scroll-snap-type: y mandatory;
     overscroll-behavior-y: contain;
+    /* Disable the browser's auto scroll-anchoring. When loadPrev prepends
+       items, the browser would otherwise "helpfully" bump scrollTop to keep
+       visible content stable — but we already adjust scrollTop ourselves
+       with the exact shift, and a double-adjust lands the user near the
+       bottom (or, after clamp, near the top), which retriggers prev-prefetch
+       and runs away through every page. Owning the adjustment ourselves is
+       deterministic. */
+    overflow-anchor: none;
     /* iOS: `auto` kills momentum scrolling on this element. Without it,
        releasing the finger lets the scroll glide before snap kicks in —
        that's the "feels like normal scrolling" sensation. With momentum
@@ -962,6 +1155,18 @@
     justify-content: center;
     scroll-snap-align: end;
     background: var(--color-bg);
+  }
+
+  /* Empty stand-in for off-window items. Matches `.feed-item`'s box so the
+     scroller's content geometry is identical whether the item is mounted as
+     a full card or rendered as a placeholder — switching back and forth as
+     the user scrolls produces no jumps. */
+  .feed-item-placeholder {
+    height: 100%;
+    width: 100%;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
   }
 
   .feed-loading,

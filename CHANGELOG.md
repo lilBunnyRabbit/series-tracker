@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.6] - 2026-05-05
+
+### Changed
+- Resuming a deep feed session is now nearly instant. Instead of paging through every TMDB page from the start to find your saved card, the feed jumps straight to the page you left off on. Scrolling backward from there pulls earlier pages on demand.
+- Feed only renders the cards near the one you're viewing — the rest are lightweight placeholders. Long sessions no longer pile up hundreds of full cards in memory.
+- Position counter shows your absolute position in the feed (e.g. `3142 / 11921`) instead of your spot within the currently-loaded window, so the number stays meaningful across resumes.
+
 ## [0.14.5] - 2026-05-05
 
 ### Fixed

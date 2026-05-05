@@ -306,11 +306,15 @@ export type FeedSession = {
    *  so deeper-only updates win. Optional for back-compat with sessions saved
    *  before this field existed. */
   lastSeenIndex?: number;
-  /** Highest TMDB page that had been fetched at save time. Resume uses this
-   *  to load the right number of pages up front rather than guessing — without
-   *  it, deep-scrolled sessions can't find their saved item because the
-   *  feed only fetched the first few pages on remount. Optional for back-compat
-   *  with sessions saved before this field existed. */
+  /** TMDB page that contains `lastSeenKey`. Resume uses this to fetch only
+   *  the right page directly — no walking pages 1..N to find the marker.
+   *  Optional for back-compat with sessions saved before this field existed;
+   *  legacy sessions fall back to a heuristic on `lastSeenIndex`. */
+  lastSeenPage?: number;
+  /** Legacy: highest TMDB page that had been fetched at save time. Older
+   *  resume code paged from 1 up to this number to find `lastSeenKey`. We
+   *  no longer write this — `lastSeenPage` supersedes it — but old sessions
+   *  may still have it set. Read for legacy fallback only. */
   lastSeenPagesLoaded?: number;
   /** Keys (`tv:123` / `movie:456`) the user added to their library WHILE this
    *  feed session was active. Loadnext bypasses the hideAdded filter for
