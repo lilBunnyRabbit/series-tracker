@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.8] - 2026-05-05
+
+### Fixed
+- Removed a frame of input lag from feed swipes. The drag now updates the moment your finger moves instead of waiting for the next animation frame.
+
 ## [0.13.7] - 2026-05-05
 
 ### Fixed

@@ -456,13 +456,15 @@
   let wheelLockedUntil = 0;
   let transitionTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Per-frame drag state lives outside Svelte's reactivity. Mobile
-  // touchscreens can fire pointermove well above 60Hz; running each
-  // through a state write + microtask flush + DOM update was the visible
-  // mobile lag. We coalesce moves into one rAF tick that writes transform
-  // straight to the bound track element.
+  // Per-frame drag state lives outside Svelte's reactivity. Each
+  // pointermove writes transform straight to the bound track element —
+  // no microtask flush, no rAF gate. rAF batching was tried and made the
+  // lag *worse*: when a pointermove arrives just after a vsync, the rAF
+  // callback can't reach the next frame and slips a whole 16ms behind.
+  // Direct writes let the browser coalesce multiple style updates per
+  // frame at the compositor for free, and we always commit the latest
+  // finger position to the next paint.
   let dragOffsetLocal = 0;
-  let dragRafId: number | null = null;
 
   function applyEdgeResistance(rawDy: number): number {
     if (currentIndex <= 0 && rawDy > 0) return rawDy * EDGE_RESISTANCE;
@@ -478,23 +480,10 @@
     trackEl.style.transform = `translate3d(0, calc(${-currentIndex * 100}% + ${dragPx}px), 0)`;
   }
 
-  function flushDragPaint(): void {
-    dragRafId = null;
-    paintTrack(dragOffsetLocal);
-  }
-
-  function cancelDragPaint(): void {
-    if (dragRafId !== null) {
-      cancelAnimationFrame(dragRafId);
-      dragRafId = null;
-    }
-  }
-
   /** Single entry point for any index change. `animate: false` skips the
    *  CSS transition (used by resume + reset). */
   function goTo(target: number, opts: { animate?: boolean } = {}): void {
     const { animate = true } = opts;
-    cancelDragPaint();
     if (items.length === 0) {
       currentIndex = 0;
       dragOffsetLocal = 0;
@@ -540,7 +529,6 @@
       clearTimeout(transitionTimer);
       transitionTimer = null;
     }
-    cancelDragPaint();
     currentIndex = 0;
     dragOffsetLocal = 0;
     transitioning = false;
@@ -613,14 +601,8 @@
       // pointerup on a tap target would fire its click after a drag.
       viewport?.setPointerCapture(touchPointerId);
     }
-    // Update the local target value on every move, but only schedule a
-    // paint once per animation frame. flushDragPaint will pick up the
-    // latest dragOffsetLocal at paint time, so we don't lose intermediate
-    // moves — they just collapse into the next frame.
     dragOffsetLocal = applyEdgeResistance(dy);
-    if (dragRafId === null) {
-      dragRafId = requestAnimationFrame(flushDragPaint);
-    }
+    paintTrack(dragOffsetLocal);
   }
 
   function onPointerUp(e: PointerEvent): void {
@@ -644,7 +626,6 @@
     touchPointerId = -1;
     if (!dragging) return;
     dragging = false;
-    cancelDragPaint();
     // Snap back to the active card with the same animation.
     goTo(currentIndex, { animate: true });
   }
