@@ -168,7 +168,7 @@
     "title.desc": "Z–A",
   };
 
-  // ---- Feed phase: data + scroller ----
+  // ---- Feed phase: data + carousel ----
 
   /** Pure equality check for whether a saved session was scrolling against the
    *  same query space we're entering now. Genres are normalised to a sorted
@@ -236,8 +236,26 @@
   let totalPages = $state(1);
   let loading = $state(false);
   let feedError = $state<string | null>(null);
-  let scroller = $state<HTMLDivElement>();
+
+  // Transform-driven carousel state. JS owns the entire vertical motion —
+  // see the gesture / wheel / keyboard section near the bottom of the script
+  // for the commit logic. Native scroll is intentionally NOT used so the
+  // in-gesture feel doesn't pick up browser momentum / rubber-band.
+  let viewport = $state<HTMLDivElement>();
+  let viewportH = $state(0);
   let currentIndex = $state(0);
+  let dragOffset = $state(0); // px applied during an active drag; cleared on commit
+  let transitioning = $state(false); // true while the post-release transform animates
+
+  // Each slot positions itself at `i * 100%`; the track translates by
+  // `-currentIndex * H + dragOffset` so the active slot lands at y=0.
+  const trackOffset = $derived(-currentIndex * viewportH + dragOffset);
+
+  // ±2 mounting window keeps the active card plus immediate neighbours alive
+  // without paying for every off-screen FeedCard in a 200+ item session.
+  function isVisible(i: number): boolean {
+    return Math.abs(i - currentIndex) <= 2;
+  }
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -332,13 +350,11 @@
     }
     const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
     if (finalIdx < 0) return;
-    // Wait for the layout to settle before measuring clientHeight — items
-    // were just pushed into state but may not have painted yet.
+    // Defer one frame so the just-pushed items have a chance to mount and
+    // ResizeObserver has populated viewportH — without this the carousel
+    // would land at offset 0 if the measurement was still pending.
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    const s = scroller;
-    if (!s || s.clientHeight <= 0) return;
-    s.scrollTo({ top: finalIdx * s.clientHeight, behavior: "instant" as ScrollBehavior });
-    currentIndex = finalIdx;
+    goTo(finalIdx, { animate: false });
   }
 
   // Reset and reload whenever the feed-phase filters change (or we re-enter
@@ -360,6 +376,7 @@
     void genres.join(",");
 
     untrack(() => {
+      resetCarousel();
       if (ph !== "feed") {
         if (dataCtrl) {
           dataCtrl.abort();
@@ -368,7 +385,6 @@
         items = [];
         nextPage = 1;
         totalPages = 1;
-        currentIndex = 0;
         feedError = null;
         loading = false;
         return;
@@ -380,7 +396,6 @@
       items = [];
       nextPage = 1;
       totalPages = 1;
-      currentIndex = 0;
       feedError = null;
       loading = false;
       void (async () => {
@@ -393,124 +408,224 @@
     });
   });
 
-  function onScroll(): void {
-    const s = scroller;
-    if (!s) return;
-    const h = s.clientHeight;
-    if (h <= 0) return;
-    const idx = Math.round(s.scrollTop / h);
-    if (idx === currentIndex) return;
-    if (idx < 0 || idx >= items.length) return;
-    currentIndex = idx;
-    const item = items[idx];
-    if (!item) return;
-    // Persist the last-seen item for next-session resume. Filters are
-    // snapshotted alongside so resume runs against the same query space.
-    // `lastSeenPagesLoaded` is how many pages we'd fetched at this point —
-    // resume re-fetches that many to guarantee the item is in scope, instead
-    // of blindly trying the first few pages and giving up.
-    store.setFeedSession({
-      kind,
-      sort,
-      genres: [...genres],
-      hideAdded,
-      lastSeenKey: `${item.media_type}:${item.id}`,
-      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
-      updatedAt: new Date().toISOString(),
-    });
-    // Pre-fetch the next page well before the user reaches the end so the
-    // scroll never stalls.
-    if (idx >= items.length - 3) {
-      void loadNext();
+  // ---- Snappy commit: transform-driven carousel ----
+  //
+  // The viewport sets `touch-action: none` so the browser does no scrolling
+  // / rubber-banding of its own. Pointer events drive the transform
+  // directly: in-gesture drag follows the finger 1:1, release commits to
+  // either the next slot or snaps back. Wheel and arrow keys hit the same
+  // goTo entry point so every path animates identically.
+  //
+  // Why not native scroll-snap: even with mandatory snap, browsers add their
+  // own physics between the release point and the target — variable duration,
+  // momentum, rubber-band — which is the exact "feels like normal scrolling"
+  // sensation we want to drop. Owning the gesture is the only way around that.
+  // 240ms with a sharp ease-out (TikTok-ish): cubic-bezier(0.16, 1, 0.3, 1).
+  // Both values live in CSS too — keep the duration here and the timing
+  // function in `.feed-track--animating` aligned if either changes.
+  const SNAP_DURATION_MS = 240;
+  // Px traveled before a slow drag commits to the next card.
+  const SWIPE_DISTANCE_PX = 22;
+  // px/ms threshold for a confident flick that commits regardless of distance.
+  const SWIPE_VELOCITY_PX_MS = 0.35;
+  // Movement budget before we claim the gesture as a drag — under this we
+  // stay passive so a tap on a child button still produces a click.
+  const DRAG_SLOP_PX = 4;
+  // Multiplier applied while overscrolling past the first / last card.
+  const EDGE_RESISTANCE = 0.4;
+  // Wheel cooldown ≥ snap duration + a margin so trackpads can't fire
+  // faster than one card per gesture.
+  const WHEEL_LOCK_MS = SNAP_DURATION_MS + 20;
+
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let touchPointerId = -1;
+  let dragging = false;
+  let wheelLockedUntil = 0;
+  let transitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function applyEdgeResistance(rawDy: number): number {
+    if (currentIndex <= 0 && rawDy > 0) return rawDy * EDGE_RESISTANCE;
+    if (currentIndex >= items.length - 1 && rawDy < 0) return rawDy * EDGE_RESISTANCE;
+    return rawDy;
+  }
+
+  /** Single entry point for any index change. `animate: false` skips the
+   *  CSS transition (used by resume + reset). */
+  function goTo(target: number, opts: { animate?: boolean } = {}): void {
+    const { animate = true } = opts;
+    if (items.length === 0) {
+      currentIndex = 0;
+      dragOffset = 0;
+      transitioning = false;
+      return;
+    }
+    const clamped = Math.max(0, Math.min(items.length - 1, target));
+    const isChange = clamped !== currentIndex;
+    const wasDragging = dragOffset !== 0;
+    if (!isChange && !wasDragging) return;
+    if (transitionTimer !== null) {
+      clearTimeout(transitionTimer);
+      transitionTimer = null;
+    }
+    transitioning = animate;
+    dragOffset = 0;
+    currentIndex = clamped;
+    if (animate) {
+      transitionTimer = setTimeout(() => {
+        transitioning = false;
+        transitionTimer = null;
+      }, SNAP_DURATION_MS);
     }
   }
 
-  // ---- Snappy snap (JS-driven) ----
-  // Native touch scroll handles the in-gesture follow. On release we INSTANTLY
-  // jump scrollTop to the target card — no animation, just a hard cut. The
-  // visible "swipe" is the user's own finger drag; the post-release transition
-  // is a discrete page flip. Wheel events use the same instant snap with a
-  // short cooldown so trackpad scrolls don't fire faster than one card per
-  // gesture.
-  const WHEEL_LOCK_MS = 160;
-  // Px traveled before a swipe is treated as an intent to advance. Velocity
-  // threshold below picks up confident flicks below this distance.
-  const SWIPE_DISTANCE_PX = 22;
-  // px/ms — ~"confident phone flick". Lower would advance on accidental slides.
-  const SWIPE_VELOCITY_PX_MS = 0.35;
-
-  let touchStartY = 0;
-  let touchStartScroll = 0;
-  let touchStartTime = 0;
-  let touchActive = false;
-  let wheelLockedUntil = 0;
-
-  function snapTo(target: number): void {
-    const s = scroller;
-    if (!s) return;
-    s.scrollTop = target;
+  /** Wipe gesture / transform state without touching items / pages. Called
+   *  from the reset effect when filters change. */
+  function resetCarousel(): void {
+    if (transitionTimer !== null) {
+      clearTimeout(transitionTimer);
+      transitionTimer = null;
+    }
+    currentIndex = 0;
+    dragOffset = 0;
+    transitioning = false;
+    dragging = false;
+    touchPointerId = -1;
+    wheelLockedUntil = 0;
   }
+
+  // Persist the last-seen item when currentIndex changes. Filters / page
+  // count are read untracked so a re-render from items growing doesn't churn
+  // the session record.
+  $effect(() => {
+    const idx = currentIndex;
+    untrack(() => {
+      const item = items[idx];
+      if (!item) return;
+      store.setFeedSession({
+        kind,
+        sort,
+        genres: [...genres],
+        hideAdded,
+        lastSeenKey: `${item.media_type}:${item.id}`,
+        lastSeenPagesLoaded: Math.max(1, nextPage - 1),
+        updatedAt: new Date().toISOString(),
+      });
+    });
+  });
+
+  // Pre-fetch when within 3 of the end. Re-runs when currentIndex or
+  // items.length changes — once the buffer grows past the threshold the
+  // effect goes quiet on its own.
+  $effect(() => {
+    if (!store.apiKey) return;
+    if (phase !== "feed") return;
+    const idx = currentIndex;
+    const len = items.length;
+    if (len === 0) return;
+    if (idx >= len - 3) {
+      untrack(() => void loadNext());
+    }
+  });
+
+  // Track viewport height so trackOffset stays in sync with rendered size.
+  // ResizeObserver covers orientation flips and on-screen-keyboard events
+  // without polling.
+  $effect(() => {
+    const v = viewport;
+    if (!v) return;
+    const update = (): void => {
+      viewportH = v.clientHeight;
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(v);
+    return () => ro.disconnect();
+  });
 
   function onPointerDown(e: PointerEvent): void {
     if (e.pointerType !== "touch") return;
-    const s = scroller;
-    if (!s) return;
-    touchActive = true;
+    if (transitioning) return;
+    if (touchPointerId !== -1) return; // ignore a second finger
+    touchPointerId = e.pointerId;
     touchStartY = e.clientY;
-    touchStartScroll = s.scrollTop;
     touchStartTime = performance.now();
+    dragging = false;
+  }
+
+  function onPointerMove(e: PointerEvent): void {
+    if (e.pointerId !== touchPointerId) return;
+    const dy = e.clientY - touchStartY;
+    if (!dragging) {
+      if (Math.abs(dy) < DRAG_SLOP_PX) return;
+      dragging = true;
+      // Capture so subsequent move/up events reach the viewport even if the
+      // finger drifts over a child button or off-element. Without this, a
+      // pointerup on a tap target would fire its click after a drag.
+      viewport?.setPointerCapture(touchPointerId);
+    }
+    dragOffset = applyEdgeResistance(dy);
   }
 
   function onPointerUp(e: PointerEvent): void {
-    if (!touchActive) return;
-    if (e.pointerType !== "touch") return;
-    touchActive = false;
-    const s = scroller;
-    if (!s) return;
-    const h = s.clientHeight;
-    if (h <= 0) return;
-    const dy = touchStartY - e.clientY;
+    if (e.pointerId !== touchPointerId) return;
+    touchPointerId = -1;
+    if (!dragging) return; // pure tap — let the click event flow through
+    dragging = false;
+    const dy = e.clientY - touchStartY;
     const dt = Math.max(1, performance.now() - touchStartTime);
-    // px/ms; positive = swipe up. Used so a fast flick always advances even
-    // when the finger barely moved — same feel as TikTok's gesture.
+    // px/ms; negative dy = swipe up = advance.
     const velocity = dy / dt;
-    // Compute the index the user STARTED from so a partial mid-card swipe
-    // still resolves to a clean ±1 step rather than landing the user where
-    // their drag happened to stop.
-    const startIdx = Math.round(touchStartScroll / h);
-    let target = startIdx;
+    let target = currentIndex;
     if (Math.abs(dy) > SWIPE_DISTANCE_PX || Math.abs(velocity) > SWIPE_VELOCITY_PX_MS) {
-      target = startIdx + (dy > 0 ? 1 : -1);
+      target = currentIndex + (dy < 0 ? 1 : -1);
     }
-    target = Math.max(0, Math.min(items.length - 1, target));
-    snapTo(target * h);
+    goTo(target, { animate: true });
   }
 
-  function onPointerCancel(): void {
-    touchActive = false;
+  function onPointerCancel(e: PointerEvent): void {
+    if (e.pointerId !== touchPointerId) return;
+    touchPointerId = -1;
+    if (!dragging) return;
+    dragging = false;
+    // Snap back to the active card with the same animation.
+    goTo(currentIndex, { animate: true });
   }
 
-  // Wheel handler is attached imperatively in an effect so we can pass
-  // `passive: false` and call preventDefault — Svelte's onwheel attaches
-  // passive by default on some setups.
+  // Wheel attached imperatively so we can preventDefault — passive listeners
+  // can't, and Svelte's onwheel is passive on some setups.
   $effect(() => {
-    const s = scroller;
-    if (!s) return;
+    const v = viewport;
+    if (!v) return;
     const handler = (e: WheelEvent): void => {
       if (Math.abs(e.deltaY) < 4) return;
       e.preventDefault();
+      if (transitioning) return;
       const now = performance.now();
       if (now < wheelLockedUntil) return;
       wheelLockedUntil = now + WHEEL_LOCK_MS;
-      const h = s.clientHeight;
-      if (h <= 0) return;
-      const dir = e.deltaY > 0 ? 1 : -1;
-      const target = Math.max(0, Math.min(items.length - 1, currentIndex + dir));
-      snapTo(target * h);
+      goTo(currentIndex + (e.deltaY > 0 ? 1 : -1), { animate: true });
     };
-    s.addEventListener("wheel", handler, { passive: false });
-    return () => s.removeEventListener("wheel", handler);
+    v.addEventListener("wheel", handler, { passive: false });
+    return () => v.removeEventListener("wheel", handler);
   });
+
+  function onKeyDown(e: KeyboardEvent): void {
+    if (transitioning) return;
+    if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") {
+      e.preventDefault();
+      goTo(currentIndex + 1, { animate: true });
+    } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+      e.preventDefault();
+      goTo(currentIndex - 1, { animate: true });
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      goTo(0, { animate: true });
+    } else if (e.key === "End") {
+      e.preventDefault();
+      goTo(items.length - 1, { animate: true });
+    }
+  }
 
   async function handleAdd(item: RecommendationItem, status: Status): Promise<void> {
     if (!store.apiKey) throw new Error("API key not set");
@@ -672,10 +787,11 @@
   </section>
 {:else}
   <!-- Feed phase. Body scroll is locked by the layout (`isFeedActive`); the
-       scroller below owns vertical scroll with snap-to-card, and the floating
-       nav and top header are hidden so each card reaches the screen edge.
-       Back lives inside each card's action rail so the viewport has nothing
-       on top — TikTok-like. -->
+       carousel below owns the entire vertical motion via JS-driven transform
+       (no native scroll), so the in-gesture feel is 1:1 finger-follow with no
+       browser momentum / rubber-band. The floating nav and top header are
+       hidden so each card reaches the screen edge — back lives inside each
+       card's action rail. -->
   <div class="feed-shell">
     {#if feedError}
       <div class="feed-error">
@@ -708,34 +824,48 @@
         </a>
       </div>
     {:else}
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
-        bind:this={scroller}
-        class="feed-scroller"
+        bind:this={viewport}
+        class="feed-viewport"
         role="region"
         aria-label="Feed"
-        onscroll={onScroll}
+        aria-roledescription="carousel"
+        tabindex="-1"
         onpointerdown={onPointerDown}
+        onpointermove={onPointerMove}
         onpointerup={onPointerUp}
         onpointercancel={onPointerCancel}
+        onkeydown={onKeyDown}
       >
-        {#each items as item (item.media_type + ":" + item.id)}
-          <FeedCard
-            {item}
-            {genreById}
-            isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
-            onAdd={handleAdd}
-            backHref="{base}/discover/feed/"
-            {onBack}
-          />
-        {/each}
-        {#if loading}
-          <div class="feed-tail">
-            <span class="text-xs text-muted">Loading more…</span>
-          </div>
-        {:else if nextPage > totalPages && items.length > 0}
-          <div class="feed-tail">
-            <span class="text-xs text-muted">You've reached the end of the feed.</span>
-          </div>
+        <div
+          class="feed-track"
+          class:feed-track--animating={transitioning}
+          style:transform="translate3d(0, {trackOffset}px, 0)"
+        >
+          {#each items as item, i (item.media_type + ":" + item.id)}
+            {#if isVisible(i)}
+              <div class="feed-slot" style:transform="translate3d(0, {i * 100}%, 0)">
+                <FeedCard
+                  {item}
+                  {genreById}
+                  isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
+                  onAdd={handleAdd}
+                  backHref="{base}/discover/feed/"
+                  {onBack}
+                />
+              </div>
+            {/if}
+          {/each}
+        </div>
+
+        <!-- Status pill: overlays the bottom of the viewport when more is
+             loading or we've hit the end, so the user gets feedback without
+             us inserting a non-content slot they have to swipe past. -->
+        {#if loading && currentIndex >= items.length - 1}
+          <div class="feed-status-pill" aria-live="polite">Loading more…</div>
+        {:else if nextPage > totalPages && currentIndex >= items.length - 1}
+          <div class="feed-status-pill" aria-live="polite">End of feed</div>
         {/if}
       </div>
     {/if}
@@ -752,28 +882,61 @@
     background: var(--color-bg);
   }
 
-  .feed-scroller {
+  /* Viewport owns all vertical motion via the inner track's transform. No
+     overflow scroll, no scroll-snap, no native momentum — `touch-action:
+     none` hands every gesture straight to the pointer handlers. */
+  .feed-viewport {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scroll-snap-type: y mandatory;
-    overscroll-behavior-y: contain;
-    /* Hide scrollbar visuals so the cards read full-bleed. The track still
-       takes pointer events for desktop wheel scrolling. */
-    scrollbar-width: none;
-  }
-  .feed-scroller::-webkit-scrollbar {
-    display: none;
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+    /* Tab-focusable but no visible ring — the cards' own interactive
+       elements provide the focus story. */
+    outline: none;
   }
 
-  .feed-tail {
-    height: 6rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    scroll-snap-align: end;
-    background: var(--color-bg);
+  .feed-track {
+    position: absolute;
+    inset: 0;
+    /* GPU-promoted so the per-frame transform updates during a drag don't
+       hit layout / paint. */
+    will-change: transform;
+  }
+
+  /* Animated commit: applied only while transitioning so the in-gesture
+     drag stays at-the-finger (transform changes need to be immediate). */
+  .feed-track--animating {
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Each slot is the size of the viewport, stacked via its own translate
+     so the track's transform alone is enough to address any card. */
+  .feed-slot {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+  }
+
+  /* Bottom-anchored pill for "loading more" / "end of feed". Overlays so
+     the user never has to swipe past a non-content slot to see it. */
+  .feed-status-pill {
+    position: absolute;
+    left: 50%;
+    bottom: max(env(safe-area-inset-bottom), 1.25rem);
+    transform: translateX(-50%);
+    z-index: 6;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    pointer-events: none;
   }
 
   .feed-loading,

@@ -258,10 +258,6 @@
     width: 100%;
     overflow: hidden;
     background: var(--color-bg);
-    /* Baseline CSS snap — JS overrides for snappier feel on touch + wheel,
-       this still kicks in for keyboard/scrollbar fallbacks. */
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
   }
 
   /* ---- Backdrop region pinned to the top, fades cleanly into the matte bg

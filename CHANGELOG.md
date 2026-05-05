@@ -4,6 +4,15 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.4] - 2026-05-05
+
+### Changed
+- Feed scrolling redesigned for snappier swipes — your finger now drags the card directly without any browser momentum, and release commits cleanly to the next card. Quick flicks advance reliably without overshooting.
+- Loading and end-of-feed indicators now appear as a small overlay pill at the bottom of the active card, instead of a separate slot you have to swipe past.
+
+### Added
+- Keyboard navigation in the feed — arrow keys, Page Up / Down, Home, End, and Space all step between cards.
+
 ## [0.13.3] - 2026-05-05
 
 ### Changed
