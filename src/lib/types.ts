@@ -331,7 +331,10 @@ export type Store = {
   preferences: Preferences;
   diary: DiaryEntry[];
   actions: ActionEntry[];
-  feedSession?: FeedSession | null;
+  /** Saved feed-resume state, one per filter set (kind + sort + genres +
+   *  hideAdded). Replaced V7's single `feedSession` so users can keep
+   *  parallel resume points across multiple feeds. */
+  feedSessions: FeedSession[];
   version: number;
 };
 

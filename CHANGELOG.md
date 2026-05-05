@@ -4,6 +4,12 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-05-06
+
+### Added
+- The feed setup screen now lists every saved feed you've left in progress, not just one. You can keep parallel resume points (e.g. one for TV / Popular and another for Movies / Newest) and pick whichever to jump back into.
+- Each saved feed row has a small trash button to drop it; tapping asks for confirmation so you don't lose a deep session by mistake.
+
 ## [0.14.7] - 2026-05-05
 
 ### Fixed

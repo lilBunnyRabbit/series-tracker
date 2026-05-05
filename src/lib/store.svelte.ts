@@ -16,7 +16,7 @@ import type {
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const SEARCH_HISTORY_LIMIT = 8;
 const ACTIONS_LIMIT = 200;
 const SAVE_DEBOUNCE_MS = 300;
@@ -47,6 +47,12 @@ type PersistedV6 = PersistedV5 & {
 type PersistedV7 = PersistedV6 & {
   feedSession?: FeedSession | null;
 };
+// V8 — promoted feedSession (single) to feedSessions (array) so users can
+// keep parallel resume points (e.g. one per kind/genre combo). Migration
+// wraps the single session into a one-element array.
+type PersistedV8 = PersistedV7 & {
+  feedSessions?: FeedSession[];
+};
 
 const empty: Store = {
   apiKey: null,
@@ -55,11 +61,14 @@ const empty: Store = {
   preferences: {},
   diary: [],
   actions: [],
-  feedSession: null,
+  feedSessions: [],
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV7): Store {
+function migrate(parsed: PersistedV8): Store {
+  // Fold V7's single `feedSession` into V8's `feedSessions[]` so older
+  // exports/imports still resume correctly.
+  const sessions = parsed.feedSessions ?? (parsed.feedSession ? [parsed.feedSession] : []);
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
@@ -67,9 +76,21 @@ function migrate(parsed: PersistedV7): Store {
     preferences: parsed.preferences ?? {},
     diary: parsed.diary ?? [],
     actions: (parsed.actions ?? []).slice(0, ACTIONS_LIMIT),
-    feedSession: parsed.feedSession ?? null,
+    feedSessions: sessions,
     version: SCHEMA_VERSION,
   };
+}
+
+/** Stable signature for grouping/looking-up feed sessions by filter set.
+ *  Genres are sorted on save so positional comparison is enough. */
+function feedFilterKey(s: {
+  kind: FeedSession["kind"];
+  sort: FeedSession["sort"];
+  genres: number[];
+  hideAdded: boolean;
+}): string {
+  const g = [...s.genres].sort((a, b) => a - b).join(",");
+  return `${s.kind}|${s.sort}|${g}|${s.hideAdded ? "1" : "0"}`;
 }
 
 function makeDiaryId(): string {
@@ -217,7 +238,7 @@ function createStore() {
         state.preferences = next.preferences;
         state.diary = next.diary;
         state.actions = next.actions;
-        state.feedSession = next.feedSession ?? null;
+        state.feedSessions = next.feedSessions ?? [];
         state.version = next.version;
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
@@ -316,12 +337,48 @@ function createStore() {
     get actions(): ActionEntry[] {
       return state.actions;
     },
-    get feedSession(): FeedSession | null {
-      return state.feedSession ?? null;
+    get feedSessions(): FeedSession[] {
+      return state.feedSessions;
     },
 
-    setFeedSession(session: FeedSession | null): void {
-      state.feedSession = session;
+    /** Find a saved session matching the given filter set. Returns null if
+     *  there's no resume target for those filters yet. */
+    findFeedSession(filters: {
+      kind: FeedSession["kind"];
+      sort: FeedSession["sort"];
+      genres: number[];
+      hideAdded: boolean;
+    }): FeedSession | null {
+      const key = feedFilterKey(filters);
+      return state.feedSessions.find((s) => feedFilterKey(s) === key) ?? null;
+    },
+
+    /** Replace the existing session for these filters, or append a new one
+     *  if none matches yet. Sessions are keyed by filter signature so
+     *  saving from a TV/Popular/no-genres scroll doesn't clobber the
+     *  Movies/Newest/Action session. */
+    upsertFeedSession(session: FeedSession): void {
+      const key = feedFilterKey(session);
+      const i = state.feedSessions.findIndex((s) => feedFilterKey(s) === key);
+      if (i >= 0) state.feedSessions[i] = session;
+      else state.feedSessions.push(session);
+    },
+
+    /** Drop the saved session for these filters, if any. Used by the
+     *  setup-screen remove button and by the "Start" button (which clears
+     *  only the current-filter session — siblings stay intact). */
+    removeFeedSession(filters: {
+      kind: FeedSession["kind"];
+      sort: FeedSession["sort"];
+      genres: number[];
+      hideAdded: boolean;
+    }): void {
+      const key = feedFilterKey(filters);
+      state.feedSessions = state.feedSessions.filter((s) => feedFilterKey(s) !== key);
+    },
+
+    clearAllFeedSessions(): void {
+      state.feedSessions = [];
     },
 
     setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
@@ -876,7 +933,7 @@ function createStore() {
           preferences: state.preferences,
           diary: state.diary,
           actions: state.actions,
-          feedSession: state.feedSession,
+          feedSessions: state.feedSessions,
         },
         null,
         2
@@ -884,7 +941,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV7);
+      const parsed = migrate(JSON.parse(text) as PersistedV8);
       let added = 0;
       let merged = 0;
 
@@ -895,7 +952,7 @@ function createStore() {
         state.preferences = parsed.preferences;
         state.diary = parsed.diary;
         state.actions = parsed.actions;
-        state.feedSession = parsed.feedSession ?? null;
+        state.feedSessions = parsed.feedSessions ?? [];
         added = Object.keys(parsed.library).length;
       } else {
         if (!state.apiKey && parsed.apiKey) state.apiKey = parsed.apiKey;
@@ -956,7 +1013,7 @@ function createStore() {
       state.preferences = {};
       state.diary = [];
       state.actions = [];
-      state.feedSession = null;
+      state.feedSessions = [];
       state.version = SCHEMA_VERSION;
       try {
         await idbDelete(IDB_KEY);

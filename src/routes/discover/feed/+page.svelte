@@ -117,9 +117,10 @@
 
   function startFeed(): void {
     // "Start" is the user's explicit signal to begin fresh, even if a saved
-    // session matches the current filters — wipe it so the auto-resume on
-    // mount doesn't snap them back to where they left off last time.
-    store.setFeedSession(null);
+    // session matches the current filters — wipe THIS filter set's saved
+    // session so the auto-resume on mount doesn't snap them back. Other
+    // filter sets (e.g. their Movies/Newest session) are left untouched.
+    store.removeFeedSession({ kind, sort, genres, hideAdded });
     // Push not replace — back button should bring the user back to setup
     // rather than to /discover/.
     const url = new URL(page.url);
@@ -128,12 +129,11 @@
     void goto(url, { noScroll: true, keepFocus: true });
   }
 
-  function resumeFromSaved(): void {
-    const s = store.feedSession;
-    if (!s) return;
-    // Don't clear feedSession — auto-resume keys off it. Just rebuild the URL
-    // with the saved filters so the data effect runs against the same query
-    // space the lastSeenKey was captured in.
+  function resumeFromSaved(s: FeedSession): void {
+    // Rebuild the URL with the saved filters so the data effect runs against
+    // the same query space the lastSeenKey was captured in. The session
+    // itself stays in store.feedSessions — auto-resume reads it after
+    // navigation lands on the new URL.
     const url = new URL(page.url);
     url.searchParams.set("kind", s.kind);
     url.searchParams.set("sort", s.sort);
@@ -144,6 +144,19 @@
     url.searchParams.set("start", "1");
     url.searchParams.delete("resume");
     void goto(url, { noScroll: true, keepFocus: true });
+  }
+
+  function removeSavedSession(s: FeedSession): void {
+    // Confirmation guard so a stray tap on the small icon button doesn't
+    // wipe a deeply-progressed session by accident. Native confirm()
+    // matches the rest of the app (settings wipe, library remove, etc.).
+    if (!confirm(`Remove your saved spot in ${describeSession(s)}?`)) return;
+    store.removeFeedSession({
+      kind: s.kind,
+      sort: s.sort,
+      genres: s.genres,
+      hideAdded: s.hideAdded,
+    });
   }
 
   // Pretty summary of the saved session shown next to the Resume button so the
@@ -170,18 +183,6 @@
 
   // ---- Feed phase: data + scroller ----
 
-  /** Pure equality check for whether a saved session was scrolling against the
-   *  same query space we're entering now. Genres are normalised to a sorted
-   *  array on save, so a positional compare is enough. */
-  function feedSessionMatches(s: FeedSession | null, k: Kind, so: DiscoverSort, gs: number[], ha: boolean): boolean {
-    if (!s) return false;
-    if (s.kind !== k || s.sort !== so || s.hideAdded !== ha) return false;
-    if (s.genres.length !== gs.length) return false;
-    for (let i = 0; i < gs.length; i++) {
-      if (s.genres[i] !== gs[i]) return false;
-    }
-    return true;
-  }
 
   // Filters used by the active feed are snapshotted once on phase entry and
   // never re-read from the URL. The setup UI still drives URL state so users
@@ -539,10 +540,17 @@
       feedGenres = [...genres];
       feedHideAdded = hideAdded;
 
-      // Resolve the resume target from feedSession.
-      const s = store.feedSession;
-      if (feedSessionMatches(s, feedKind, feedSort, feedGenres, feedHideAdded)) {
-        resumeTargetKey = s!.lastSeenKey;
+      // Resolve the resume target from feedSessions — sessions are keyed
+      // by filter signature, so the lookup picks the right one for the
+      // filters we just snapshotted.
+      const s = store.findFeedSession({
+        kind: feedKind,
+        sort: feedSort,
+        genres: feedGenres,
+        hideAdded: feedHideAdded,
+      });
+      if (s) {
+        resumeTargetKey = s.lastSeenKey;
         // `lastSeenPage` is the page actually containing the saved item
         // (new field). Legacy sessions only have `lastSeenPagesLoaded`,
         // which was the deepest page reached at save time — usually NOT
@@ -552,9 +560,8 @@
         // when `hideAdded` was on; tryResumeScroll silently no-ops if the
         // key isn't on the chosen page, so an off-by-one falls through
         // to "land at top of fetched page" rather than crashing.
-        const legacyIdx = s!.lastSeenIndex ?? 0;
-        resumeTargetPages =
-          s!.lastSeenPage ?? Math.max(1, Math.floor(legacyIdx / 20) + 1);
+        const legacyIdx = s.lastSeenIndex ?? 0;
+        resumeTargetPages = s.lastSeenPage ?? Math.max(1, Math.floor(legacyIdx / 20) + 1);
         // Initialise the floor from the saved index. Legacy sessions with
         // no index get 0 — tryResumeScroll's post-scroll bump will then
         // pin the floor to the actual resumed idx, restoring the regression
@@ -565,7 +572,7 @@
         // Keys added during the previous mount of this session — the
         // hideAdded filter bypasses these so re-fetch produces the same
         // items list and resume can find its target.
-        addedKeys = [...(s!.addedDuringSession ?? [])];
+        addedKeys = [...(s.addedDuringSession ?? [])];
       } else {
         resumeTargetKey = null;
         resumeTargetPages = 0;
@@ -658,7 +665,7 @@
     // through, regardless of what the URL says when the save fires.
     // `lastSeenPagesLoaded` is how many pages we'd fetched at this point;
     // resume re-fetches that many to guarantee the item is in scope.
-    store.setFeedSession({
+    store.upsertFeedSession({
       kind: feedKind,
       sort: feedSort,
       genres: [...feedGenres],
@@ -787,7 +794,12 @@
     const key = `${item.media_type}:${item.id}`;
     if (addedKeys.includes(key)) return;
     addedKeys.push(key);
-    const cur = store.feedSession;
+    const cur = store.findFeedSession({
+      kind: feedKind,
+      sort: feedSort,
+      genres: feedGenres,
+      hideAdded: feedHideAdded,
+    });
     const idx = currentIndex;
     const at = items[idx];
     const anchorKey = at ? `${at.media_type}:${at.id}` : key;
@@ -796,7 +808,7 @@
     // scrolling). If no session exists yet — user added before the first
     // scroll fired a save — anchor it at the current card so a remount can
     // still resolve addedKeys via feedSessionMatches.
-    store.setFeedSession({
+    store.upsertFeedSession({
       kind: feedKind,
       sort: feedSort,
       genres: [...feedGenres],
@@ -812,7 +824,11 @@
     });
   }
 
-  const savedSession = $derived<FeedSession | null>(store.feedSession ?? null);
+  // All saved feed sessions, sorted with most-recently-touched first so the
+  // session the user is likeliest to want to resume floats to the top.
+  const savedSessions = $derived<FeedSession[]>(
+    [...store.feedSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  );
   const isFreshlyLoaded = $derived(items.length > 0);
 
   // Position counter ("3142 / 11921") in absolute-feed terms, not relative to
@@ -866,25 +882,48 @@
   <PageHeader title="Feed" subtitle="Swipe through new shows and movies." actions={headerActions} />
 
   <section class="space-y-6">
-    {#if savedSession}
-      <button
-        type="button"
-        use:tactile
-        onclick={resumeFromSaved}
-        class="tap-target tap-target--card hover-border-accent flex w-full items-center gap-3 rounded-lg border border-accent/60 bg-accent/10 p-4 text-left"
-      >
-        <span
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent"
-          aria-hidden="true"
-        >
-          <Icon name="rotate-ccw" size={18} />
-        </span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-sm font-semibold text-accent">Resume where you left off</span>
-          <span class="mt-0.5 block truncate text-xs text-muted">{describeSession(savedSession)}</span>
-        </span>
-        <Icon name="chevron-right" size={16} class="text-muted" />
-      </button>
+    {#if savedSessions.length > 0}
+      <div class="space-y-2">
+        <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">
+          Saved feeds
+        </div>
+        {#each savedSessions as s (s.kind + "|" + s.sort + "|" + s.genres.join(",") + "|" + s.hideAdded)}
+          <!-- Two side-by-side targets so a stray tap on the small remove
+               icon never fires the resume action and vice versa. The
+               resume button stretches to fill; the remove button is a
+               narrow icon-only square at the end with `haptic: warn` and
+               a confirm() guard inside removeSavedSession. -->
+          <div class="resume-row">
+            <button
+              type="button"
+              use:tactile
+              onclick={() => resumeFromSaved(s)}
+              class="tap-target tap-target--card hover-border-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-accent/60 bg-accent/10 p-4 text-left"
+            >
+              <span
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent"
+                aria-hidden="true"
+              >
+                <Icon name="rotate-ccw" size={18} />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-accent">Resume</span>
+                <span class="mt-0.5 block truncate text-xs text-muted">{describeSession(s)}</span>
+              </span>
+              <Icon name="chevron-right" size={16} class="text-muted" />
+            </button>
+            <button
+              type="button"
+              use:tactile={{ haptic: "warn" }}
+              onclick={() => removeSavedSession(s)}
+              aria-label="Remove saved feed: {describeSession(s)}"
+              class="resume-remove tap-target tap-target--icon"
+            >
+              <Icon name="trash" size={16} />
+            </button>
+          </div>
+        {/each}
+      </div>
     {/if}
 
     <div class="space-y-3">
@@ -1167,6 +1206,37 @@
     justify-content: center;
     scroll-snap-align: end;
     background: var(--color-bg);
+  }
+
+  /* Saved-feed list row on the setup screen. Resume and remove are two
+     separate targets so a sloppy tap on the trash icon never accidentally
+     fires the resume — and the trash button itself is muted/narrow plus
+     gated behind a confirm() to make destructive intent explicit. */
+  .resume-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .resume-remove {
+    flex-shrink: 0;
+    width: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 150ms var(--ease-out),
+      border-color 150ms var(--ease-out),
+      background 150ms var(--ease-out);
+  }
+  .resume-remove:hover {
+    color: var(--color-error);
+    border-color: var(--color-error);
+    background: color-mix(in oklab, var(--color-error) 8%, transparent);
   }
 
   /* Empty stand-in for off-window items. Matches `.feed-item`'s box so the
