@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.7] - 2026-05-05
+
+### Fixed
+- Scrolling backward in the feed to load earlier pages now drops you into the just-loaded content instead of teleporting you to the first item of the page you were on.
+
 ## [0.14.6] - 2026-05-05
 
 ### Changed

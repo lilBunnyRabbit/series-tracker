@@ -336,33 +336,29 @@
         if (firstLoadedPage === 0) firstLoadedPage = pageNum;
         lastLoadedPage = pageNum;
       } else {
-        // Prepend. Items shift down by `fresh.length` slots; we have to
-        // pin the scroller's scrollTop in lock-step so the user stays on
-        // the card they were viewing instead of jumping back by the prepend
-        // size. flushSync forces Svelte to apply the items mutation to the
-        // DOM synchronously so the new scrollHeight is in place before we
-        // adjust scrollTop. We then write scrollTop ABSOLUTELY (not via
-        // `+=`) because the browser's scroll-anchoring may have already
-        // tried to compensate during layout — a `+=` on top of that double-
-        // counts the shift and lands the user near the bottom (or, after
-        // clamp, near the top), which retriggers prev-prefetch and runs
-        // away through every page. `overflow-anchor: none` on the scroller
-        // disables the browser-side anchoring so this absolute set is
-        // authoritative.
+        // Prepend. Default behaviour: leave scrollTop and currentIndex
+        // alone. The user reached the top of the loaded window and
+        // triggered this fetch by scrolling backward — what they want is
+        // to ENTER the freshly-prepended page, not be pinned to their
+        // previous card. With `overflow-anchor: none` on the scroller the
+        // browser keeps scrollTop at its current pixel value, which now
+        // points at the new items at the front of the list, so the user
+        // simply sees earlier content appear under their finger.
+        //
+        // Auto-prefetch (the one-shot loadPrev right after tryResumeScroll)
+        // DOES need the opposite — pin the user to the saved card across
+        // the prepend so resume doesn't shuffle them onto an earlier
+        // page. That adjustment lives in the entry effect after awaiting
+        // loadPrev, where it has the context to do it.
         if (fresh.length > 0) {
-          const s = scroller;
-          const h = s ? s.clientHeight : 0;
           const shift = fresh.length;
-          // Update derived position state BEFORE the DOM mutation so that
-          // onScroll's `idx === currentIndex` early-bail is in place by the
-          // time the scrollTop assignment fires its scroll event.
-          currentIndex += shift;
+          // mountFloorIdx tracks an item by index; advance it in lockstep
+          // so the saved-progress floor still points at the same card.
           if (mountFloorIdx >= 0) mountFloorIdx += shift;
           flushSync(() => {
             items = [...fresh, ...items];
             itemPages = [...pageTags, ...itemPages];
           });
-          if (s && h > 0) s.scrollTop = currentIndex * h;
         }
         firstLoadedPage = pageNum;
       }
@@ -599,10 +595,26 @@
         if (!ctrl.signal.aborted) await tryResumeScroll(ctrl);
         // Resumed mid-feed (firstLoadedPage > 1)? The user can't scroll up
         // until earlier items are loaded — and if their saved card was at
-        // idx 0 of the fetched page they can't even nudge to idx<=2 to
-        // trigger the in-scroll prev-prefetch. Pull the previous page in
-        // proactively so the upward swipe just works.
-        if (!ctrl.signal.aborted && firstLoadedPage > 1) await loadPrev();
+        // idx 0 of the fetched page they can't even nudge to trigger the
+        // in-scroll prev-prefetch. Pull the previous page in proactively
+        // so the upward swipe just works. Unlike user-triggered loadPrev,
+        // this one happens while the user sits on the saved card, so we
+        // have to pin them there across the prepend — otherwise the
+        // browser would keep scrollTop at the old (smaller) pixel value
+        // and the user would suddenly be looking at page X-1 item K
+        // instead of their saved page-X item.
+        if (!ctrl.signal.aborted && firstLoadedPage > 1) {
+          const before = items.length;
+          await loadPrev();
+          if (ctrl.signal.aborted) return;
+          const shift = items.length - before;
+          const s = scroller;
+          const h = s ? s.clientHeight : 0;
+          if (shift > 0 && s && h > 0) {
+            currentIndex += shift;
+            s.scrollTop = currentIndex * h;
+          }
+        }
       })();
     });
   });
