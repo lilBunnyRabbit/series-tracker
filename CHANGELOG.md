@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.7] - 2026-05-05
+
+### Fixed
+- Feed drag now tracks your finger smoothly on mobile — drag updates are batched to one paint per display frame instead of one per touch sample.
+
 ## [0.13.6] - 2026-05-05
 
 ### Fixed

@@ -246,9 +246,17 @@
   // `i * 100%`. Both percentages resolve against the same containing block
   // (the viewport's content box), so the index step is pixel-perfect even
   // on fractional-height viewports — no clientHeight rounding to manage.
+  //
+  // The drag's per-frame transform writes go DIRECTLY to the DOM via the
+  // bound track element — they intentionally bypass Svelte's reactivity so
+  // a high-rate pointermove stream (mobile touchscreens commonly fire
+  // above 60Hz) doesn't churn through a microtask flush per event. Index
+  // changes still flow through state + $effect so Svelte handles the
+  // transition class + commit transform together.
   let viewport = $state<HTMLDivElement>();
+  let trackEl = $state<HTMLDivElement>();
   let currentIndex = $state(0);
-  let dragOffset = $state(0); // px applied during an active drag; cleared on commit
+  let dragging = $state(false); // true while the user has crossed the drag slop
   let transitioning = $state(false); // true while the post-release transform animates
 
   // ±2 mounting window keeps the active card plus immediate neighbours alive
@@ -264,7 +272,7 @@
   // against the content underneath, and that content is precisely what's
   // translating every frame, so leaving it on during motion is the main
   // mobile lag source.
-  const isMoving = $derived(dragOffset !== 0 || transitioning);
+  const isMoving = $derived(dragging || transitioning);
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -445,9 +453,16 @@
   let touchStartY = 0;
   let touchStartTime = 0;
   let touchPointerId = -1;
-  let dragging = false;
   let wheelLockedUntil = 0;
   let transitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Per-frame drag state lives outside Svelte's reactivity. Mobile
+  // touchscreens can fire pointermove well above 60Hz; running each
+  // through a state write + microtask flush + DOM update was the visible
+  // mobile lag. We coalesce moves into one rAF tick that writes transform
+  // straight to the bound track element.
+  let dragOffsetLocal = 0;
+  let dragRafId: number | null = null;
 
   function applyEdgeResistance(rawDy: number): number {
     if (currentIndex <= 0 && rawDy > 0) return rawDy * EDGE_RESISTANCE;
@@ -455,27 +470,61 @@
     return rawDy;
   }
 
+  /** Direct DOM transform write. Bypasses Svelte so the per-frame drag
+   *  doesn't churn the reactivity flush. The track is layer-promoted, so
+   *  this update is a compositor-thread transform — no main-thread paint. */
+  function paintTrack(dragPx: number): void {
+    if (!trackEl) return;
+    trackEl.style.transform = `translate3d(0, calc(${-currentIndex * 100}% + ${dragPx}px), 0)`;
+  }
+
+  function flushDragPaint(): void {
+    dragRafId = null;
+    paintTrack(dragOffsetLocal);
+  }
+
+  function cancelDragPaint(): void {
+    if (dragRafId !== null) {
+      cancelAnimationFrame(dragRafId);
+      dragRafId = null;
+    }
+  }
+
   /** Single entry point for any index change. `animate: false` skips the
    *  CSS transition (used by resume + reset). */
   function goTo(target: number, opts: { animate?: boolean } = {}): void {
     const { animate = true } = opts;
+    cancelDragPaint();
     if (items.length === 0) {
       currentIndex = 0;
-      dragOffset = 0;
+      dragOffsetLocal = 0;
       transitioning = false;
+      paintTrack(0);
       return;
     }
     const clamped = Math.max(0, Math.min(items.length - 1, target));
-    const isChange = clamped !== currentIndex;
-    const wasDragging = dragOffset !== 0;
-    if (!isChange && !wasDragging) return;
+    const indexChanged = clamped !== currentIndex;
+    const hadDrag = dragOffsetLocal !== 0;
+    if (!indexChanged && !hadDrag) return;
     if (transitionTimer !== null) {
       clearTimeout(transitionTimer);
       transitionTimer = null;
     }
     transitioning = animate;
-    dragOffset = 0;
-    currentIndex = clamped;
+    dragOffsetLocal = 0;
+    if (indexChanged) {
+      currentIndex = clamped;
+      // The currentIndex $effect below paints in response. The transition
+      // class flushes in the same Svelte tick — browser sees both and
+      // animates the transform from its current (drag-applied) value to
+      // the new index's rest position.
+    } else {
+      // Snap-back: $effect doesn't fire because currentIndex is unchanged,
+      // so paint the rest position directly. queueMicrotask defers past
+      // Svelte's class flush so the transition class is in place when the
+      // browser sees the transform change.
+      queueMicrotask(() => paintTrack(0));
+    }
     if (animate) {
       transitionTimer = setTimeout(() => {
         transitioning = false;
@@ -491,13 +540,23 @@
       clearTimeout(transitionTimer);
       transitionTimer = null;
     }
+    cancelDragPaint();
     currentIndex = 0;
-    dragOffset = 0;
+    dragOffsetLocal = 0;
     transitioning = false;
     dragging = false;
     touchPointerId = -1;
     wheelLockedUntil = 0;
   }
+
+  // Repaint the track when currentIndex (or the track ref) changes. The
+  // drag offset is local-only and resets to 0 on commit — at that point the
+  // active card is back at y=0, no drag in flight.
+  $effect(() => {
+    void currentIndex;
+    void trackEl;
+    paintTrack(0);
+  });
 
   // Persist the last-seen item when currentIndex changes. Filters / page
   // count are read untracked so a re-render from items growing doesn't churn
@@ -554,7 +613,14 @@
       // pointerup on a tap target would fire its click after a drag.
       viewport?.setPointerCapture(touchPointerId);
     }
-    dragOffset = applyEdgeResistance(dy);
+    // Update the local target value on every move, but only schedule a
+    // paint once per animation frame. flushDragPaint will pick up the
+    // latest dragOffsetLocal at paint time, so we don't lose intermediate
+    // moves — they just collapse into the next frame.
+    dragOffsetLocal = applyEdgeResistance(dy);
+    if (dragRafId === null) {
+      dragRafId = requestAnimationFrame(flushDragPaint);
+    }
   }
 
   function onPointerUp(e: PointerEvent): void {
@@ -578,6 +644,7 @@
     touchPointerId = -1;
     if (!dragging) return;
     dragging = false;
+    cancelDragPaint();
     // Snap back to the active card with the same animation.
     goTo(currentIndex, { animate: true });
   }
@@ -830,9 +897,9 @@
         onkeydown={onKeyDown}
       >
         <div
+          bind:this={trackEl}
           class="feed-track"
           class:feed-track--animating={transitioning}
-          style:transform="translate3d(0, calc({-currentIndex * 100}% + {dragOffset}px), 0)"
         >
           {#each items as item, i (item.media_type + ":" + item.id)}
             {#if isVisible(i)}
