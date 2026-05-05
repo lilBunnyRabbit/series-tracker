@@ -4,6 +4,16 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-05-05
+
+### Fixed
+- Feed resume now reliably brings you back to the card you left off on — even after a deep scroll. The "left off" marker only ever advances; if a resume can't find your card, the saved spot is preserved instead of being overwritten with the top of the feed.
+
+## [0.14.3] - 2026-05-05
+
+### Added
+- Position counter in the feed — top-right pill showing your spot in the queue (e.g. `5 / 47`). Flashes in when you change cards and fades out a moment after.
+
 ## [0.14.2] - 2026-05-05
 
 ### Changed

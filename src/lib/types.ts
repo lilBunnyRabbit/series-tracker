@@ -296,8 +296,16 @@ export type FeedSession = {
   /** TMDB genre IDs (kind-specific space). */
   genres: number[];
   hideAdded: boolean;
-  /** "tv:123" / "movie:456" — most-recent item the user dwelled on. */
+  /** "tv:123" / "movie:456" — deepest item the user has reached. The save is
+   *  monotonic: once recorded, only an item at a STRICTLY greater index is
+   *  ever written here. This makes the resume safe against shallow remount
+   *  scroll events (e.g. landing back at idx 0 if a resume silently fails)
+   *  overwriting genuinely-deep progress. */
   lastSeenKey: string;
+  /** Items-array index at save time. Used as the floor for subsequent saves
+   *  so deeper-only updates win. Optional for back-compat with sessions saved
+   *  before this field existed. */
+  lastSeenIndex?: number;
   /** Highest TMDB page that had been fetched at save time. Resume uses this
    *  to load the right number of pages up front rather than guessing — without
    *  it, deep-scrolled sessions can't find their saved item because the

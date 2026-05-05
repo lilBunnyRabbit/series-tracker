@@ -183,53 +183,39 @@
     return true;
   }
 
-  // Captured snapshot of the resume target — read once when we enter feed
-  // phase, IF the URL filters match the saved session. Auto-resume covers
-  // both the explicit Resume button AND back-from-details navigation; the
-  // Start button clears the session first, so a "fresh start" doesn't snap
-  // back to the last-seen card.
-  //
-  // We avoid reading store.feedSession reactively here because the scroll
-  // handler updates it on every visible item — that would otherwise make the
-  // resume marker chase the user as they scroll.
-  let resumeTargetKey = $state<string | null>(null);
-  // How many TMDB pages the user had fetched when they left. Resume uses this
-  // to load enough pages up front before searching for the key — otherwise a
-  // deep-scrolled session can't be found in the first couple of pages and we
-  // silently land them at scroll 0.
-  let resumeTargetPages = $state(0);
-  let captured = false;
+  // Filters used by the active feed are snapshotted once on phase entry and
+  // never re-read from the URL. The setup UI still drives URL state so users
+  // can edit it freely; once Start is clicked the locals below are the
+  // single source of truth for the in-flight fetch, the resume target, and
+  // the persisted session record. This decouples the feed from any URL
+  // flicker (popstate, late hydration, manual edits) that would otherwise
+  // race against the saved session and silently break resume.
+  let feedKind = $state<Kind>("tv");
+  let feedSort = $state<DiscoverSort>("popularity.desc");
+  let feedGenres = $state<number[]>([]);
+  let feedHideAdded = $state(false);
 
-  $effect(() => {
-    const ph = phase;
-    const k = kind;
-    const so = sort;
-    const ha = hideAdded;
-    const gKey = genres.join(",");
-    if (ph !== "feed") {
-      captured = false;
-      resumeTargetKey = null;
-      resumeTargetPages = 0;
-      return;
-    }
-    if (captured) return;
-    if (!store.loaded) return;
-    untrack(() => {
-      const s = store.feedSession;
-      const gs = gKey ? gKey.split(",").map(Number) : [];
-      if (feedSessionMatches(s, k, so, gs, ha)) {
-        resumeTargetKey = s!.lastSeenKey;
-        // Legacy sessions (saved before pagesLoaded was tracked) fall back to
-        // 1, which combined with the safety cap below still tries hard enough
-        // for shallow scrolls.
-        resumeTargetPages = s!.lastSeenPagesLoaded ?? 1;
-      } else {
-        resumeTargetKey = null;
-        resumeTargetPages = 0;
-      }
-      captured = true;
-    });
-  });
+  // Captured snapshot of the resume target — read once when we enter feed
+  // phase, IF the saved session's filters match. Auto-resume covers both
+  // back-from-details navigation AND the explicit Resume button; the Start
+  // button clears the session first, so a "fresh start" doesn't snap back
+  // to the last-seen card.
+  let resumeTargetKey = $state<string | null>(null);
+  // How many TMDB pages the user had fetched when they left. Resume uses
+  // this to load enough pages up front before searching for the key —
+  // otherwise a deep-scrolled session can't be found in the first couple of
+  // pages and we silently land them at scroll 0.
+  let resumeTargetPages = $state(0);
+  // Monotonic floor for save: persist a new lastSeenKey ONLY when the user
+  // has reached an idx STRICTLY greater than this floor. Initialised from
+  // the saved session's lastSeenIndex on entry, then pinned to the resumed
+  // position after a successful runResume. The invariant is "the saved
+  // feedSession represents the deepest item ever reached" — without this,
+  // a remount whose resume silently fails would let the next stray scroll
+  // event (idx 0 from the initial mount, or a tiny user nudge) overwrite
+  // genuine deep progress with a shallow position. -1 means no floor yet.
+  let mountFloorIdx = $state(-1);
+  let captured = false;
 
   let items = $state<RecommendationItem[]>([]);
   let nextPage = $state(1);
@@ -238,6 +224,19 @@
   let feedError = $state<string | null>(null);
   let scroller = $state<HTMLDivElement>();
   let currentIndex = $state(0);
+
+  // Flash-on-scroll position counter. Toggles to true when currentIndex
+  // changes, then back to false ~1.5s later. CSS does the fade.
+  let counterVisible = $state(false);
+  let counterHideTimer: ReturnType<typeof setTimeout> | null = null;
+  function flashCounter(): void {
+    counterVisible = true;
+    if (counterHideTimer !== null) clearTimeout(counterHideTimer);
+    counterHideTimer = setTimeout(() => {
+      counterVisible = false;
+      counterHideTimer = null;
+    }, 1500);
+  }
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -255,7 +254,7 @@
     if (!store.apiKey) return;
     if (nextPage > 1 && nextPage > totalPages) return;
     const ctrl = dataCtrl;
-    if (!ctrl) return;
+    if (!ctrl || ctrl.signal.aborted) return;
     loading = true;
     feedError = null;
     try {
@@ -272,16 +271,16 @@
       while (attempts < MAX_EMPTY_ATTEMPTS) {
         if (nextPage > 1 && nextPage > totalPages) break;
         const r = await discover(
-          kind,
+          feedKind,
           store.apiKey,
-          { sort, genres, page: nextPage, withPeople: [] },
+          { sort: feedSort, genres: feedGenres, page: nextPage, withPeople: [] },
           ctrl.signal
         );
         if (ctrl.signal.aborted) return;
         // Filter at fetch-time so items added later in this session stay
         // visible — we don't re-filter on render. This matches the "added
         // items don't disappear from the feed" requirement.
-        const filtered = hideAdded
+        const filtered = feedHideAdded
           ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id))
           : r.results;
         const fresh = filtered.filter((x) => {
@@ -298,14 +297,16 @@
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
+      if (ctrl.signal.aborted) return;
       feedError = e instanceof Error ? e.message : String(e);
     } finally {
-      if (ctrl && !ctrl.signal.aborted) loading = false;
+      if (!ctrl.signal.aborted) loading = false;
     }
   }
 
-  async function runResume(): Promise<void> {
+  async function runResume(ctrl: AbortController): Promise<void> {
     if (!resumeTargetKey) return;
+    if (ctrl.signal.aborted) return;
     // Hard ceiling so a stale session whose key has been filtered out of TMDB
     // results doesn't pull down all 500 pages before giving up. 30 pages
     // (~600 items) covers any realistic human scroll.
@@ -315,8 +316,10 @@
     // is guaranteed to be inside this range as long as TMDB pagination is
     // stable (cached for 5 min on our side, plus TMDB's own day-scale stability).
     while (nextPage <= target && nextPage <= totalPages) {
+      if (ctrl.signal.aborted) return;
       const before = nextPage;
       await loadNext();
+      if (ctrl.signal.aborted) return;
       // loadNext bails (aborted, error) without bumping nextPage — break to
       // avoid spinning.
       if (nextPage === before) break;
@@ -324,34 +327,60 @@
     // Then keep paging only if the key still hasn't surfaced (e.g. ordering
     // drift between sessions pushed it just past `target`).
     while (nextPage <= MAX_RESUME_PAGES && nextPage <= totalPages) {
+      if (ctrl.signal.aborted) return;
       const idx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
       if (idx >= 0) break;
       const before = nextPage;
       await loadNext();
+      if (ctrl.signal.aborted) return;
       if (nextPage === before) break;
     }
     const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
     if (finalIdx < 0) return;
-    // Wait for the layout to settle before measuring clientHeight — items
-    // were just pushed into state but may not have painted yet.
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    const s = scroller;
-    if (!s || s.clientHeight <= 0) return;
-    s.scrollTo({ top: finalIdx * s.clientHeight, behavior: "instant" as ScrollBehavior });
+    // Wait for layout to settle before measuring clientHeight. Two things
+    // can leave it at 0 on the first frame: items were just pushed and
+    // haven't painted, OR the layout's `scroll-locked` $effect hasn't yet
+    // sized the flex chain (sibling component, same flush). Retry across a
+    // few frames so a slightly slow paint doesn't silently abort resume —
+    // this was the silent-fail mode that landed deep-scrolled users back
+    // at item 0.
+    let h = 0;
+    let s: HTMLDivElement | undefined;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      if (ctrl.signal.aborted) return;
+      s = scroller;
+      if (s && s.clientHeight > 0) {
+        h = s.clientHeight;
+        break;
+      }
+    }
+    if (!s || h <= 0) return;
+    s.scrollTo({ top: finalIdx * h, behavior: "instant" as ScrollBehavior });
     currentIndex = finalIdx;
+    // Pin the floor at the actual resumed index — onScroll fires from the
+    // scrollTo above and will compare against this floor going forward.
+    // Using finalIdx (not the saved lastSeenIndex) handles TMDB drift: if
+    // the saved key is now at a slightly different position, the floor
+    // tracks where we actually are, so the user can update the save by
+    // scrolling forward from here.
+    mountFloorIdx = finalIdx;
   }
 
-  // Reset and reload whenever the feed-phase filters change (or we re-enter
-  // feed phase). Going back to setup tears the data down too.
+  // Reset and reload whenever we enter feed phase. Filters are snapshotted
+  // into local state on entry so URL flicker mid-flight can't desync the
+  // fetch from the saved session — once captured, the data effect ignores
+  // URL changes (the user has to go back to setup, which exits feed phase
+  // and resets `captured`, to change filters).
   //
-  // Reactive deps (phase, kind, sort, hideAdded, genres, store.apiKey) are
-  // read at the top of the effect to register subscriptions;
-  // the actual reset + load runs inside `untrack` so the writes to `items`,
-  // `loading`, `nextPage`, etc. — and the reads of those same fields inside
-  // loadNext's synchronous prefix — don't loop back into the effect's deps.
+  // Reactive deps (phase, URL filters, store.apiKey, store.loaded) are read
+  // at the top of the effect to register subscriptions; the actual reset
+  // and load run inside `untrack` so writes to `items`, `loading`, etc.
+  // — and the reads of those same fields inside loadNext — don't loop back.
   $effect(() => {
     const ph = phase;
     const apiKey = store.apiKey;
+    const loaded = store.loaded;
     void kind;
     void sort;
     void hideAdded;
@@ -365,6 +394,10 @@
           dataCtrl.abort();
           dataCtrl = null;
         }
+        captured = false;
+        resumeTargetKey = null;
+        resumeTargetPages = 0;
+        mountFloorIdx = -1;
         items = [];
         nextPage = 1;
         totalPages = 1;
@@ -373,7 +406,38 @@
         loading = false;
         return;
       }
+      if (captured) return;
+      if (!loaded) return;
       if (!apiKey) return;
+
+      // Snapshot URL filters → feed-phase locals. From this point on the
+      // feed runs against these values, regardless of what the URL does.
+      feedKind = kind;
+      feedSort = sort;
+      feedGenres = [...genres];
+      feedHideAdded = hideAdded;
+
+      // Resolve the resume target from feedSession.
+      const s = store.feedSession;
+      if (feedSessionMatches(s, feedKind, feedSort, feedGenres, feedHideAdded)) {
+        resumeTargetKey = s!.lastSeenKey;
+        // Legacy sessions (saved before pagesLoaded was tracked) fall back
+        // to 1, which combined with the safety cap below still tries hard
+        // enough for shallow scrolls.
+        resumeTargetPages = s!.lastSeenPagesLoaded ?? 1;
+        // Initialise the floor from the saved index. Legacy sessions with
+        // no index get 0 — the runResume's post-scroll bump will then pin
+        // the floor to the actual resumed idx, restoring the regression
+        // protection. While runResume is in flight the saved item itself
+        // is still protected: the only items above the floor (= 0) in the
+        // typical flow are loaded but not scrolled to.
+        mountFloorIdx = s!.lastSeenIndex ?? 0;
+      } else {
+        resumeTargetKey = null;
+        resumeTargetPages = 0;
+        mountFloorIdx = -1;
+      }
+      captured = true;
 
       if (dataCtrl) dataCtrl.abort();
       dataCtrl = new AbortController();
@@ -383,12 +447,13 @@
       currentIndex = 0;
       feedError = null;
       loading = false;
+
+      const ctrl = dataCtrl;
       void (async () => {
         await loadNext();
-        // runResume early-returns if resumeTargetKey is null, so calling it
-        // unconditionally is safe and covers both back-from-details and the
-        // explicit Resume click.
-        await runResume();
+        // runResume bails on aborted ctrl, so a follow-up reset (e.g. user
+        // bouncing back to setup) doesn't scroll into stale items.
+        if (!ctrl.signal.aborted) await runResume(ctrl);
       })();
     });
   });
@@ -402,27 +467,38 @@
     if (idx === currentIndex) return;
     if (idx < 0 || idx >= items.length) return;
     currentIndex = idx;
-    const item = items[idx];
-    if (!item) return;
-    // Persist the last-seen item for next-session resume. Filters are
-    // snapshotted alongside so resume runs against the same query space.
-    // `lastSeenPagesLoaded` is how many pages we'd fetched at this point —
-    // resume re-fetches that many to guarantee the item is in scope, instead
-    // of blindly trying the first few pages and giving up.
-    store.setFeedSession({
-      kind,
-      sort,
-      genres: [...genres],
-      hideAdded,
-      lastSeenKey: `${item.media_type}:${item.id}`,
-      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
-      updatedAt: new Date().toISOString(),
-    });
+    flashCounter();
     // Pre-fetch the next page well before the user reaches the end so the
-    // scroll never stalls.
+    // scroll never stalls. This is independent of save gating below — we
+    // want fetches to keep flowing even on shallow scrolls.
     if (idx >= items.length - 3) {
       void loadNext();
     }
+    // Monotonic save: persist a new lastSeenKey ONLY when we've reached a
+    // strictly NEW high water mark. Without this gate, any scroll event
+    // fired before the resume could land (initial mount, layout reflow,
+    // user nudging a card after a silent resume failure) would overwrite
+    // genuine deep progress with a shallow position. The user's invariant:
+    // "track last max one — never replace 'left off' with an earlier item".
+    if (idx <= mountFloorIdx) return;
+    mountFloorIdx = idx;
+    const item = items[idx];
+    if (!item) return;
+    // Filters come from the feed-phase snapshot, not the URL — so the
+    // saved session's filters always match the data the user was scrolling
+    // through, regardless of what the URL says when the save fires.
+    // `lastSeenPagesLoaded` is how many pages we'd fetched at this point;
+    // resume re-fetches that many to guarantee the item is in scope.
+    store.setFeedSession({
+      kind: feedKind,
+      sort: feedSort,
+      genres: [...feedGenres],
+      hideAdded: feedHideAdded,
+      lastSeenKey: `${item.media_type}:${item.id}`,
+      lastSeenIndex: idx,
+      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   // ---- Snappy snap (JS-driven) ----
@@ -745,18 +821,63 @@
           </div>
         {/if}
       </div>
+
+      <!-- Position counter — flashes top-right when the active card changes,
+           fades out 1.5s after the last index change. Tabular nums so the
+           digits don't jiggle as the count grows. -->
+      <div
+        class="feed-counter"
+        class:feed-counter--visible={counterVisible}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {currentIndex + 1} / {items.length}
+      </div>
     {/if}
   </div>
 {/if}
 
 <style>
-  /* The shell takes whatever vertical space the locked layout gives it. */
+  /* The shell takes whatever vertical space the locked layout gives it.
+     `position: relative` is the anchor for the counter pill overlay. */
   .feed-shell {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
     background: var(--color-bg);
+    position: relative;
+  }
+
+  /* Top-right position counter. Hidden by default, fades in for ~1.5s
+     after each index change. Tabular nums + small letter spacing so
+     "5 / 47" reads as a unit, not three separate things. */
+  .feed-counter {
+    position: absolute;
+    top: max(env(safe-area-inset-top), 0.875rem);
+    right: 0.875rem;
+    z-index: 6;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity 200ms ease-out,
+      transform 200ms ease-out;
+  }
+  .feed-counter--visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .feed-scroller {
