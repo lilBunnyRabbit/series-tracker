@@ -188,8 +188,10 @@
   <!-- Mobile: only show the header when there's a back affordance to render —
        the floating island already covers primary nav, so the top bar would
        otherwise just be a logo + redundant page title. Desktop always shows
-       the header since there's no island. -->
-  {#if backHref}
+       the header since there's no island.
+       Both are hidden in the active feed view: that mode owns the viewport
+       fully (TikTok-style), with its own bottom-anchored back button. -->
+  {#if backHref && !isFeedActive}
     <header
       class="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur sm:hidden"
       style="padding-top: env(safe-area-inset-top)"
@@ -209,6 +211,7 @@
     </header>
   {/if}
 
+  {#if !isFeedActive}
   <header
     class="sticky top-0 z-30 hidden border-b border-border bg-bg/95 backdrop-blur sm:block"
     style="padding-top: env(safe-area-inset-top)"
@@ -235,6 +238,7 @@
       </div>
     </nav>
   </header>
+  {/if}
 
   <main class="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-32 sm:px-4 sm:py-6 sm:pb-6">
     {#if skipApiKeyGate}

@@ -4,7 +4,15 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
-## [0.13.1] - 2026-05-05
+## [0.13.2] - 2026-05-05
+
+### Changed
+- Feed cards now snap instantly on release — no animation, no glide, the next card is just there. A fast flick advances even on a tiny swipe.
+- Active feed view goes full-screen with no top bar — back now sits at the bottom of each card's action rail, beneath Details and Add.
+- "Where you left off" marker is now a horizontal stripe with accent gradient lines above the title, replacing the small chip in the top corner.
+
+### Fixed
+- Feed no longer wedges on "Loading more…" once TMDB returns a page of titles you've already seen. Duplicates are now skipped and the next page is fetched automatically.
 
 ### Fixed
 - Feed resume now lands you back on the right card after a deep scroll. Previously, returning from a detail page would silently snap you to the top of the feed if your last-viewed card was past the first hundred items.

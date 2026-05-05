@@ -20,9 +20,15 @@
      *  a small "Last viewed" chip so the user knows where they left off. */
     isLastViewed?: boolean;
     onAdd: (item: RecommendationItem, status: Status) => Promise<void> | void;
+    /** Optional back affordance rendered at the bottom of the action rail.
+     *  When supplied, the rail gets a third "Back" circle styled like Details.
+     *  The feed page passes this so the active feed view can have its back
+     *  button live with the other actions instead of in a top header. */
+    backHref?: string;
+    onBack?: (e: MouseEvent) => void;
   };
 
-  let { item, genreById, isLastViewed = false, onAdd }: Props = $props();
+  let { item, genreById, isLastViewed = false, onAdd, backHref, onBack }: Props = $props();
 
   const kind = $derived<"tv" | "movie">(item.media_type);
   const title = $derived(item.media_type === "movie" ? item.title : item.name);
@@ -107,16 +113,10 @@
     {/if}
   </div>
 
-  <!-- Top-left: type badge + optional resumed marker. -->
+  <!-- Top-left: type badge. The resumed marker moved down to a divider stripe
+       above the title — see .feed-resume-marker in the text region. -->
   <div class="feed-bg-meta">
     <TypeBadge {kind} variant="overlay" />
-    {#if isLastViewed}
-      <span
-        class="rounded-full border border-accent/60 bg-accent/20 px-2.5 py-1 text-[11px] font-medium text-accent backdrop-blur-sm"
-      >
-        ↳ Where you left off
-      </span>
-    {/if}
   </div>
 
   <!-- Poster sits at the bottom of its flex region with padding above the
@@ -140,6 +140,12 @@
 
   <!-- Bottom-left content. No box — plain text over the matte bg. -->
   <div class="feed-text">
+    {#if isLastViewed}
+      <div class="feed-resume-marker" aria-label="Resumed here">
+        <span>Where you left off</span>
+      </div>
+    {/if}
+
     <h2 class="feed-title {existing && statusColor ? statusColor.text : ''}">{title}</h2>
 
     <div class="feed-meta">
@@ -216,6 +222,21 @@
         {busy ? "..." : existing ? STATUS_LABEL[existing.status] : "Add"}
       </span>
     </button>
+
+    {#if backHref}
+      <a
+        href={backHref}
+        onclick={onBack}
+        use:tactile
+        class="feed-action"
+        aria-label="Back to feed setup"
+      >
+        <span class="feed-action-circle border-border bg-surface/85">
+          <Icon name="arrow-left" size={20} />
+        </span>
+        <span class="feed-action-label">Back</span>
+      </a>
+    {/if}
   </div>
 
   <!-- Hidden picker — driven by the action-rail circle. -->
@@ -376,6 +397,47 @@
     margin: 0;
     flex: 1;
     min-width: 0;
+  }
+
+  /* "Where you left off" stripe — sits above the title and visually separates
+     the poster from the rest of the text. Centered label flanked by accent
+     gradient lines that fade out at the edges. */
+  .feed-resume-marker {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    /* Slight extra breathing room before the title since this acts as a
+       section divider, not a stacked text line. */
+    margin-bottom: 0.1rem;
+  }
+
+  .feed-resume-marker::before,
+  .feed-resume-marker::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--color-accent) 65%, transparent)
+    );
+  }
+
+  .feed-resume-marker::after {
+    background: linear-gradient(
+      to left,
+      transparent,
+      color-mix(in oklab, var(--color-accent) 65%, transparent)
+    );
+  }
+
+  .feed-resume-marker > span {
+    white-space: nowrap;
   }
 
 

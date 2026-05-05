@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import { smartBack } from "$lib/back.svelte";
   import FeedCard from "$lib/components/FeedCard.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
@@ -12,6 +13,8 @@
   import type { RecommendationItem } from "$lib/tmdb";
   import type { DiscoverSort, FeedSession, Genre, Status } from "$lib/types";
   import { untrack } from "svelte";
+
+  const onBack = smartBack();
 
   type Kind = "tv" | "movie";
 
@@ -240,6 +243,13 @@
   // any in-flight TMDB request bails before its results race in late.
   let dataCtrl: AbortController | null = null;
 
+  // Cap on consecutive empty/dup-only pages we'll chew through inside one
+  // loadNext call. TMDB sometimes returns near-identical results across adjacent
+  // pages (popular titles drift between pages as scores update); without a cap
+  // we'd spin, but giving up too early leaves the user stuck on the last card
+  // with no further fetches. 5 covers realistic dup runs without hanging.
+  const MAX_EMPTY_ATTEMPTS = 5;
+
   async function loadNext(): Promise<void> {
     if (loading) return;
     if (!store.apiKey) return;
@@ -249,22 +259,42 @@
     loading = true;
     feedError = null;
     try {
-      const r = await discover(kind, store.apiKey, { sort, genres, page: nextPage, withPeople: [] }, ctrl.signal);
-      if (ctrl.signal.aborted) return;
-      // Filter at fetch-time so items added later in this session stay visible
-      // — we don't re-filter on render. This matches the "added items don't
-      // disappear from the feed" requirement.
-      const filtered = hideAdded ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id)) : r.results;
-      items.push(...filtered);
-      totalPages = Math.min(r.total_pages, 500);
-      nextPage++;
-
-      // If the page came back empty (every result was already in the library)
-      // and there's still more to fetch, grab the next one so the user isn't
-      // staring at an empty feed. Capped to a couple hops so a fully-added
-      // library doesn't spin endlessly.
-      if (filtered.length === 0 && nextPage <= totalPages && items.length < 6) {
-        await loadNext();
+      // Build the dedup set once — TMDB discover can repeat items across
+      // adjacent pages and we use `${media_type}:${id}` as the keyed-each key,
+      // so duplicates would otherwise crash the render with each_key_duplicate.
+      const seen = new Set(items.map((i) => `${i.media_type}:${i.id}`));
+      let attempts = 0;
+      // In-call loop so a page that produces zero NEW items (all dups, or all
+      // already-in-library when hideAdded is on) automatically pulls the next
+      // page in the same fetch cycle. Replaces the previous recursive
+      // `loadNext()` call which was a no-op (it bailed on `if (loading) return`
+      // because the outer call hadn't cleared `loading` yet).
+      while (attempts < MAX_EMPTY_ATTEMPTS) {
+        if (nextPage > 1 && nextPage > totalPages) break;
+        const r = await discover(
+          kind,
+          store.apiKey,
+          { sort, genres, page: nextPage, withPeople: [] },
+          ctrl.signal
+        );
+        if (ctrl.signal.aborted) return;
+        // Filter at fetch-time so items added later in this session stay
+        // visible — we don't re-filter on render. This matches the "added
+        // items don't disappear from the feed" requirement.
+        const filtered = hideAdded
+          ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id))
+          : r.results;
+        const fresh = filtered.filter((x) => {
+          const key = `${x.media_type}:${x.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        items.push(...fresh);
+        totalPages = Math.min(r.total_pages, 500);
+        nextPage++;
+        if (fresh.length > 0) break;
+        attempts++;
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
@@ -396,43 +426,29 @@
   }
 
   // ---- Snappy snap (JS-driven) ----
-  // CSS scroll-snap mandatory works as the fallback / static layout cue, but
-  // browsers' native snap animation (especially iOS Safari's) feels sluggish.
-  // We override it on touch + wheel: the user lifts → we run a 200 ms eased
-  // scrollTop animation to the target card. Always exactly one card per
-  // gesture, no half-stops.
+  // Native touch scroll handles the in-gesture follow. On release we INSTANTLY
+  // jump scrollTop to the target card — no animation, just a hard cut. The
+  // visible "swipe" is the user's own finger drag; the post-release transition
+  // is a discrete page flip. Wheel events use the same instant snap with a
+  // short cooldown so trackpad scrolls don't fire faster than one card per
+  // gesture.
+  const WHEEL_LOCK_MS = 160;
+  // Px traveled before a swipe is treated as an intent to advance. Velocity
+  // threshold below picks up confident flicks below this distance.
+  const SWIPE_DISTANCE_PX = 22;
+  // px/ms — ~"confident phone flick". Lower would advance on accidental slides.
+  const SWIPE_VELOCITY_PX_MS = 0.35;
 
   let touchStartY = 0;
   let touchStartScroll = 0;
+  let touchStartTime = 0;
   let touchActive = false;
   let wheelLockedUntil = 0;
-  let scrollAnimId: number | null = null;
 
-  function animateScrollTo(target: number, duration = 200): void {
+  function snapTo(target: number): void {
     const s = scroller;
     if (!s) return;
-    if (scrollAnimId !== null) {
-      cancelAnimationFrame(scrollAnimId);
-      scrollAnimId = null;
-    }
-    const start = s.scrollTop;
-    const dist = target - start;
-    if (Math.abs(dist) < 1) return;
-    const startTime = performance.now();
-    const tick = (t: number): void => {
-      if (!scroller) return;
-      const elapsed = t - startTime;
-      const p = Math.min(elapsed / duration, 1);
-      // ease-out quart — quick start, soft landing.
-      const eased = 1 - Math.pow(1 - p, 4);
-      scroller.scrollTop = start + dist * eased;
-      if (p < 1) {
-        scrollAnimId = requestAnimationFrame(tick);
-      } else {
-        scrollAnimId = null;
-      }
-    };
-    scrollAnimId = requestAnimationFrame(tick);
+    s.scrollTop = target;
   }
 
   function onPointerDown(e: PointerEvent): void {
@@ -442,6 +458,7 @@
     touchActive = true;
     touchStartY = e.clientY;
     touchStartScroll = s.scrollTop;
+    touchStartTime = performance.now();
   }
 
   function onPointerUp(e: PointerEvent): void {
@@ -453,16 +470,20 @@
     const h = s.clientHeight;
     if (h <= 0) return;
     const dy = touchStartY - e.clientY;
+    const dt = Math.max(1, performance.now() - touchStartTime);
+    // px/ms; positive = swipe up. Used so a fast flick always advances even
+    // when the finger barely moved — same feel as TikTok's gesture.
+    const velocity = dy / dt;
     // Compute the index the user STARTED from so a partial mid-card swipe
     // still resolves to a clean ±1 step rather than landing the user where
-    // their inertial scroll happened to stop.
+    // their drag happened to stop.
     const startIdx = Math.round(touchStartScroll / h);
     let target = startIdx;
-    if (Math.abs(dy) > 30) {
+    if (Math.abs(dy) > SWIPE_DISTANCE_PX || Math.abs(velocity) > SWIPE_VELOCITY_PX_MS) {
       target = startIdx + (dy > 0 ? 1 : -1);
     }
     target = Math.max(0, Math.min(items.length - 1, target));
-    animateScrollTo(target * h);
+    snapTo(target * h);
   }
 
   function onPointerCancel(): void {
@@ -480,12 +501,12 @@
       e.preventDefault();
       const now = performance.now();
       if (now < wheelLockedUntil) return;
-      wheelLockedUntil = now + 280;
+      wheelLockedUntil = now + WHEEL_LOCK_MS;
       const h = s.clientHeight;
       if (h <= 0) return;
       const dir = e.deltaY > 0 ? 1 : -1;
       const target = Math.max(0, Math.min(items.length - 1, currentIndex + dir));
-      animateScrollTo(target * h);
+      snapTo(target * h);
     };
     s.addEventListener("wheel", handler, { passive: false });
     return () => s.removeEventListener("wheel", handler);
@@ -652,7 +673,9 @@
 {:else}
   <!-- Feed phase. Body scroll is locked by the layout (`isFeedActive`); the
        scroller below owns vertical scroll with snap-to-card, and the floating
-       nav is hidden so each card reaches the screen edge. -->
+       nav and top header are hidden so each card reaches the screen edge.
+       Back lives inside each card's action rail so the viewport has nothing
+       on top — TikTok-like. -->
   <div class="feed-shell">
     {#if feedError}
       <div class="feed-error">
@@ -701,6 +724,8 @@
             {genreById}
             isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
             onAdd={handleAdd}
+            backHref="{base}/discover/feed/"
+            {onBack}
           />
         {/each}
         {#if loading}
