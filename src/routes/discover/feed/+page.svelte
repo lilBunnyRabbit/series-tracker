@@ -257,6 +257,15 @@
     return Math.abs(i - currentIndex) <= 2;
   }
 
+  // True while the user is dragging or the post-release snap is animating.
+  // Toggled into a class on the viewport so CSS can cancel the rail's
+  // backdrop-filter for the duration — see the `.feed-viewport.is-moving`
+  // rule in the stylesheet below. backdrop-filter rasterizes per-frame
+  // against the content underneath, and that content is precisely what's
+  // translating every frame, so leaving it on during motion is the main
+  // mobile lag source.
+  const isMoving = $derived(dragOffset !== 0 || transitioning);
+
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
   let dataCtrl: AbortController | null = null;
@@ -809,6 +818,7 @@
       <div
         bind:this={viewport}
         class="feed-viewport"
+        class:is-moving={isMoving}
         role="region"
         aria-label="Feed"
         aria-roledescription="carousel"
@@ -900,6 +910,19 @@
   .feed-slot {
     position: absolute;
     inset: 0;
+  }
+
+  /* While the carousel is actively moving (drag in progress, or the
+     post-release snap animation in flight), kill the rail buttons'
+     backdrop-filter. The blur runs against the content directly under
+     each button, and that content is being transformed every frame —
+     so backdrop-filter re-rasterizes per-frame across ~15 button-sized
+     regions on mobile. Restoring at rest costs nothing: the underneath
+     content is static, the blur is cached. `:global` is needed because
+     `.feed-action-circle` is scoped to FeedCard's component CSS. */
+  .feed-viewport.is-moving :global(.feed-action-circle) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   /* Bottom-anchored pill for "loading more" / "end of feed". Overlays so

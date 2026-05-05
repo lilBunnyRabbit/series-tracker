@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.6] - 2026-05-05
+
+### Fixed
+- Feed swipes are noticeably smoother on mobile — the frosted-glass blur on the action-rail buttons now drops out while you're actively swiping and reappears when the card settles.
+
 ## [0.13.5] - 2026-05-05
 
 ### Fixed
