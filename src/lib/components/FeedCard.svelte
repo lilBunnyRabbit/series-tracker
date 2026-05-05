@@ -119,8 +119,8 @@
     <TypeBadge {kind} variant="overlay" />
   </div>
 
-  <!-- Poster sits at the bottom of its flex region with padding above the
-       text — alignment via align-items: flex-end on the parent. -->
+  <!-- Poster + headline stack: poster, optional resume stripe, then a large
+       centered title. Together they form the visual focal point of the card. -->
   <div class="feed-poster-area">
     <a
       href={detailHref}
@@ -136,10 +136,7 @@
         </div>
       {/if}
     </a>
-  </div>
 
-  <!-- Bottom-left content. No box — plain text over the matte bg. -->
-  <div class="feed-text">
     {#if isLastViewed}
       <div class="feed-resume-marker" aria-label="Resumed here">
         <span>Where you left off</span>
@@ -147,9 +144,13 @@
     {/if}
 
     <h2 class="feed-title {existing && statusColor ? statusColor.text : ''}">{title}</h2>
+  </div>
 
+  <!-- Bottom-left content. Title moved up under the poster; this region now
+       holds supporting metadata and the overview. -->
+  <div class="feed-text">
     <div class="feed-meta">
-      {#if year}<span class="tabular-nums">{year}</span>{/if}
+      {#if year}<span class="feed-year tabular-nums">{year}</span>{/if}
       {#if voteAverage > 0}
         {#if year}<span class="feed-meta-sep" aria-hidden="true">·</span>{/if}
         <span class="tabular-nums">★ {voteAverage.toFixed(1)}</span>
@@ -324,22 +325,27 @@
   .feed-poster-area {
     /* Spans the full card height so the poster's vertical position is
        controlled by padding-top alone, independent of the backdrop or text
-       sizes. The wrapper itself is click-transparent — only the <a> poster
-       inside reactivates pointer events for the tap-to-details target. */
+       sizes. Now a flex column so the resume stripe and big title can stack
+       below the poster as a single headline group.
+       The wrapper itself is click-transparent — only the <a> poster inside
+       reactivates pointer events for the tap-to-details target. */
     position: absolute;
     inset: 0;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
     /* Backdrop ends at 42%; one-third puts the poster just inside the fade
        so it visually anchors on top of the backdrop seam, not below it. */
     padding: 33% 1rem 0;
+    gap: 1rem;
     z-index: 2;
     pointer-events: none;
   }
 
   .feed-poster-area > .feed-poster {
     pointer-events: auto;
+    /* Center just the poster — title and resume stripe stretch full-width
+       below so their text/lines can read as proper headline elements. */
+    align-self: center;
   }
 
   .feed-poster {
@@ -390,18 +396,28 @@
   }
 
   .feed-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
     margin: 0;
-    flex: 1;
-    min-width: 0;
+    text-align: center;
+    /* Cap to two lines so a long title doesn't push the meta/overview region
+     up into the headline group on small screens. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    /* Soft drop shadow keeps the headline legible on the backdrop fade behind
+       the upper third of the title on short viewports. */
+    text-shadow: 0 2px 10px rgb(0 0 0 / 0.55);
   }
 
-  /* "Where you left off" stripe — sits above the title and visually separates
-     the poster from the rest of the text. Centered label flanked by accent
-     gradient lines that fade out at the edges. */
+  /* "Where you left off" stripe — sits between the poster and the headline
+     title, visually separating the poster section from the title group.
+     Centered label flanked by accent gradient lines that fade out at the
+     edges. */
   .feed-resume-marker {
     display: flex;
     align-items: center;
@@ -411,9 +427,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-accent);
-    /* Slight extra breathing room before the title since this acts as a
-       section divider, not a stacked text line. */
-    margin-bottom: 0.1rem;
   }
 
   .feed-resume-marker::before,
@@ -445,9 +458,19 @@
   .feed-genres {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.75rem;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Year is the most useful single-glance fact in the meta row, so we promote
+     it to a larger weight to anchor the row visually. The neighbouring rating /
+     language stay at the base meta size so the year reads as the headline. */
+  .feed-year {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
   }
 
   .feed-meta-sep {
@@ -456,16 +479,17 @@
 
   .feed-genres {
     color: color-mix(in oklab, var(--color-text) 80%, transparent);
+    font-size: 0.8125rem;
   }
 
   .feed-overview {
     margin: 0;
-    font-size: 0.8125rem;
-    line-height: 1.45;
+    font-size: 0.875rem;
+    line-height: 1.5;
     color: color-mix(in oklab, var(--color-text) 92%, transparent);
     display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    -webkit-line-clamp: 6;
+    line-clamp: 6;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -553,13 +577,20 @@
     }
     .feed-poster-area {
       padding-top: 26%;
+      gap: 0.625rem;
     }
     .feed-poster {
       width: min(42vw, 9.5rem);
     }
+    .feed-title {
+      font-size: 1.5rem;
+    }
+    .feed-year {
+      font-size: 1rem;
+    }
     .feed-overview {
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
     }
   }
 
