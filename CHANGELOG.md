@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-05
+
+### Changed
+- Feed now uses Embla under the hood for the swipe + snap. Drag follows your finger through to the next card without an obvious "stop, then snap" — momentum carries continuously into the commit. Should feel noticeably smoother on phones.
+
 ## [0.13.8] - 2026-05-05
 
 ### Fixed

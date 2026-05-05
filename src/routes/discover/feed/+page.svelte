@@ -12,6 +12,8 @@
   import { discover, genreList, entryFromSearchResult } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import type { DiscoverSort, FeedSession, Genre, Status } from "$lib/types";
+  import emblaCarouselSvelte from "embla-carousel-svelte";
+  import type { EmblaCarouselType, EmblaOptionsType } from "embla-carousel";
   import { untrack } from "svelte";
 
   const onBack = smartBack();
@@ -237,42 +239,71 @@
   let loading = $state(false);
   let feedError = $state<string | null>(null);
 
-  // Transform-driven carousel state. JS owns the entire vertical motion —
-  // see the gesture / wheel / keyboard section near the bottom of the script
-  // for the commit logic. Native scroll is intentionally NOT used so the
-  // in-gesture feel doesn't pick up browser momentum / rubber-band.
-  //
-  // Track translate uses `calc(-N * 100% + drag px)` and each slot uses
-  // `i * 100%`. Both percentages resolve against the same containing block
-  // (the viewport's content box), so the index step is pixel-perfect even
-  // on fractional-height viewports — no clientHeight rounding to manage.
-  //
-  // The drag's per-frame transform writes go DIRECTLY to the DOM via the
-  // bound track element — they intentionally bypass Svelte's reactivity so
-  // a high-rate pointermove stream (mobile touchscreens commonly fire
-  // above 60Hz) doesn't churn through a microtask flush per event. Index
-  // changes still flow through state + $effect so Svelte handles the
-  // transition class + commit transform together.
-  let viewport = $state<HTMLDivElement>();
-  let trackEl = $state<HTMLDivElement>();
+  // Embla owns the entire vertical motion. Past in-house implementations
+  // hit two walls: native scroll-snap felt "too much like normal scrolling"
+  // (browser-driven post-release physics), and a JS-driven track ran into
+  // mobile main-thread lag we couldn't escape. Embla's drag handling lives
+  // in well-tuned C-like JS that's been stress-tested across phones —
+  // momentum + snap commit feel continuous instead of "stop, then snap".
+  let emblaApi = $state<EmblaCarouselType>();
   let currentIndex = $state(0);
-  let dragging = $state(false); // true while the user has crossed the drag slop
-  let transitioning = $state(false); // true while the post-release transform animates
+  let isMoving = $state(false);
+  // Set by runResume once the saved-session item has been located in
+  // `items`. A dedicated effect picks up the (emblaApi, idx) pair and
+  // does the instant scroll — decoupling avoids racing against Embla's
+  // mutation-observer-based slide registration.
+  let pendingResumeIndex = $state<number | null>(null);
 
-  // ±2 mounting window keeps the active card plus immediate neighbours alive
-  // without paying for every off-screen FeedCard in a 200+ item session.
-  function isVisible(i: number): boolean {
-    return Math.abs(i - currentIndex) <= 2;
+  const emblaOptions: EmblaOptionsType = {
+    axis: "y",
+    align: "start",
+    // `trimSnaps` clamps to first / last instead of letting the user pull
+    // past the edges with rubber-band momentum.
+    containScroll: "trimSnaps",
+    // Each release resolves to exactly one card; a fast flick can't fly
+    // past two slides — same TikTok intent as our previous custom impl.
+    skipSnaps: false,
+    // Embla's "duration" is in arbitrary units, default 25. Lower = sharper
+    // snap. 22 is the sweet spot in testing — quick enough to feel decisive,
+    // long enough that the eye reads the transition.
+    duration: 22,
+  };
+
+  function onEmblaInit(e: CustomEvent<EmblaCarouselType>): void {
+    const api = e.detail;
+    emblaApi = api;
+    api.on("select", () => {
+      currentIndex = api.selectedScrollSnap();
+    });
+    // `scroll` fires throughout drag + momentum, `settle` fires once
+    // motion stops (drag commit, programmatic scroll, or snap-back). The
+    // `is-moving` class drops the rail's backdrop-filter for the duration.
+    api.on("scroll", () => {
+      isMoving = true;
+    });
+    api.on("settle", () => {
+      isMoving = false;
+    });
+    api.on("pointerDown", () => {
+      isMoving = true;
+    });
   }
 
-  // True while the user is dragging or the post-release snap is animating.
-  // Toggled into a class on the viewport so CSS can cancel the rail's
-  // backdrop-filter for the duration — see the `.feed-viewport.is-moving`
-  // rule in the stylesheet below. backdrop-filter rasterizes per-frame
-  // against the content underneath, and that content is precisely what's
-  // translating every frame, so leaving it on during motion is the main
-  // mobile lag source.
-  const isMoving = $derived(dragging || transitioning);
+  // After resume identifies the target index AND Embla is ready, jump there
+  // without animation. reInit() forces Embla to re-scan the slide DOM so a
+  // freshly-pushed item that hadn't yet flown through its mutation observer
+  // is still in scope for scrollTo.
+  $effect(() => {
+    const api = emblaApi;
+    const idx = pendingResumeIndex;
+    if (!api) return;
+    if (idx === null) return;
+    untrack(() => {
+      api.reInit();
+      api.scrollTo(idx, true);
+      pendingResumeIndex = null;
+    });
+  });
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -367,7 +398,9 @@
     }
     const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
     if (finalIdx < 0) return;
-    goTo(finalIdx, { animate: false });
+    // Hand off to the resume effect — it'll wait for emblaApi to be ready
+    // before scrollTo. This decouples runResume from Embla's init timing.
+    pendingResumeIndex = finalIdx;
   }
 
   // Reset and reload whenever the feed-phase filters change (or we re-enter
@@ -389,7 +422,14 @@
     void genres.join(",");
 
     untrack(() => {
-      resetCarousel();
+      currentIndex = 0;
+      isMoving = false;
+      pendingResumeIndex = null;
+      // The carousel will unmount when items=[] because the {:else} render
+      // branch swaps to skeleton/empty UI. Clearing emblaApi here makes
+      // sure the resume / wheel / key effects don't fire against a
+      // destroyed instance during the unmount → remount window.
+      emblaApi = undefined;
       if (ph !== "feed") {
         if (dataCtrl) {
           dataCtrl.abort();
@@ -419,131 +459,6 @@
         await runResume();
       })();
     });
-  });
-
-  // ---- Snappy commit: transform-driven carousel ----
-  //
-  // The viewport sets `touch-action: none` so the browser does no scrolling
-  // / rubber-banding of its own. Pointer events drive the transform
-  // directly: in-gesture drag follows the finger 1:1, release commits to
-  // either the next slot or snaps back. Wheel and arrow keys hit the same
-  // goTo entry point so every path animates identically.
-  //
-  // Why not native scroll-snap: even with mandatory snap, browsers add their
-  // own physics between the release point and the target — variable duration,
-  // momentum, rubber-band — which is the exact "feels like normal scrolling"
-  // sensation we want to drop. Owning the gesture is the only way around that.
-  // 240ms with a sharp ease-out (TikTok-ish): cubic-bezier(0.16, 1, 0.3, 1).
-  // Both values live in CSS too — keep the duration here and the timing
-  // function in `.feed-track--animating` aligned if either changes.
-  const SNAP_DURATION_MS = 240;
-  // Px traveled before a slow drag commits to the next card.
-  const SWIPE_DISTANCE_PX = 22;
-  // px/ms threshold for a confident flick that commits regardless of distance.
-  const SWIPE_VELOCITY_PX_MS = 0.35;
-  // Movement budget before we claim the gesture as a drag — under this we
-  // stay passive so a tap on a child button still produces a click.
-  const DRAG_SLOP_PX = 4;
-  // Multiplier applied while overscrolling past the first / last card.
-  const EDGE_RESISTANCE = 0.4;
-  // Wheel cooldown ≥ snap duration + a margin so trackpads can't fire
-  // faster than one card per gesture.
-  const WHEEL_LOCK_MS = SNAP_DURATION_MS + 20;
-
-  let touchStartY = 0;
-  let touchStartTime = 0;
-  let touchPointerId = -1;
-  let wheelLockedUntil = 0;
-  let transitionTimer: ReturnType<typeof setTimeout> | null = null;
-
-  // Per-frame drag state lives outside Svelte's reactivity. Each
-  // pointermove writes transform straight to the bound track element —
-  // no microtask flush, no rAF gate. rAF batching was tried and made the
-  // lag *worse*: when a pointermove arrives just after a vsync, the rAF
-  // callback can't reach the next frame and slips a whole 16ms behind.
-  // Direct writes let the browser coalesce multiple style updates per
-  // frame at the compositor for free, and we always commit the latest
-  // finger position to the next paint.
-  let dragOffsetLocal = 0;
-
-  function applyEdgeResistance(rawDy: number): number {
-    if (currentIndex <= 0 && rawDy > 0) return rawDy * EDGE_RESISTANCE;
-    if (currentIndex >= items.length - 1 && rawDy < 0) return rawDy * EDGE_RESISTANCE;
-    return rawDy;
-  }
-
-  /** Direct DOM transform write. Bypasses Svelte so the per-frame drag
-   *  doesn't churn the reactivity flush. The track is layer-promoted, so
-   *  this update is a compositor-thread transform — no main-thread paint. */
-  function paintTrack(dragPx: number): void {
-    if (!trackEl) return;
-    trackEl.style.transform = `translate3d(0, calc(${-currentIndex * 100}% + ${dragPx}px), 0)`;
-  }
-
-  /** Single entry point for any index change. `animate: false` skips the
-   *  CSS transition (used by resume + reset). */
-  function goTo(target: number, opts: { animate?: boolean } = {}): void {
-    const { animate = true } = opts;
-    if (items.length === 0) {
-      currentIndex = 0;
-      dragOffsetLocal = 0;
-      transitioning = false;
-      paintTrack(0);
-      return;
-    }
-    const clamped = Math.max(0, Math.min(items.length - 1, target));
-    const indexChanged = clamped !== currentIndex;
-    const hadDrag = dragOffsetLocal !== 0;
-    if (!indexChanged && !hadDrag) return;
-    if (transitionTimer !== null) {
-      clearTimeout(transitionTimer);
-      transitionTimer = null;
-    }
-    transitioning = animate;
-    dragOffsetLocal = 0;
-    if (indexChanged) {
-      currentIndex = clamped;
-      // The currentIndex $effect below paints in response. The transition
-      // class flushes in the same Svelte tick — browser sees both and
-      // animates the transform from its current (drag-applied) value to
-      // the new index's rest position.
-    } else {
-      // Snap-back: $effect doesn't fire because currentIndex is unchanged,
-      // so paint the rest position directly. queueMicrotask defers past
-      // Svelte's class flush so the transition class is in place when the
-      // browser sees the transform change.
-      queueMicrotask(() => paintTrack(0));
-    }
-    if (animate) {
-      transitionTimer = setTimeout(() => {
-        transitioning = false;
-        transitionTimer = null;
-      }, SNAP_DURATION_MS);
-    }
-  }
-
-  /** Wipe gesture / transform state without touching items / pages. Called
-   *  from the reset effect when filters change. */
-  function resetCarousel(): void {
-    if (transitionTimer !== null) {
-      clearTimeout(transitionTimer);
-      transitionTimer = null;
-    }
-    currentIndex = 0;
-    dragOffsetLocal = 0;
-    transitioning = false;
-    dragging = false;
-    touchPointerId = -1;
-    wheelLockedUntil = 0;
-  }
-
-  // Repaint the track when currentIndex (or the track ref) changes. The
-  // drag offset is local-only and resets to 0 on commit — at that point the
-  // active card is back at y=0, no drag in flight.
-  $effect(() => {
-    void currentIndex;
-    void trackEl;
-    paintTrack(0);
   });
 
   // Persist the last-seen item when currentIndex changes. Filters / page
@@ -580,88 +495,45 @@
     }
   });
 
-  function onPointerDown(e: PointerEvent): void {
-    if (e.pointerType !== "touch") return;
-    if (transitioning) return;
-    if (touchPointerId !== -1) return; // ignore a second finger
-    touchPointerId = e.pointerId;
-    touchStartY = e.clientY;
-    touchStartTime = performance.now();
-    dragging = false;
-  }
+  // Wheel + keyboard navigation. Trackpad scrolls fire many small wheel
+  // events per gesture; the cooldown caps the result to one card per
+  // gesture. Embla itself only handles touch + mouse drag — wheels and
+  // keys are still on us.
+  const WHEEL_LOCK_MS = 260;
+  let wheelLockedUntil = 0;
 
-  function onPointerMove(e: PointerEvent): void {
-    if (e.pointerId !== touchPointerId) return;
-    const dy = e.clientY - touchStartY;
-    if (!dragging) {
-      if (Math.abs(dy) < DRAG_SLOP_PX) return;
-      dragging = true;
-      // Capture so subsequent move/up events reach the viewport even if the
-      // finger drifts over a child button or off-element. Without this, a
-      // pointerup on a tap target would fire its click after a drag.
-      viewport?.setPointerCapture(touchPointerId);
-    }
-    dragOffsetLocal = applyEdgeResistance(dy);
-    paintTrack(dragOffsetLocal);
-  }
-
-  function onPointerUp(e: PointerEvent): void {
-    if (e.pointerId !== touchPointerId) return;
-    touchPointerId = -1;
-    if (!dragging) return; // pure tap — let the click event flow through
-    dragging = false;
-    const dy = e.clientY - touchStartY;
-    const dt = Math.max(1, performance.now() - touchStartTime);
-    // px/ms; negative dy = swipe up = advance.
-    const velocity = dy / dt;
-    let target = currentIndex;
-    if (Math.abs(dy) > SWIPE_DISTANCE_PX || Math.abs(velocity) > SWIPE_VELOCITY_PX_MS) {
-      target = currentIndex + (dy < 0 ? 1 : -1);
-    }
-    goTo(target, { animate: true });
-  }
-
-  function onPointerCancel(e: PointerEvent): void {
-    if (e.pointerId !== touchPointerId) return;
-    touchPointerId = -1;
-    if (!dragging) return;
-    dragging = false;
-    // Snap back to the active card with the same animation.
-    goTo(currentIndex, { animate: true });
-  }
-
-  // Wheel attached imperatively so we can preventDefault — passive listeners
-  // can't, and Svelte's onwheel is passive on some setups.
   $effect(() => {
-    const v = viewport;
-    if (!v) return;
+    const api = emblaApi;
+    if (!api) return;
+    const root = api.rootNode();
     const handler = (e: WheelEvent): void => {
       if (Math.abs(e.deltaY) < 4) return;
       e.preventDefault();
-      if (transitioning) return;
       const now = performance.now();
       if (now < wheelLockedUntil) return;
       wheelLockedUntil = now + WHEEL_LOCK_MS;
-      goTo(currentIndex + (e.deltaY > 0 ? 1 : -1), { animate: true });
+      if (e.deltaY > 0) api.scrollNext();
+      else api.scrollPrev();
     };
-    v.addEventListener("wheel", handler, { passive: false });
-    return () => v.removeEventListener("wheel", handler);
+    root.addEventListener("wheel", handler, { passive: false });
+    return () => root.removeEventListener("wheel", handler);
   });
 
   function onKeyDown(e: KeyboardEvent): void {
-    if (transitioning) return;
+    const api = emblaApi;
+    if (!api) return;
     if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") {
       e.preventDefault();
-      goTo(currentIndex + 1, { animate: true });
+      api.scrollNext();
     } else if (e.key === "ArrowUp" || e.key === "PageUp") {
       e.preventDefault();
-      goTo(currentIndex - 1, { animate: true });
+      api.scrollPrev();
     } else if (e.key === "Home") {
       e.preventDefault();
-      goTo(0, { animate: true });
+      api.scrollTo(0);
     } else if (e.key === "End") {
       e.preventDefault();
-      goTo(items.length - 1, { animate: true });
+      api.scrollTo(items.length - 1);
     }
   }
 
@@ -864,43 +736,34 @@
     {:else}
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
-        bind:this={viewport}
-        class="feed-viewport"
+        class="embla"
         class:is-moving={isMoving}
         role="region"
         aria-label="Feed"
         aria-roledescription="carousel"
         tabindex="-1"
-        onpointerdown={onPointerDown}
-        onpointermove={onPointerMove}
-        onpointerup={onPointerUp}
-        onpointercancel={onPointerCancel}
         onkeydown={onKeyDown}
+        use:emblaCarouselSvelte={{ options: emblaOptions, plugins: [] }}
+        onemblaInit={onEmblaInit}
       >
-        <div
-          bind:this={trackEl}
-          class="feed-track"
-          class:feed-track--animating={transitioning}
-        >
-          {#each items as item, i (item.media_type + ":" + item.id)}
-            {#if isVisible(i)}
-              <div class="feed-slot" style:transform="translate3d(0, {i * 100}%, 0)">
-                <FeedCard
-                  {item}
-                  {genreById}
-                  isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
-                  onAdd={handleAdd}
-                  backHref="{base}/discover/feed/"
-                  {onBack}
-                />
-              </div>
-            {/if}
+        <div class="embla__container">
+          {#each items as item (item.media_type + ":" + item.id)}
+            <div class="embla__slide">
+              <FeedCard
+                {item}
+                {genreById}
+                isLastViewed={resumeTargetKey === `${item.media_type}:${item.id}`}
+                onAdd={handleAdd}
+                backHref="{base}/discover/feed/"
+                {onBack}
+              />
+            </div>
           {/each}
         </div>
 
         <!-- Status pill: overlays the bottom of the viewport when more is
              loading or we've hit the end, so the user gets feedback without
-             us inserting a non-content slot they have to swipe past. -->
+             us inserting a non-content slide they have to swipe past. -->
         {#if loading && currentIndex >= items.length - 1}
           <div class="feed-status-pill" aria-live="polite">Loading more…</div>
         {:else if nextPage > totalPages && currentIndex >= items.length - 1}
@@ -921,54 +784,40 @@
     background: var(--color-bg);
   }
 
-  /* Viewport owns all vertical motion via the inner track's transform. No
-     overflow scroll, no scroll-snap, no native momentum — `touch-action:
-     none` hands every gesture straight to the pointer handlers. */
-  .feed-viewport {
+  /* Embla viewport. Embla itself sets `touch-action` and the transform on
+     the container; we just give it a sized, clipped box to live in. */
+  .embla {
     flex: 1;
     min-height: 0;
     position: relative;
     overflow: hidden;
-    touch-action: none;
     /* Tab-focusable but no visible ring — the cards' own interactive
        elements provide the focus story. */
     outline: none;
   }
 
-  .feed-track {
-    position: absolute;
-    inset: 0;
-    /* GPU-promoted so the per-frame transform updates during a drag don't
-       hit layout / paint. */
-    will-change: transform;
+  .embla__container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
-  /* Animated commit: applied only while transitioning so the in-gesture
-     drag stays at-the-finger (transform changes need to be immediate). */
-  .feed-track--animating {
-    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Each slide fills the viewport vertically. flex-basis: 100% on a column
+     flex container = 100% of the container's height. */
+  .embla__slide {
+    flex: 0 0 100%;
+    min-height: 0;
   }
 
-  /* Each slot is the size of the viewport, stacked via its own translate
-     so the track's transform alone is enough to address any card. No
-     `will-change` here: the slot's transform is static (only depends on
-     its index), so layer-promoting every slot just multiplies GPU layers
-     and warms backdrop-filter rasters for off-screen cards we'll never
-     see. The track owns the layer; slots composite into it. */
-  .feed-slot {
-    position: absolute;
-    inset: 0;
-  }
-
-  /* While the carousel is actively moving (drag in progress, or the
-     post-release snap animation in flight), kill the rail buttons'
-     backdrop-filter. The blur runs against the content directly under
-     each button, and that content is being transformed every frame —
-     so backdrop-filter re-rasterizes per-frame across ~15 button-sized
-     regions on mobile. Restoring at rest costs nothing: the underneath
-     content is static, the blur is cached. `:global` is needed because
-     `.feed-action-circle` is scoped to FeedCard's component CSS. */
-  .feed-viewport.is-moving :global(.feed-action-circle) {
+  /* While the carousel is actively moving (drag in progress, momentum
+     coast, or the snap commit), kill the rail buttons' backdrop-filter.
+     The blur runs against the content directly under each button, and
+     that content is what's translating every frame — so backdrop-filter
+     re-rasterizes per-frame across ~15 button-sized regions on mobile.
+     Restoring at rest costs nothing: the content is static, blur cached.
+     `:global` is needed because `.feed-action-circle` is scoped to
+     FeedCard's component CSS. */
+  .embla.is-moving :global(.feed-action-circle) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
