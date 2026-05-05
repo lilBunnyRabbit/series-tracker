@@ -80,13 +80,18 @@
   // Season /info subroute is excluded — it's a regular scrolling page and
   // should keep the standard floating nav.
   const isSeasonRoute = $derived(/^\/show\/\d+\/season\/\d+\/?$/.test(relPath));
-  const hideFloatingNav = $derived(relPath.startsWith("/search") || isSeasonRoute);
+  // The feed route only owns the viewport once the user has tapped Start
+  // (?start=1) — its setup screen is a regular scrolling page.
+  const isFeedActive = $derived(
+    relPath.startsWith("/discover/feed") && page.url.searchParams.get("start") === "1"
+  );
+  const hideFloatingNav = $derived(relPath.startsWith("/search") || isSeasonRoute || isFeedActive);
 
   // Routes that lock body scroll and let an internal flex column own scrolling
   // (so the bottom island reaches the viewport edge). Layout.css picks up the
   // .scroll-locked class on <html> and constrains body / main accordingly.
   $effect(() => {
-    if (!isSeasonRoute) return;
+    if (!isSeasonRoute && !isFeedActive) return;
     document.documentElement.classList.add("scroll-locked");
     return () => document.documentElement.classList.remove("scroll-locked");
   });
@@ -128,6 +133,7 @@
     if (relPath.startsWith("/upcoming")) return "Upcoming";
     if (relPath.startsWith("/search")) return "Search";
     if (relPath.startsWith("/discover/browse")) return "Browse";
+    if (relPath.startsWith("/discover/feed")) return "Feed";
     if (relPath.startsWith("/discover")) return "Discover";
     if (relPath.startsWith("/stats")) return "Profile";
     if (relPath.startsWith("/leaderboard")) return "Leaderboard";
@@ -152,6 +158,12 @@
     const detail = relPath.match(/^\/(show|movie)\/\d+\/?$/);
     if (detail) return `${base}/`;
     if (relPath.startsWith("/discover/browse")) return `${base}/discover/`;
+    // While the feed is active, "back" should bring the user to its setup
+    // screen rather than all the way to discover — they likely want to tweak
+    // filters and start a fresh feed.
+    if (relPath.startsWith("/discover/feed") && page.url.searchParams.get("start") === "1")
+      return `${base}/discover/feed/`;
+    if (relPath.startsWith("/discover/feed")) return `${base}/discover/`;
     // Search hides the floating footer, so give it a back button to return home.
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;

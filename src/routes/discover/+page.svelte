@@ -185,6 +185,14 @@
     {hideAdded ? "✓ Hiding added" : "Hide added"}
   </button>
   <a
+    href="{base}/discover/feed/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
+  >
+    <Icon name="play" size={14} />
+    <span>Feed</span>
+  </a>
+  <a
     href="{base}/discover/browse/{hideAdded ? '?hidden=1' : ''}"
     use:tactile={{ haptic: false }}
     class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover-border-primary"

@@ -276,6 +276,31 @@ export type DiaryEntry = {
   createdAt: string;
 };
 
+export type DiscoverSort =
+  | "popularity.desc"
+  | "popularity.asc"
+  | "vote_average.desc"
+  | "vote_average.asc"
+  | "newest"
+  | "oldest"
+  | "title.asc"
+  | "title.desc";
+
+/** Persistent state for the vertical Feed browser. Captured on every visible
+ *  item change so users can resume where they left off across app restarts.
+ *  Filters are snapshotted with the session so resume runs against the same
+ *  result space the user was scrolling through. */
+export type FeedSession = {
+  kind: "tv" | "movie";
+  sort: DiscoverSort;
+  /** TMDB genre IDs (kind-specific space). */
+  genres: number[];
+  hideAdded: boolean;
+  /** "tv:123" / "movie:456" — most-recent item the user dwelled on. */
+  lastSeenKey: string;
+  updatedAt: string;
+};
+
 export type Store = {
   apiKey: string | null;
   library: Record<string, Entry>;
@@ -283,6 +308,7 @@ export type Store = {
   preferences: Preferences;
   diary: DiaryEntry[];
   actions: ActionEntry[];
+  feedSession?: FeedSession | null;
   version: number;
 };
 

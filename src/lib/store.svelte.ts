@@ -1,11 +1,22 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
 import { effectiveSeasons } from "./types";
-import type { ActionEntry, ActionType, DiaryEntry, Entry, Preferences, Season, Status, Store, TvEntry } from "./types";
+import type {
+  ActionEntry,
+  ActionType,
+  DiaryEntry,
+  Entry,
+  FeedSession,
+  Preferences,
+  Season,
+  Status,
+  Store,
+  TvEntry,
+} from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const SEARCH_HISTORY_LIMIT = 8;
 const ACTIONS_LIMIT = 200;
 const SAVE_DEBOUNCE_MS = 300;
@@ -31,6 +42,11 @@ type PersistedV5 = PersistedV4;
 type PersistedV6 = PersistedV5 & {
   actions?: ActionEntry[];
 };
+// V7 — added optional `feedSession` for the vertical Feed browser's resume
+// state. Purely additive: missing field defaults to null.
+type PersistedV7 = PersistedV6 & {
+  feedSession?: FeedSession | null;
+};
 
 const empty: Store = {
   apiKey: null,
@@ -39,10 +55,11 @@ const empty: Store = {
   preferences: {},
   diary: [],
   actions: [],
+  feedSession: null,
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV6): Store {
+function migrate(parsed: PersistedV7): Store {
   return {
     apiKey: parsed.apiKey ?? null,
     library: parsed.library ?? {},
@@ -50,6 +67,7 @@ function migrate(parsed: PersistedV6): Store {
     preferences: parsed.preferences ?? {},
     diary: parsed.diary ?? [],
     actions: (parsed.actions ?? []).slice(0, ACTIONS_LIMIT),
+    feedSession: parsed.feedSession ?? null,
     version: SCHEMA_VERSION,
   };
 }
@@ -67,7 +85,7 @@ function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV6);
+    return migrate(JSON.parse(raw) as PersistedV7);
   } catch {
     return null;
   }
@@ -178,7 +196,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV6>(IDB_KEY);
+        let data = await idbGet<PersistedV7>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -199,6 +217,7 @@ function createStore() {
         state.preferences = next.preferences;
         state.diary = next.diary;
         state.actions = next.actions;
+        state.feedSession = next.feedSession ?? null;
         state.version = next.version;
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
@@ -296,6 +315,13 @@ function createStore() {
     },
     get actions(): ActionEntry[] {
       return state.actions;
+    },
+    get feedSession(): FeedSession | null {
+      return state.feedSession ?? null;
+    },
+
+    setFeedSession(session: FeedSession | null): void {
+      state.feedSession = session;
     },
 
     setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
@@ -850,6 +876,7 @@ function createStore() {
           preferences: state.preferences,
           diary: state.diary,
           actions: state.actions,
+          feedSession: state.feedSession,
         },
         null,
         2
@@ -857,7 +884,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV6);
+      const parsed = migrate(JSON.parse(text) as PersistedV7);
       let added = 0;
       let merged = 0;
 
@@ -868,6 +895,7 @@ function createStore() {
         state.preferences = parsed.preferences;
         state.diary = parsed.diary;
         state.actions = parsed.actions;
+        state.feedSession = parsed.feedSession ?? null;
         added = Object.keys(parsed.library).length;
       } else {
         if (!state.apiKey && parsed.apiKey) state.apiKey = parsed.apiKey;
@@ -928,6 +956,7 @@ function createStore() {
       state.preferences = {};
       state.diary = [];
       state.actions = [];
+      state.feedSession = null;
       state.version = SCHEMA_VERSION;
       try {
         await idbDelete(IDB_KEY);

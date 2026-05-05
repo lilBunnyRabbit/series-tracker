@@ -1,4 +1,5 @@
 import type {
+  DiscoverSort,
   Entry,
   Genre,
   MovieDetail,
@@ -17,6 +18,8 @@ import type {
   TvEntry,
   WatchProvidersResponse,
 } from "./types";
+
+export type { DiscoverSort } from "./types";
 
 const BASE = "https://api.themoviedb.org/3";
 const IMG = "https://image.tmdb.org/t/p";
@@ -151,8 +154,18 @@ export const seasonDetailFull = (seriesId: number, seasonNumber: number, key: st
   );
 
 export type RecommendationItem =
-  | (Extract<SearchMultiResult, { media_type: "movie" }> & { vote_average?: number })
-  | (Extract<SearchMultiResult, { media_type: "tv" }> & { vote_average?: number });
+  | (Extract<SearchMultiResult, { media_type: "movie" }> & {
+      vote_average?: number;
+      vote_count?: number;
+      genre_ids?: number[];
+      original_language?: string;
+    })
+  | (Extract<SearchMultiResult, { media_type: "tv" }> & {
+      vote_average?: number;
+      vote_count?: number;
+      genre_ids?: number[];
+      original_language?: string;
+    });
 
 type RecommendationPage<K extends "movie" | "tv"> = {
   page: number;
@@ -231,16 +244,6 @@ export type DiscoverPage = {
   results: RecommendationItem[];
 };
 
-export type DiscoverSort =
-  | "popularity.desc"
-  | "popularity.asc"
-  | "vote_average.desc"
-  | "vote_average.asc"
-  | "newest"
-  | "oldest"
-  | "title.asc"
-  | "title.desc";
-
 export type DiscoverFilters = {
   sort: DiscoverSort;
   /** TMDB genre IDs to AND-filter on (movie + tv have separate ID spaces). */
@@ -296,8 +299,30 @@ export async function discover(
     params.with_people = filters.withPeople.join(",");
   }
 
-  type RawTv = { id: number; name: string; poster_path: string | null; backdrop_path: string | null; first_air_date?: string; overview?: string; vote_average?: number };
-  type RawMovie = { id: number; title: string; poster_path: string | null; backdrop_path: string | null; release_date?: string; overview?: string; vote_average?: number };
+  type RawTv = {
+    id: number;
+    name: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    first_air_date?: string;
+    overview?: string;
+    vote_average?: number;
+    vote_count?: number;
+    genre_ids?: number[];
+    original_language?: string;
+  };
+  type RawMovie = {
+    id: number;
+    title: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    release_date?: string;
+    overview?: string;
+    vote_average?: number;
+    vote_count?: number;
+    genre_ids?: number[];
+    original_language?: string;
+  };
   type Raw = { page: number; total_pages: number; total_results: number; results: (RawTv | RawMovie)[] };
 
   const data = await get<Raw>(`/discover/${kind}`, apiKey, params, { signal, ttlMs: 5 * 60 * 1000 });

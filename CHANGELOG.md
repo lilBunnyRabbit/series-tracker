@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-05
+
+### Added
+- New "Feed" browse mode under Discover — full-screen, swipe-up scroll through TV shows or movies. Pick kind, sort, genre, and hide-added filters on the setup screen, then thumb through cards with a top backdrop, status-bordered poster, title, rating, genres, and overview. Pagination loads in the background as you scroll, and titles you add stay in place instead of vanishing from the queue.
+- TikTok-style action rail on each feed card — circular Details and Add / Change-status buttons pinned to the right edge.
+- The feed remembers where you left off — re-entering with the same filters (after opening details, reopening the app, or using "Resume where you left off" on the setup screen) snaps you back to that card with a "Where you left off" marker.
+
 ## [0.12.0] - 2026-05-05
 
 ### Added
