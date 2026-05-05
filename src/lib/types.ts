@@ -298,6 +298,12 @@ export type FeedSession = {
   hideAdded: boolean;
   /** "tv:123" / "movie:456" — most-recent item the user dwelled on. */
   lastSeenKey: string;
+  /** Highest TMDB page that had been fetched at save time. Resume uses this
+   *  to load the right number of pages up front rather than guessing — without
+   *  it, deep-scrolled sessions can't find their saved item because the
+   *  feed only fetched the first few pages on remount. Optional for back-compat
+   *  with sessions saved before this field existed. */
+  lastSeenPagesLoaded?: number;
   updatedAt: string;
 };
 

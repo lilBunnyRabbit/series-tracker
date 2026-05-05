@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-05-05
+
+### Fixed
+- Feed resume now lands you back on the right card after a deep scroll. Previously, returning from a detail page would silently snap you to the top of the feed if your last-viewed card was past the first hundred items.
+
 ## [0.13.0] - 2026-05-05
 
 ### Added

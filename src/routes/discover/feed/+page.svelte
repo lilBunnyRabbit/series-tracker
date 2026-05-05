@@ -29,9 +29,7 @@
 
   // ---- URL-derived state (mirrors /discover/browse so the feed view is shareable) ----
 
-  const phase = $derived<"setup" | "feed">(
-    page.url.searchParams.get("start") === "1" ? "feed" : "setup"
-  );
+  const phase = $derived<"setup" | "feed">(page.url.searchParams.get("start") === "1" ? "feed" : "setup");
   const kind = $derived.by<Kind>(() => {
     const v = page.url.searchParams.get("kind");
     return VALID_KIND.includes(v as Kind) ? (v as Kind) : "tv";
@@ -172,13 +170,7 @@
   /** Pure equality check for whether a saved session was scrolling against the
    *  same query space we're entering now. Genres are normalised to a sorted
    *  array on save, so a positional compare is enough. */
-  function feedSessionMatches(
-    s: FeedSession | null,
-    k: Kind,
-    so: DiscoverSort,
-    gs: number[],
-    ha: boolean
-  ): boolean {
+  function feedSessionMatches(s: FeedSession | null, k: Kind, so: DiscoverSort, gs: number[], ha: boolean): boolean {
     if (!s) return false;
     if (s.kind !== k || s.sort !== so || s.hideAdded !== ha) return false;
     if (s.genres.length !== gs.length) return false;
@@ -198,6 +190,11 @@
   // handler updates it on every visible item — that would otherwise make the
   // resume marker chase the user as they scroll.
   let resumeTargetKey = $state<string | null>(null);
+  // How many TMDB pages the user had fetched when they left. Resume uses this
+  // to load enough pages up front before searching for the key — otherwise a
+  // deep-scrolled session can't be found in the first couple of pages and we
+  // silently land them at scroll 0.
+  let resumeTargetPages = $state(0);
   let captured = false;
 
   $effect(() => {
@@ -209,6 +206,7 @@
     if (ph !== "feed") {
       captured = false;
       resumeTargetKey = null;
+      resumeTargetPages = 0;
       return;
     }
     if (captured) return;
@@ -218,8 +216,13 @@
       const gs = gKey ? gKey.split(",").map(Number) : [];
       if (feedSessionMatches(s, k, so, gs, ha)) {
         resumeTargetKey = s!.lastSeenKey;
+        // Legacy sessions (saved before pagesLoaded was tracked) fall back to
+        // 1, which combined with the safety cap below still tries hard enough
+        // for shallow scrolls.
+        resumeTargetPages = s!.lastSeenPagesLoaded ?? 1;
       } else {
         resumeTargetKey = null;
+        resumeTargetPages = 0;
       }
       captured = true;
     });
@@ -246,19 +249,12 @@
     loading = true;
     feedError = null;
     try {
-      const r = await discover(
-        kind,
-        store.apiKey,
-        { sort, genres, page: nextPage, withPeople: [] },
-        ctrl.signal
-      );
+      const r = await discover(kind, store.apiKey, { sort, genres, page: nextPage, withPeople: [] }, ctrl.signal);
       if (ctrl.signal.aborted) return;
       // Filter at fetch-time so items added later in this session stay visible
       // — we don't re-filter on render. This matches the "added items don't
       // disappear from the feed" requirement.
-      const filtered = hideAdded
-        ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id))
-        : r.results;
+      const filtered = hideAdded ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id)) : r.results;
       items.push(...filtered);
       totalPages = Math.min(r.total_pages, 500);
       nextPage++;
@@ -280,25 +276,39 @@
 
   async function runResume(): Promise<void> {
     if (!resumeTargetKey) return;
-    let attempts = 0;
-    while (attempts < 4) {
-      const idx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
-      if (idx >= 0) {
-        // Wait for the layout to settle before measuring clientHeight —
-        // immediately after the await, the new items have been pushed into
-        // state but may not have painted yet.
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        const s = scroller;
-        if (s && s.clientHeight > 0) {
-          s.scrollTo({ top: idx * s.clientHeight, behavior: "instant" as ScrollBehavior });
-          currentIndex = idx;
-        }
-        return;
-      }
-      if (nextPage > totalPages) return;
-      attempts++;
+    // Hard ceiling so a stale session whose key has been filtered out of TMDB
+    // results doesn't pull down all 500 pages before giving up. 30 pages
+    // (~600 items) covers any realistic human scroll.
+    const MAX_RESUME_PAGES = 30;
+    const target = Math.min(Math.max(resumeTargetPages, 1), MAX_RESUME_PAGES);
+    // First catch up to the page count the user had reached — the saved item
+    // is guaranteed to be inside this range as long as TMDB pagination is
+    // stable (cached for 5 min on our side, plus TMDB's own day-scale stability).
+    while (nextPage <= target && nextPage <= totalPages) {
+      const before = nextPage;
       await loadNext();
+      // loadNext bails (aborted, error) without bumping nextPage — break to
+      // avoid spinning.
+      if (nextPage === before) break;
     }
+    // Then keep paging only if the key still hasn't surfaced (e.g. ordering
+    // drift between sessions pushed it just past `target`).
+    while (nextPage <= MAX_RESUME_PAGES && nextPage <= totalPages) {
+      const idx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
+      if (idx >= 0) break;
+      const before = nextPage;
+      await loadNext();
+      if (nextPage === before) break;
+    }
+    const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
+    if (finalIdx < 0) return;
+    // Wait for the layout to settle before measuring clientHeight — items
+    // were just pushed into state but may not have painted yet.
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const s = scroller;
+    if (!s || s.clientHeight <= 0) return;
+    s.scrollTo({ top: finalIdx * s.clientHeight, behavior: "instant" as ScrollBehavior });
+    currentIndex = finalIdx;
   }
 
   // Reset and reload whenever the feed-phase filters change (or we re-enter
@@ -366,12 +376,16 @@
     if (!item) return;
     // Persist the last-seen item for next-session resume. Filters are
     // snapshotted alongside so resume runs against the same query space.
+    // `lastSeenPagesLoaded` is how many pages we'd fetched at this point —
+    // resume re-fetches that many to guarantee the item is in scope, instead
+    // of blindly trying the first few pages and giving up.
     store.setFeedSession({
       kind,
       sort,
       genres: [...genres],
       hideAdded,
       lastSeenKey: `${item.media_type}:${item.id}`,
+      lastSeenPagesLoaded: Math.max(1, nextPage - 1),
       updatedAt: new Date().toISOString(),
     });
     // Pre-fetch the next page well before the user reaches the end so the
@@ -496,7 +510,7 @@
     <a
       href="{base}/discover/"
       use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+      class="tap-target tap-target--btn hover-border-primary flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs"
     >
       <Icon name="arrow-left" size={12} />
       <span>Discover</span>
@@ -511,7 +525,7 @@
         type="button"
         use:tactile
         onclick={resumeFromSaved}
-        class="tap-target tap-target--card flex w-full items-center gap-3 rounded-lg border border-accent/60 bg-accent/10 p-4 text-left hover-border-accent"
+        class="tap-target tap-target--card hover-border-accent flex w-full items-center gap-3 rounded-lg border border-accent/60 bg-accent/10 p-4 text-left"
       >
         <span
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent"
@@ -528,7 +542,7 @@
     {/if}
 
     <div class="space-y-3">
-      <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted">Show me</div>
+      <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">Show me</div>
       <div class="flex gap-1 text-xs" role="tablist" aria-label="Media kind">
         {#each VALID_KIND as k (k)}
           <button
@@ -537,9 +551,10 @@
             aria-selected={kind === k}
             use:tactile
             onclick={() => setKind(k)}
-            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kind === k
+            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kind ===
+            k
               ? 'border-primary bg-primary text-bg'
-              : 'border-border text-muted hover-text-text'}"
+              : 'hover-text-text border-border text-muted'}"
           >
             {k === "tv" ? "TV shows" : "Movies"}
           </button>
@@ -548,7 +563,7 @@
     </div>
 
     <div class="space-y-3">
-      <label class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted" for="feed-sort">
+      <label class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase" for="feed-sort">
         Sort
       </label>
       <select
@@ -565,14 +580,14 @@
 
     {#if availableGenres.length > 0}
       <div class="space-y-2">
-        <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted">
+        <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">
           Genres
           {#if selectedGenresSet.size > 0}
             <button
               type="button"
               use:tactile={{ haptic: "warn" }}
               onclick={clearGenres}
-              class="tap-target rounded px-1 text-muted hover-text-error"
+              class="tap-target hover-text-error rounded px-1 text-muted"
             >
               Clear · {selectedGenresSet.size}
             </button>
@@ -588,7 +603,7 @@
               aria-pressed={on}
               class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {on
                 ? 'border-primary bg-primary text-bg'
-                : 'border-border text-muted hover-text-text'}"
+                : 'hover-text-text border-border text-muted'}"
             >
               {g.name}
             </button>
@@ -605,7 +620,7 @@
         aria-pressed={hideAdded}
         class="tap-target tap-target--btn flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors duration-150 {hideAdded
           ? 'border-primary bg-primary/10'
-          : 'border-border hover-border-primary'}"
+          : 'hover-border-primary border-border'}"
       >
         <span
           class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {hideAdded
@@ -663,7 +678,7 @@
         <a
           href="{base}/discover/feed/"
           use:tactile={{ haptic: false }}
-          class="tap-target tap-target--btn mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
+          class="tap-target tap-target--btn hover-border-primary mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs"
         >
           <Icon name="arrow-left" size={12} />
           Adjust filters
