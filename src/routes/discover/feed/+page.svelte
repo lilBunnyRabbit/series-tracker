@@ -215,6 +215,13 @@
   // event (idx 0 from the initial mount, or a tiny user nudge) overwrite
   // genuine deep progress with a shallow position. -1 means no floor yet.
   let mountFloorIdx = $state(-1);
+  // Keys the user has added to their library DURING this feed session.
+  // Loadnext bypasses the hideAdded filter for these — without it, an
+  // item the user adds then taps "Details" → back disappears on remount
+  // (re-fetched, then immediately filtered out because it's now in
+  // store.library). Persisted into feedSession.addedDuringSession so the
+  // bypass survives the unmount.
+  let addedKeys = $state<string[]>([]);
   let captured = false;
 
   let items = $state<RecommendationItem[]>([]);
@@ -278,10 +285,16 @@
         );
         if (ctrl.signal.aborted) return;
         // Filter at fetch-time so items added later in this session stay
-        // visible — we don't re-filter on render. This matches the "added
-        // items don't disappear from the feed" requirement.
+        // visible — we don't re-filter on render. Items the user added
+        // FROM this feed (tracked in `addedKeys`) bypass the filter so a
+        // remount doesn't make them vanish: without this, tapping Add →
+        // Details → back drops the item because the re-fetch sees it's
+        // now in store.library and filters it out.
         const filtered = feedHideAdded
-          ? r.results.filter((x) => !store.has(x.media_type as Kind, x.id))
+          ? r.results.filter((x) => {
+              if (!store.has(x.media_type as Kind, x.id)) return true;
+              return addedKeys.includes(`${x.media_type}:${x.id}`);
+            })
           : r.results;
         const fresh = filtered.filter((x) => {
           const key = `${x.media_type}:${x.id}`;
@@ -398,6 +411,7 @@
         resumeTargetKey = null;
         resumeTargetPages = 0;
         mountFloorIdx = -1;
+        addedKeys = [];
         items = [];
         nextPage = 1;
         totalPages = 1;
@@ -432,10 +446,15 @@
         // is still protected: the only items above the floor (= 0) in the
         // typical flow are loaded but not scrolled to.
         mountFloorIdx = s!.lastSeenIndex ?? 0;
+        // Keys added during the previous mount of this session — the
+        // hideAdded filter bypasses these so re-fetch produces the same
+        // items list and resume can find its target.
+        addedKeys = [...(s!.addedDuringSession ?? [])];
       } else {
         resumeTargetKey = null;
         resumeTargetPages = 0;
         mountFloorIdx = -1;
+        addedKeys = [];
       }
       captured = true;
 
@@ -497,6 +516,9 @@
       lastSeenKey: `${item.media_type}:${item.id}`,
       lastSeenIndex: idx,
       lastSeenPagesLoaded: Math.max(1, nextPage - 1),
+      // Preserve the session-added bypass list so a scroll save doesn't
+      // wipe it out from under handleAdd.
+      addedDuringSession: addedKeys.length > 0 ? [...addedKeys] : undefined,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -598,7 +620,38 @@
   async function handleAdd(item: RecommendationItem, status: Status): Promise<void> {
     if (!store.apiKey) throw new Error("API key not set");
     const entry = await entryFromSearchResult(item, store.apiKey, status);
-    if (entry) store.addToLibrary(entry);
+    if (!entry) return;
+    store.addToLibrary(entry);
+    // When hideAdded is on, the item would be filtered out of any subsequent
+    // fetch (incl. the one that runs after a remount when the user taps
+    // Details → back). Track the key so loadNext bypasses the filter for it,
+    // and patch feedSession so the bypass survives the unmount. This is the
+    // ONLY save that doesn't go through onScroll's monotonic gate — adds are
+    // a content event, not a position event, and shouldn't move the floor.
+    if (!feedHideAdded) return;
+    const key = `${item.media_type}:${item.id}`;
+    if (addedKeys.includes(key)) return;
+    addedKeys.push(key);
+    const cur = store.feedSession;
+    const idx = currentIndex;
+    const at = items[idx];
+    const anchorKey = at ? `${at.media_type}:${at.id}` : key;
+    // Patch an existing session record to keep its lastSeen* untouched (so
+    // the resume target doesn't drift just because the user added without
+    // scrolling). If no session exists yet — user added before the first
+    // scroll fired a save — anchor it at the current card so a remount can
+    // still resolve addedKeys via feedSessionMatches.
+    store.setFeedSession({
+      kind: feedKind,
+      sort: feedSort,
+      genres: [...feedGenres],
+      hideAdded: feedHideAdded,
+      lastSeenKey: cur?.lastSeenKey ?? anchorKey,
+      lastSeenIndex: cur?.lastSeenIndex ?? idx,
+      lastSeenPagesLoaded: cur?.lastSeenPagesLoaded ?? Math.max(1, nextPage - 1),
+      addedDuringSession: [...addedKeys],
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   const savedSession = $derived<FeedSession | null>(store.feedSession ?? null);

@@ -312,6 +312,11 @@ export type FeedSession = {
    *  feed only fetched the first few pages on remount. Optional for back-compat
    *  with sessions saved before this field existed. */
   lastSeenPagesLoaded?: number;
+  /** Keys (`tv:123` / `movie:456`) the user added to their library WHILE this
+   *  feed session was active. Loadnext bypasses the hideAdded filter for
+   *  these so items the user adds (then taps back from details) don't
+   *  vanish on remount. Only populated when hideAdded was on at add time. */
+  addedDuringSession?: string[];
   updatedAt: string;
 };
 

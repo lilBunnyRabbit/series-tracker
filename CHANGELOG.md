@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.14.5] - 2026-05-05
+
+### Fixed
+- Items you add from the feed no longer disappear when "hide already added" is on and you tap into the details, then back. The card stays in the queue so you can keep scrolling from where you were.
+
 ## [0.14.4] - 2026-05-05
 
 ### Fixed
