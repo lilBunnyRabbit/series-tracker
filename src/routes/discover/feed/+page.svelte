@@ -241,15 +241,15 @@
   // see the gesture / wheel / keyboard section near the bottom of the script
   // for the commit logic. Native scroll is intentionally NOT used so the
   // in-gesture feel doesn't pick up browser momentum / rubber-band.
+  //
+  // Track translate uses `calc(-N * 100% + drag px)` and each slot uses
+  // `i * 100%`. Both percentages resolve against the same containing block
+  // (the viewport's content box), so the index step is pixel-perfect even
+  // on fractional-height viewports — no clientHeight rounding to manage.
   let viewport = $state<HTMLDivElement>();
-  let viewportH = $state(0);
   let currentIndex = $state(0);
   let dragOffset = $state(0); // px applied during an active drag; cleared on commit
   let transitioning = $state(false); // true while the post-release transform animates
-
-  // Each slot positions itself at `i * 100%`; the track translates by
-  // `-currentIndex * H + dragOffset` so the active slot lands at y=0.
-  const trackOffset = $derived(-currentIndex * viewportH + dragOffset);
 
   // ±2 mounting window keeps the active card plus immediate neighbours alive
   // without paying for every off-screen FeedCard in a 200+ item session.
@@ -350,10 +350,6 @@
     }
     const finalIdx = items.findIndex((i) => `${i.media_type}:${i.id}` === resumeTargetKey);
     if (finalIdx < 0) return;
-    // Defer one frame so the just-pushed items have a chance to mount and
-    // ResizeObserver has populated viewportH — without this the carousel
-    // would land at offset 0 if the measurement was still pending.
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     goTo(finalIdx, { animate: false });
   }
 
@@ -526,21 +522,6 @@
     if (idx >= len - 3) {
       untrack(() => void loadNext());
     }
-  });
-
-  // Track viewport height so trackOffset stays in sync with rendered size.
-  // ResizeObserver covers orientation flips and on-screen-keyboard events
-  // without polling.
-  $effect(() => {
-    const v = viewport;
-    if (!v) return;
-    const update = (): void => {
-      viewportH = v.clientHeight;
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(v);
-    return () => ro.disconnect();
   });
 
   function onPointerDown(e: PointerEvent): void {
@@ -841,7 +822,7 @@
         <div
           class="feed-track"
           class:feed-track--animating={transitioning}
-          style:transform="translate3d(0, {trackOffset}px, 0)"
+          style:transform="translate3d(0, calc({-currentIndex * 100}% + {dragOffset}px), 0)"
         >
           {#each items as item, i (item.media_type + ":" + item.id)}
             {#if isVisible(i)}
@@ -911,11 +892,14 @@
   }
 
   /* Each slot is the size of the viewport, stacked via its own translate
-     so the track's transform alone is enough to address any card. */
+     so the track's transform alone is enough to address any card. No
+     `will-change` here: the slot's transform is static (only depends on
+     its index), so layer-promoting every slot just multiplies GPU layers
+     and warms backdrop-filter rasters for off-screen cards we'll never
+     see. The track owns the layer; slots composite into it. */
   .feed-slot {
     position: absolute;
     inset: 0;
-    will-change: transform;
   }
 
   /* Bottom-anchored pill for "loading more" / "end of feed". Overlays so

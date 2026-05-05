@@ -4,6 +4,12 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.13.5] - 2026-05-05
+
+### Fixed
+- Feed no longer shows a sliver of the next card peeking up from the bottom of the screen.
+- Feed swipes feel smoother on mobile — fewer GPU layers in flight while you drag.
+
 ## [0.13.4] - 2026-05-05
 
 ### Changed
