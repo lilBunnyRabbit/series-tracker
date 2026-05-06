@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-05-06
+
+### Changed
+- Profile: removed the entry count badge from the Diary action so it lines up with Leaderboard and Settings as a plain icon-and-label chip.
+
 ## [0.16.0] - 2026-05-06
 
 ### Added

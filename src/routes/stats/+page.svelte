@@ -134,11 +134,6 @@
   >
     <Icon name="pencil" size={14} />
     <span>Diary</span>
-    {#if store.diary.length > 0}
-      <span class="rounded-full bg-bg/30 px-1.5 py-0.5 text-[10px] tabular-nums">
-        {store.diary.length}
-      </span>
-    {/if}
   </a>
   <a
     href="{base}/leaderboard/"
