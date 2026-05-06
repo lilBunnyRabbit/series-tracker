@@ -3,7 +3,6 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import Icon from "$lib/components/Icon.svelte";
-  import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
@@ -88,10 +87,6 @@
           results = r;
           store.pushSearchHistory(q);
           syncUrl(q);
-          // Bottom-docked search input + soft keyboard means new results
-          // appear above the keyboard; without this the page stays scrolled
-          // wherever the previous results sat and the first row is hidden.
-          window.scrollTo({ top: 0, behavior: "auto" });
         })
         .catch((e) => {
           if (e instanceof Error && e.name === "AbortError") return;
@@ -177,40 +172,107 @@
   }
 </script>
 
-<PageHeader title="Search" srOnly />
+<section class="space-y-4">
+  <!-- Filter chips, then search input + Bulk button at the top of the page
+       (replaces the old bottom-docked search island). The bottom floating
+       nav now shows on this route in hub mode like every other tab. -->
+  <div class="space-y-2">
+    <!-- Kind filter: Media / TV / Movies. Sits above the input so the user
+         picks scope first, then types. -->
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+      {#each [["all", "Media"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
+        <button
+          type="button"
+          use:tactile
+          onclick={() => (kindFilter = k)}
+          class="tap-target tap-target--chip shrink-0 rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
+            ? 'border-primary bg-primary text-bg'
+            : 'border-border text-muted hover-border-primary'}"
+        >
+          {label}
+        </button>
+      {/each}
+    </div>
 
-<section class="space-y-4 pb-28">
+    <div class="flex items-stretch gap-2">
+      <label class="relative block flex-1">
+        <span class="sr-only">Search</span>
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+          <Icon name="search" size={16} />
+        </span>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          type="search"
+          bind:value={query}
+          onfocus={onInputFocus}
+          onblur={onInputBlur}
+          placeholder="Search movies & TV..."
+          autofocus
+          autocomplete="off"
+          spellcheck="false"
+          class="w-full rounded-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none transition-colors duration-150 focus:border-primary"
+        />
+      </label>
+      <a
+        href="{base}/search/bulk/"
+        use:tactile={{ haptic: false }}
+        aria-label="Bulk search — paste multiple titles"
+        title="Bulk search — paste multiple titles"
+        class="tap-target tap-target--icon flex shrink-0 items-center justify-center rounded-full border border-border px-4 text-muted hover-border-primary hover-text-primary"
+      >
+        <Icon name="list" size={16} />
+      </a>
+    </div>
+
+    <!-- Suggestion list — typed history matches that aren't exact. Hidden when
+         input loses focus or no matches exist. -->
+    {#if inputFocused && matchingHistory.length > 0}
+      <div class="flex flex-wrap gap-1.5 text-xs">
+        {#each matchingHistory.slice(0, 5) as q (q)}
+          <button
+            type="button"
+            use:tactile
+            onmousedown={(e) => e.preventDefault()}
+            onclick={() => pickSuggestion(q)}
+            class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover-border-accent hover-text-text"
+          >
+            <Icon name="search" size={11} class="text-muted/60" />
+            <span class="truncate">{q}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
   {#if !store.apiKey}
     <p class="text-sm text-muted">Set your TMDB API key in settings first.</p>
   {/if}
 
   {#if isQueryEmpty}
-    <!-- TOP SEARCHES (empty state) -->
+    <!-- Recent searches: faded single-line, horizontally scrollable. Clear
+         lives as a subtle trailing chip so it's reachable without competing
+         with a section heading. -->
     {#if store.searchHistory.length > 0}
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Recent searches</h2>
+      <div class="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1 text-xs sm:-mx-4 sm:px-4">
+        {#each store.searchHistory as q (q)}
           <button
             type="button"
-            use:tactile={{ haptic: "warn" }}
-            onclick={() => store.clearSearchHistory()}
-            class="tap-target rounded-md px-2 py-1 text-xs text-muted hover-text-text"
+            use:tactile
+            onclick={() => (query = q)}
+            class="tap-target tap-target--chip shrink-0 whitespace-nowrap rounded-full bg-surface-2/60 px-3 py-1.5 text-muted/80 hover-text-text"
           >
-            Clear
+            {q}
           </button>
-        </div>
-        <div class="flex flex-wrap gap-1.5 text-xs">
-          {#each store.searchHistory as q (q)}
-            <button
-              type="button"
-              use:tactile
-              onclick={() => (query = q)}
-              class="tap-target tap-target--chip rounded-full border border-border px-3 py-1.5 hover-border-accent"
-            >
-              {q}
-            </button>
-          {/each}
-        </div>
+        {/each}
+        <button
+          type="button"
+          use:tactile={{ haptic: "warn" }}
+          onclick={() => store.clearSearchHistory()}
+          aria-label="Clear recent searches"
+          class="tap-target tap-target--chip shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-muted/60 hover-text-error"
+        >
+          Clear
+        </button>
       </div>
     {/if}
 
@@ -309,117 +371,3 @@
     </div>
   {/if}
 </section>
-
-<!-- Bottom-sticky search bar: sits just above the floating nav on mobile,
-     and as a regular block on desktop. -->
-<div class="search-dock">
-  <div class="search-dock-inner">
-    <!-- Suggestion list — typed history matches that aren't exact. Hidden when
-         input loses focus or no matches exist. -->
-    {#if inputFocused && matchingHistory.length > 0}
-      <div class="-mx-1 mb-2 flex flex-wrap gap-1.5 px-1 text-xs">
-        {#each matchingHistory.slice(0, 5) as q (q)}
-          <button
-            type="button"
-            use:tactile
-            onmousedown={(e) => e.preventDefault()}
-            onclick={() => pickSuggestion(q)}
-            class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover-border-accent hover-text-text"
-          >
-            <Icon name="search" size={11} class="text-muted/60" />
-            <span class="truncate">{q}</span>
-          </button>
-        {/each}
-      </div>
-    {/if}
-
-    <!-- Filter chips above input -->
-    <div class="-mx-1 mb-2 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 text-xs">
-      {#each [["all", "Media"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
-        <button
-          type="button"
-          use:tactile
-          onclick={() => (kindFilter = k)}
-          class="tap-target tap-target--chip shrink-0 rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
-            ? 'border-primary bg-primary text-bg'
-            : 'border-border text-muted hover-border-primary'}"
-        >
-          {label}
-        </button>
-      {/each}
-      <a
-        href="{base}/search/bulk/"
-        use:tactile={{ haptic: false }}
-        class="tap-target tap-target--chip ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-muted hover-border-primary hover-text-primary"
-      >
-        <span>Bulk</span>
-        <Icon name="arrow-right" size={12} />
-      </a>
-    </div>
-
-    <label class="relative block">
-      <span class="sr-only">Search</span>
-      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-        <Icon name="search" size={16} />
-      </span>
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        type="search"
-        bind:value={query}
-        onfocus={onInputFocus}
-        onblur={onInputBlur}
-        placeholder="Search movies & TV..."
-        autofocus
-        autocomplete="off"
-        spellcheck="false"
-        class="w-full rounded-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none transition-colors duration-150 focus:border-primary"
-      />
-    </label>
-  </div>
-</div>
-
-<style>
-  /* Bottom-dock pattern: fixed on mobile, sitting near the bottom edge with
-     just safe-area padding (the floating footer is hidden on /search, so we
-     don't need to clear it). Above sm: switch to a sticky bar at top of page. */
-  .search-dock {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
-    z-index: 25;
-    padding: 0 0.75rem;
-    pointer-events: none;
-  }
-  .search-dock-inner {
-    pointer-events: auto;
-    margin: 0 auto;
-    max-width: 32rem;
-    border-radius: 1.25rem;
-    /* Mirror the floating-nav fallback chain for Samsung Internet etc. */
-    background: rgba(26, 31, 38, 0.85);
-    background: color-mix(in oklab, var(--color-bg) 88%, transparent);
-    border: 1px solid var(--color-border);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    padding: 0.625rem 0.75rem 0.625rem;
-    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.55);
-  }
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .search-dock-inner {
-      background: rgba(26, 31, 38, 0.96);
-    }
-  }
-  @media (min-width: 640px) {
-    .search-dock {
-      position: sticky;
-      top: 4.25rem;
-      bottom: auto;
-      padding: 0;
-    }
-    .search-dock-inner {
-      max-width: none;
-      background: var(--color-bg);
-    }
-  }
-</style>

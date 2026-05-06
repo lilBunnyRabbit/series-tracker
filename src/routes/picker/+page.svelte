@@ -255,7 +255,7 @@
 </script>
 
 {#if phase === "setup"}
-  <PageHeader title="Pick something to watch" subtitle="Pair things head-to-head until one's left standing." />
+  <PageHeader title="Picker" subtitle="Pair things head-to-head until one's left standing." />
 {:else if phase === "final"}
   <PageHeader title="Picker" srOnly />
 {/if}

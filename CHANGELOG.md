@@ -4,6 +4,22 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-05-06
+
+### Added
+- Mobile: a new "page actions" rail rises out of the top of the floating island, carrying page-specific shortcuts like Upcoming/Pick on Watchlist, Surprise/Feed/Browse all on Discover, Diary/Leaderboard/Settings on Profile, and Activity/Style guide on Settings. The rail scrolls horizontally if it overflows, and animates in/out when you change pages.
+- Watchlist: All / TV / Movies tabs now show counts that respect the active status filter — pick "Watching" and you see how many TV shows vs movies are in that bucket at a glance.
+- Browse: a "Filters" section grouping Hide added with the sort dropdown on its own row, separate from the kind tabs above.
+
+### Changed
+- Mobile: dropped the top navbar. The bottom island now carries both the tab nav (on hub pages) and the back arrow + page title (on detail pages), and stays visible while scrolling instead of hiding away.
+- Search: dropped the bottom-docked search island. The query input, kind filter (Media / TV / Movies), and Bulk button now live at the top of the page like a normal search; recent searches are a single horizontal scrolling row.
+- Hub pages (Home, Discover, Watchlist, Search, Profile) no longer show a redundant page title — the highlighted tab in the island already tells you where you are. Other pages have unified titles that match the island's back-mode label.
+- Browse and Feed: removed redundant back-to-parent buttons since the back island carries that affordance now.
+- Watchlist: filter button moved next to the title-search input. "Pick" no longer dominates the row — uses the same opacity-tinted accent style as other shortcuts.
+- Home: dropped the top-right search button and the "Open feed" CTA at the bottom; tightened spacing between Continue Watching, Start Watching, and History rails. Removed the "+" quick-add button on the Start Watching rail.
+- Upcoming: the Calendar download button now sits next to the page title instead of in the actions rail.
+
 ## [0.15.0] - 2026-05-06
 
 ### Added

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
@@ -245,7 +246,26 @@
 </script>
 
 <div class="mx-auto max-w-2xl">
-  <PageHeader title="Settings" />
+  {#snippet headerActions()}
+    <a
+      href="{base}/activity/"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
+    >
+      <Icon name="list" size={14} />
+      <span>Activity</span>
+    </a>
+    <a
+      href="{base}/style-guide/"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-tertiary/40 bg-tertiary/10 px-3 py-1.5 text-sm text-tertiary hover-border-tertiary"
+    >
+      <Icon name="grid" size={14} />
+      <span>Style guide</span>
+    </a>
+  {/snippet}
+
+  <PageHeader title="Settings" actions={headerActions} />
 </div>
 
 <section class="mx-auto max-w-2xl space-y-8">

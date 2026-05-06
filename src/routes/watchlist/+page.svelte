@@ -38,10 +38,13 @@
   // distinct categories rather than three slots of the same chip. Mirrors the
   // STATUS_COLOR pattern (bg/border for active, /60 borderSoft for inactive,
   // dot for the leading marker).
-  const KIND_COLOR: Record<KindFilter, { bg: string; border: string; borderSoft: string; dot: string }> = {
-    all: { bg: "bg-primary", border: "border-primary", borderSoft: "border-primary/60", dot: "bg-primary" },
-    tv: { bg: "bg-secondary", border: "border-secondary", borderSoft: "border-secondary/60", dot: "bg-secondary" },
-    movie: { bg: "bg-tertiary", border: "border-tertiary", borderSoft: "border-tertiary/60", dot: "bg-tertiary" },
+  // "all" mirrors the "All" status tab: neutral border + muted text when
+  // inactive (so the row reads as "neutral default + 2 typed alternatives"
+  // instead of three coloured peers), primary only when selected.
+  const KIND_COLOR: Record<KindFilter, { bg: string; border: string; borderSoft: string; dot: string; text: string }> = {
+    all: { bg: "bg-primary", border: "border-primary", borderSoft: "border-border/60", dot: "bg-primary", text: "text-muted" },
+    tv: { bg: "bg-secondary", border: "border-secondary", borderSoft: "border-secondary/60", dot: "bg-secondary", text: "text-secondary" },
+    movie: { bg: "bg-tertiary", border: "border-tertiary", borderSoft: "border-tertiary/60", dot: "bg-tertiary", text: "text-tertiary" },
   };
   // Page size for the library list. 24 covers a few rows on grid view (3-5
   // cols) and ~24 list rows — large enough to feel substantial, small enough
@@ -188,6 +191,21 @@
     return c;
   });
 
+  // Kind-tab counts narrow to the currently-selected status filter so the
+  // user sees how many TV / Movies live under the active status (e.g.
+  // "Watching → TV: 8 / Movies: 2"). Other filters (rewatchable, title
+  // query) are intentionally not applied — they're refinements *after* the
+  // kind pick, not constraints on it.
+  const kindCounts = $derived.by(() => {
+    const scoped =
+      filter === "all" ? store.entries : store.entries.filter((e) => e.status === filter);
+    return {
+      all: scoped.length,
+      tv: scoped.filter((e) => e.kind === "tv").length,
+      movie: scoped.filter((e) => e.kind === "movie").length,
+    } as Record<KindFilter, number>;
+  });
+
   // Status filter UI is a two-state component:
   //   • closed (default): the active filter renders as a full-width bar with
   //     a "+" trigger on the right.
@@ -295,14 +313,14 @@
   <a
     href="{base}/picker/"
     use:tactile={{ haptic: false }}
-    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-bg"
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm text-accent hover-border-accent"
   >
     <Icon name="trophy" size={14} />
     <span>Pick</span>
   </a>
 {/snippet}
 
-<PageHeader title="Watchlist" actions={headerActions} />
+<PageHeader title="Watchlist" actions={headerActions} srOnly />
 
 <section class="space-y-4">
   {#if store.entries.length === 0}
@@ -324,6 +342,10 @@
       </div>
     </div>
   {:else}
+      <!-- Filter group: status / kind / title rows share tight 0.625rem
+           spacing so the controls read as one cluster, regardless of the
+           outer section's space-y. -->
+      <div class="filter-group space-y-2.5">
       <!-- Status row, single structure with two visual states.
            All six tabs + the chevron-down trigger are always rendered; CSS
            on `.status-row.is-open / .is-closed` drives the visibility:
@@ -338,7 +360,7 @@
            rather than a hard DOM swap. -->
       <div
         bind:this={statusStrip}
-        class="status-row mb-2.5 -mx-3 flex items-stretch overflow-x-auto px-3 sm:mx-0 sm:overflow-visible {pickerOpen
+        class="status-row -mx-3 flex items-stretch overflow-x-auto px-3 sm:mx-0 sm:overflow-visible {pickerOpen
           ? 'is-open'
           : 'is-closed'}"
         role="tablist"
@@ -391,39 +413,70 @@
       </div>
 
       <!-- Kind row. Mirrors the closed-state status bar pattern: the active
-           kind takes flex-1 to fill the row, inactives stay content-sized,
-           and the sort/view trigger on the right is styled to match the
-           chevron-down trigger's visual (same padding, border, height) so
-           the two filter rows feel like the same control family. -->
+           kind takes flex-1 to fill the row, inactives stay content-sized.
+           Each tab includes a count that narrows to the active status filter
+           so the user sees "Watching → TV: 8 / Movies: 2" at a glance. -->
+      <div class="flex items-stretch gap-1 text-xs" role="tablist" aria-label="Media kind filter">
+        {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
+          {@const active = kindFilter === k}
+          {@const c = KIND_COLOR[k]}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={active}
+            use:tactile
+            onclick={() => setKind(k)}
+            class="hero-tab {active ? 'flex-1' : 'shrink-0'} {active
+              ? `hero-tab-active ${c.border} ${c.bg} text-bg`
+              : `bg-transparent ${c.borderSoft} text-muted hover-text-text`}"
+          >
+            {#if k !== "all"}
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
+            {/if}
+            <span class="hero-tab-label">{label}</span>
+            <span
+              class="tabular-nums {active
+                ? 'ml-auto text-sm font-semibold text-bg/85'
+                : `text-[10px] ${c.text}`}"
+            >
+              {kindCounts[k]}
+            </span>
+          </button>
+        {/each}
+      </div>
+
+      <!-- Title filter row + sort/view trigger. The trigger lives next to the
+           search input so the two "narrowing" controls (filter text + open
+           more options) sit on the same row. The corner dot lights up when
+           an "extra" filter is on (currently just rewatchable) so the user
+           knows to peek at the sheet without opening it. -->
       <div class="flex items-stretch gap-2">
-        <div class="flex flex-1 items-stretch gap-1 text-xs" role="tablist" aria-label="Media kind filter">
-          {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
-            {@const active = kindFilter === k}
-            {@const c = KIND_COLOR[k]}
+        <label class="relative block flex-1">
+          <span class="sr-only">Filter library by title</span>
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+            <Icon name="search" size={14} />
+          </span>
+          <input
+            type="search"
+            bind:value={queryDraft}
+            placeholder="Filter by title..."
+            autocomplete="off"
+            spellcheck="false"
+            class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-9 text-sm outline-none transition-colors duration-150 focus:border-primary"
+          />
+          {#if queryDraft}
             <button
               type="button"
-              role="tab"
-              aria-selected={active}
-              use:tactile
-              onclick={() => setKind(k)}
-              class="hero-tab {active ? 'flex-1' : 'shrink-0'} {active
-                ? `hero-tab-active ${c.border} ${c.bg} text-bg`
-                : `bg-transparent ${c.borderSoft} text-muted hover-text-text`}"
+              use:tactile={{ haptic: false }}
+              onclick={() => (queryDraft = "")}
+              aria-label="Clear filter"
+              class="tap-target tap-target--icon absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted hover-text-text"
             >
-              {#if k !== "all"}
-                <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
-              {/if}
-              <span class="hero-tab-label">{label}</span>
+              ✕
             </button>
-          {/each}
-        </div>
+          {/if}
+        </label>
 
-        <!-- Sort & view trigger. Same outer styling as the chevron-down on
-             the closed status bar — px-3, plain bordered box, stretches to
-             match the row height — so both filter rows share one visual
-             vocabulary for "open more controls". The corner dot lights up
-             when an "extra" filter is on (currently just rewatchable) so the
-             user knows to peek at the sheet without opening it. -->
         <button
           type="button"
           use:tactile={{ haptic: false }}
@@ -443,34 +496,7 @@
           {/if}
         </button>
       </div>
-
-      <!-- Title filter — narrows the visible list by title or notes. Debounced
-           through the URL so deep links stay shareable. -->
-      <label class="relative block">
-        <span class="sr-only">Filter library by title</span>
-        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-          <Icon name="search" size={14} />
-        </span>
-        <input
-          type="search"
-          bind:value={queryDraft}
-          placeholder="Filter by title..."
-          autocomplete="off"
-          spellcheck="false"
-          class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-9 text-sm outline-none transition-colors duration-150 focus:border-primary"
-        />
-        {#if queryDraft}
-          <button
-            type="button"
-            use:tactile={{ haptic: false }}
-            onclick={() => (queryDraft = "")}
-            aria-label="Clear filter"
-            class="tap-target tap-target--icon absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted hover-text-text"
-          >
-            ✕
-          </button>
-        {/if}
-      </label>
+      </div>
 
     {#if filtered.length === 0}
       <p class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">

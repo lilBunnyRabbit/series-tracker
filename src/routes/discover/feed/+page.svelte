@@ -868,18 +868,7 @@
 </svelte:head>
 
 {#if phase === "setup"}
-  {#snippet headerActions()}
-    <a
-      href="{base}/discover/"
-      use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn hover-border-primary flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs"
-    >
-      <Icon name="arrow-left" size={12} />
-      <span>Discover</span>
-    </a>
-  {/snippet}
-
-  <PageHeader title="Feed" subtitle="Swipe through new shows and movies." actions={headerActions} />
+  <PageHeader title="Feed" subtitle="Swipe through new shows and movies." />
 
   <section class="space-y-6">
     {#if savedSessions.length > 0}

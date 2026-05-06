@@ -173,17 +173,6 @@
     <Icon name="sparkles" size={14} />
     <span>Surprise</span>
   </button>
-  <button
-    type="button"
-    use:tactile
-    onclick={toggleHideAdded}
-    aria-pressed={hideAdded}
-    class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 {hideAdded
-      ? 'border-primary bg-primary text-bg'
-      : 'border-border text-muted hover-border-primary'}"
-  >
-    {hideAdded ? "✓ Hiding added" : "Hide added"}
-  </button>
   <a
     href="{base}/discover/feed/"
     use:tactile={{ haptic: false }}
@@ -202,7 +191,24 @@
   </a>
 {/snippet}
 
-<PageHeader title="Discover" actions={headerActions} />
+<PageHeader title="Discover" actions={headerActions} srOnly />
+
+<!-- Page-level filter: hides items already in the user's library across
+     every rail below. Lives outside the external-actions rail because it
+     mutates this page's content rather than navigating elsewhere. -->
+<div class="mb-4 flex items-center gap-1.5 text-xs">
+  <button
+    type="button"
+    use:tactile
+    onclick={toggleHideAdded}
+    aria-pressed={hideAdded}
+    class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {hideAdded
+      ? 'border-primary bg-primary text-bg'
+      : 'border-border text-muted hover-border-primary'}"
+  >
+    {hideAdded ? "✓ Hiding added" : "Hide added"}
+  </button>
+</div>
 
 <section class="space-y-7">
   {#if error}

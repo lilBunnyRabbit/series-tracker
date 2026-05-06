@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import { smartBack } from "$lib/back.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import RatingPicker from "$lib/components/RatingPicker.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
@@ -10,6 +12,8 @@
   import { isEpisodeWatched, STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, SeasonDetail, TvEntry } from "$lib/types";
   import { fade } from "svelte/transition";
+
+  const onBack = smartBack();
 
   const showId = $derived(Number(page.params.id));
   const season = $derived(Number(page.params.season));
@@ -418,6 +422,16 @@
     style="padding-bottom: max(env(safe-area-inset-bottom), 1.25rem); padding-top: 1rem"
   >
     <div class="season-island pointer-events-auto flex max-w-2xl items-center gap-2 rounded-full p-2">
+      <a
+        href="{base}/show/{showId}/"
+        onclick={onBack}
+        use:tactile
+        aria-label="Back to show"
+        class="tap-target tap-target--icon flex h-12 w-10 shrink-0 items-center justify-center rounded-full text-text"
+      >
+        <Icon name="arrow-left" size={18} />
+      </a>
+      <span class="mx-0.5 h-7 w-px shrink-0 bg-border" aria-hidden="true"></span>
       <button
         type="button"
         use:tactile={{ haptic: "tick" }}
@@ -476,22 +490,23 @@
 {/if}
 
 <style>
-  /* Mirrors `.floating-nav-pill` from layout.css — same translucent surface,
-     blur, and double-shadow so the season island reads as the same family
+  /* Mirrors `.floating-nav-pill` from layout.css — same translucent fill,
+     blur, and shadow stack so the season island reads as the same family
      of UI as the global tab bar. */
   .season-island {
-    background: rgba(36, 43, 51, 0.85);
-    background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+    background: rgba(26, 31, 38, 0.85);
+    background: color-mix(in oklab, var(--color-bg) 88%, transparent);
     border: 1px solid var(--color-border);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     box-shadow:
-      0 12px 32px -12px rgb(0 0 0 / 0.55),
-      0 2px 6px -2px rgb(0 0 0 / 0.4);
+      0 24px 48px -12px rgb(0 0 0 / 0.7),
+      0 12px 20px -6px rgb(0 0 0 / 0.5),
+      0 4px 8px -2px rgb(0 0 0 / 0.35);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .season-island {
-      background: rgba(36, 43, 51, 0.96);
+      background: rgba(26, 31, 38, 0.96);
     }
   }
 </style>

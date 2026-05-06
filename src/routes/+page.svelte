@@ -1,6 +1,5 @@
 <script lang="ts">
   import { base } from "$app/paths";
-  import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
@@ -72,18 +71,7 @@
   }
 </script>
 
-{#snippet headerActions()}
-  <a
-    href="{base}/search/"
-    use:tactile={{ haptic: false }}
-    aria-label="Search"
-    class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted hover-border-primary hover-text-text"
-  >
-    <Icon name="search" size={16} />
-  </a>
-{/snippet}
-
-<PageHeader title="Home" actions={headerActions} />
+<PageHeader title="Home" srOnly />
 
 {#if store.entries.length === 0}
   <section class="space-y-4">
@@ -108,7 +96,7 @@
     </div>
   </section>
 {:else}
-  <div class="space-y-7">
+  <div class="space-y-4">
     {#if continueWatching.length > 0}
       <Rail
         title="Continue Watching"
@@ -135,8 +123,6 @@
         title="Start Watching"
         subtitle="Plan to watch"
         seeAllHref="{base}/watchlist/?status=plan"
-        onAction={() => (window.location.href = `${base}/search/`)}
-        actionLabel="Add to plan"
       >
         {#each startWatching as e (e.kind + ":" + e.id)}
           <PosterCard

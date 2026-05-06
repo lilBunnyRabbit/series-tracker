@@ -130,29 +130,35 @@
   <a
     href="{base}/diary/"
     use:tactile={{ haptic: false }}
-    aria-label="Diary"
-    title="Diary"
-    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm text-accent hover-border-accent"
   >
-    📓
+    <Icon name="pencil" size={14} />
     <span>Diary</span>
     {#if store.diary.length > 0}
-      <span class="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+      <span class="rounded-full bg-bg/30 px-1.5 py-0.5 text-[10px] tabular-nums">
         {store.diary.length}
       </span>
     {/if}
   </a>
   <a
+    href="{base}/leaderboard/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
+  >
+    <Icon name="trophy" size={14} />
+    <span>Leaderboard</span>
+  </a>
+  <a
     href="{base}/settings/"
     use:tactile={{ haptic: false }}
-    aria-label="Settings"
-    class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted hover-border-primary hover-text-text"
+    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-tertiary/40 bg-tertiary/10 px-3 py-1.5 text-sm text-tertiary hover-border-tertiary"
   >
-    <Icon name="settings" size={16} />
+    <Icon name="settings" size={14} />
+    <span>Settings</span>
   </a>
 {/snippet}
 
-<PageHeader title="Profile" subtitle="Your library at a glance" actions={headerActions} />
+<PageHeader title="Profile" actions={headerActions} srOnly />
 
 <section class="space-y-7">
   {#if stats.total === 0}

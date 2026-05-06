@@ -121,23 +121,22 @@
   <title>Upcoming · Series Tracker</title>
 </svelte:head>
 
-{#snippet headerActions()}
+{#snippet titleActions()}
   {#if hasAnyData}
     <button
       type="button"
       use:tactile
       onclick={exportCalendar}
-      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover-border-accent hover-text-text"
+      class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted hover-border-accent hover-text-text"
       aria-label="Export upcoming episodes as iCal calendar"
       title="Download .ics file for your calendar app"
     >
-      <Icon name="download" size={14} />
-      <span>Calendar</span>
+      <Icon name="download" size={16} />
     </button>
   {/if}
 {/snippet}
 
-<PageHeader title="Upcoming" actions={headerActions} />
+<PageHeader title="Upcoming" {titleActions} />
 
 <section class="space-y-5">
   {#if watchingEntries.length === 0}

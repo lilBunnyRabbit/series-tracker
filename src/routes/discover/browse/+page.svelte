@@ -186,33 +186,14 @@
   <title>Browse · Series Tracker</title>
 </svelte:head>
 
-{#snippet headerActions()}
-  <button
-    type="button"
-    use:tactile
-    onclick={toggleHideAdded}
-    aria-pressed={hideAdded}
-    class="tap-target tap-target--btn rounded-md border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
-      ? 'border-primary bg-primary text-bg'
-      : 'border-border text-muted hover-border-primary'}"
-  >
-    {hideAdded ? "✓ Hiding added" : "Hide added"}
-  </button>
-  <a
-    href="{base}/discover/{hideAdded ? '?hidden=1' : ''}"
-    use:tactile={{ haptic: false }}
-    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover-border-primary"
-  >
-    <Icon name="arrow-left" size={12} />
-    <span>Curated</span>
-  </a>
-{/snippet}
-
-<PageHeader title="Browse" actions={headerActions} />
+<PageHeader title="Browse" />
 
 <section class="space-y-5">
 
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="space-y-1.5">
+    <!-- Row 1: kind selector — section header mirrors the Genres group below
+         so the filter chrome reads as parallel "pick from this column" UI. -->
+    <div class="text-[10px] uppercase tracking-wider text-muted">Media</div>
     <div class="flex gap-1 text-xs" role="tablist" aria-label="Media kind">
       {#each VALID_KIND as k (k)}
         <button
@@ -230,21 +211,37 @@
       {/each}
     </div>
 
-    <label class="ml-auto flex items-center gap-1.5 text-xs text-muted">
-      Sort
-      <select
-        value={sort}
-        onchange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as DiscoverSort)}
-        class="rounded-md border border-border bg-surface px-2 py-1 text-text"
+    <!-- Row 2: page-level filter + sort -->
+    <div class="pt-1 text-[10px] uppercase tracking-wider text-muted">Filters</div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        use:tactile
+        onclick={toggleHideAdded}
+        aria-pressed={hideAdded}
+        class="tap-target tap-target--chip rounded-full border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
+          ? 'border-primary bg-primary text-bg'
+          : 'border-border text-muted hover-border-primary'}"
       >
-        <option value="popularity.desc">Popularity</option>
-        <option value="vote_average.desc">Rating</option>
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
-        <option value="title.asc">Title A–Z</option>
-        <option value="title.desc">Title Z–A</option>
-      </select>
-    </label>
+        {hideAdded ? "✓ Hiding added" : "Hide added"}
+      </button>
+
+      <label class="ml-auto flex items-center gap-1.5 text-xs text-muted">
+        Sort
+        <select
+          value={sort}
+          onchange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as DiscoverSort)}
+          class="rounded-md border border-border bg-surface px-2 py-1 text-text"
+        >
+          <option value="popularity.desc">Popularity</option>
+          <option value="vote_average.desc">Rating</option>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="title.asc">Title A–Z</option>
+          <option value="title.desc">Title Z–A</option>
+        </select>
+      </label>
+    </div>
   </div>
 
   {#if withPeople.length > 0}
