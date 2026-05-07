@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-05-08
+
+### Added
+- Started / Untouched filter on the Watchlist (in the Sort & view sheet) and the Picker. Splits your library by whether you've already cracked open a title — most useful in Plan to watch for separating fresh entries from ones you've parked partway through. Counts as "started" if a show has any watched episode or a movie is marked watched.
+
 ## [0.21.1] - 2026-05-08
 
 ### Fixed

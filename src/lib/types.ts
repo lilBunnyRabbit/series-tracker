@@ -192,6 +192,16 @@ export function effectiveSeasons(entry: TvEntry): Season[] {
   return entry.seasons.filter((s) => !isSpecialSeason(s.number));
 }
 
+/** Whether the user has any meaningful engagement with an entry — TV: at
+ *  least one watched episode in a counted season (specials excluded unless
+ *  opted in, matching the card-level counter); Movie: `watched === true`.
+ *  Powers the watchlist + picker "Started / Untouched" filter so a plan-status
+ *  show with progress (parked / paused) can be split from a truly fresh one. */
+export function hasProgress(entry: Entry): boolean {
+  if (entry.kind === "movie") return entry.watched;
+  return effectiveSeasons(entry).some((s) => (entry.progress[s.number] ?? 0) > 0);
+}
+
 /** Whether a specific episode is watched. Honors the explicit
  *  `watchedEpisodes` set when present (non-contiguous), otherwise falls back
  *  to the contiguous interpretation of `progress[season]`. */

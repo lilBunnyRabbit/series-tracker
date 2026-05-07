@@ -11,18 +11,20 @@
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
   import { currentTemptation } from "$lib/temptation";
-  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { effectiveSeasons, hasProgress, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
   type Filter = "all" | Status;
   type KindFilter = "all" | "tv" | "movie";
   type Sort = "updated" | "added" | "title" | "progress" | "rating" | "release" | "temptation";
   type View = "list" | "grid";
+  type Progress = "any" | "started" | "untouched";
 
   const VALID_FILTER: Filter[] = ["all", ...STATUSES];
   const VALID_KIND: KindFilter[] = ["all", "tv", "movie"];
   const VALID_SORT: Sort[] = ["updated", "added", "title", "progress", "rating", "release", "temptation"];
   const VALID_VIEW: View[] = ["list", "grid"];
+  const VALID_PROGRESS: Progress[] = ["any", "started", "untouched"];
 
   const SORT_LABEL: Record<Sort, string> = {
     updated: "Recently updated",
@@ -63,6 +65,10 @@
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   });
   const rewatchableOnly = $derived(page.url.searchParams.get("rewatch") === "1");
+  const progressFilter = $derived.by<Progress>(() => {
+    const v = page.url.searchParams.get("progress");
+    return VALID_PROGRESS.includes(v as Progress) ? (v as Progress) : "any";
+  });
   const titleQuery = $derived(page.url.searchParams.get("q") ?? "");
   // Local state mirrors the URL but doesn't push every keystroke through goto —
   // typing into a URL-synced input round-trips through navigation and loses the
@@ -109,6 +115,12 @@
   function toggleRewatchable(): void {
     updateParams({ rewatch: rewatchableOnly ? null : "1", page: null });
   }
+  // Single axis with three values rendered as two mutually-exclusive chips.
+  // Tapping the active chip clears back to "any"; tapping the other switches.
+  function setProgress(p: Progress): void {
+    const next = progressFilter === p ? "any" : p;
+    updateParams({ progress: next === "any" ? null : next, page: null });
+  }
   function goToPage(n: number): void {
     updateParams({ page: n === 1 ? null : String(n) });
     // Match discover/browse: instant scroll-to-top so the new page lands at
@@ -135,6 +147,11 @@
       .filter((e) => (filter === "all" ? true : e.status === filter))
       .filter((e) => (kindFilter === "all" ? true : e.kind === kindFilter))
       .filter((e) => (rewatchableOnly ? e.rewatchable === true : true))
+      .filter((e) => {
+        if (progressFilter === "any") return true;
+        const started = hasProgress(e);
+        return progressFilter === "started" ? started : !started;
+      })
       .filter((e) => {
         if (!q) return true;
         if (e.title.toLowerCase().includes(q)) return true;
@@ -269,6 +286,16 @@
     setFilter(f);
     pickerOpen = false;
   }
+
+  // Drives the filter-button corner dot — lights up whenever any filter from
+  // the sort-and-view sheet is active so the user knows extras are on without
+  // opening it.
+  const hasExtraFilter = $derived(rewatchableOnly || progressFilter !== "any");
+  // Library-wide totals for the Started/Untouched chip counts. Mirrors how
+  // the rewatchable count works (whole-library, not narrowed by status/kind)
+  // so the numbers stay stable as the user moves through filters.
+  const startedCount = $derived(store.entries.filter((e) => hasProgress(e)).length);
+  const untouchedCount = $derived(store.entries.length - startedCount);
 
   // Bottom sheet for sort + view. Inline (not a shared component) because it's
   // used only here. Uses <dialog>.showModal so it composes with the existing
@@ -454,12 +481,12 @@
           onclick={openSheet}
           aria-label="Sort and view options"
           aria-haspopup="dialog"
-          class="relative flex shrink-0 items-center justify-center rounded-md border px-3 text-muted hover-border-primary {rewatchableOnly
+          class="relative flex shrink-0 items-center justify-center rounded-md border px-3 text-muted hover-border-primary {hasExtraFilter
             ? 'border-secondary text-secondary'
             : 'border-border'}"
         >
           <Icon name="filter" size={18} />
-          {#if rewatchableOnly}
+          {#if hasExtraFilter}
             <span
               class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-secondary"
               aria-hidden="true"
@@ -560,6 +587,27 @@
         {store.entries.filter((e) => e.rewatchable).length}
       </span>
     </button>
+
+    <!-- Progress axis: Started / Untouched are mutually exclusive; both off
+         means "any" (default). Most useful with status=plan to split parked
+         shows from fresh ones, but kept always-visible for symmetry. -->
+    <div class="mt-2 grid grid-cols-2 gap-2">
+      {#each [["started", "Started", startedCount], ["untouched", "Untouched", untouchedCount]] as const as [p, label, count] (p)}
+        {@const active = progressFilter === p}
+        <button
+          type="button"
+          use:tactile
+          onclick={() => setProgress(p)}
+          aria-pressed={active}
+          class="tap-target tap-target--btn flex items-center justify-between gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {active
+            ? 'border-secondary bg-secondary text-bg'
+            : 'border-border text-muted hover-text-text'}"
+        >
+          <span>{label}</span>
+          <span class="text-xs tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{count}</span>
+        </button>
+      {/each}
+    </div>
 
     <hr class="my-4 border-border" />
 

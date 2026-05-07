@@ -9,12 +9,13 @@
   import { tactile } from "$lib/tactile";
   import { posterUrl, recommendations } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
-  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { effectiveSeasons, hasProgress, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
   import { backOut } from "svelte/easing";
   import { fade, fly, scale } from "svelte/transition";
 
   type KindFilter = "all" | "tv" | "movie";
+  type Progress = "any" | "started" | "untouched";
   type Phase = "setup" | "bracket" | "final";
 
   const POOL_CAP = 32;
@@ -23,6 +24,7 @@
 
   let selectedStatuses = $state<Status[]>([]);
   let kindFilter = $state<KindFilter>("all");
+  let progressFilter = $state<Progress>("any");
   let phase = $state<Phase>("setup");
 
   let queue = $state<Entry[]>([]);
@@ -66,23 +68,54 @@
     return !Number.isFinite(y) || y <= currentYear;
   }
 
+  // Tap the active chip to clear back to "any"; tap the other to switch.
+  function setProgress(p: Progress): void {
+    progressFilter = progressFilter === p ? "any" : p;
+  }
+
+  function passesProgress(e: Entry): boolean {
+    if (progressFilter === "any") return true;
+    const started = hasProgress(e);
+    return progressFilter === "started" ? started : !started;
+  }
+
   const filtered = $derived(
     store.entries.filter((e) => {
       if (!selectedStatuses.includes(e.status)) return false;
       if (kindFilter !== "all" && e.kind !== kindFilter) return false;
+      if (!passesProgress(e)) return false;
       if (!hasAired(e)) return false;
       return true;
     })
   );
 
+  // Status counts narrow by kind + progress so the per-status numbers always
+  // reflect what would land in the pool if that status were toggled on.
   const counts = $derived.by(() => {
     const c: Record<Status, number> = { watching: 0, completed: 0, plan: 0, dropped: 0, tuned: 0 };
     for (const e of store.entries) {
       if (kindFilter !== "all" && e.kind !== kindFilter) continue;
+      if (!passesProgress(e)) continue;
       if (!hasAired(e)) continue;
       c[e.status]++;
     }
     return c;
+  });
+
+  // Progress chip counts narrow by the user's status + kind selection so the
+  // numbers reflect what they'd land on if they toggled that chip — and stay
+  // at zero when no statuses are selected (matches the empty-pool state).
+  const progressCounts = $derived.by(() => {
+    let started = 0;
+    let untouched = 0;
+    for (const e of store.entries) {
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status)) continue;
+      if (kindFilter !== "all" && e.kind !== kindFilter) continue;
+      if (!hasAired(e)) continue;
+      if (hasProgress(e)) started++;
+      else untouched++;
+    }
+    return { started, untouched };
   });
 
   const matchKey = $derived(
@@ -310,6 +343,31 @@
                 : 'border-border text-muted hover-text-text'}"
             >
               {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Progress axis: paired Started / Untouched chips, mutually exclusive,
+           both off = "any" (default). Most useful when "Plan to watch" is in
+           the status selection and the user wants to split parked shows from
+           fresh ones; harmless for other status mixes. -->
+      <div class="space-y-2">
+        <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Progress</h2>
+        <div class="flex flex-wrap gap-1.5 text-xs">
+          {#each [["started", "Started", progressCounts.started], ["untouched", "Untouched", progressCounts.untouched]] as const as [p, label, count] (p)}
+            {@const active = progressFilter === p}
+            <button
+              type="button"
+              use:tactile
+              onclick={() => setProgress(p)}
+              aria-pressed={active}
+              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
+                ? 'border-secondary bg-secondary text-bg'
+                : 'border-border text-muted hover-text-text'}"
+            >
+              <span class="truncate">{label}</span>
+              <span class="shrink-0 tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{count}</span>
             </button>
           {/each}
         </div>

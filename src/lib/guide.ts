@@ -175,13 +175,14 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "watchlist",
-    version: "0.17.0",
+    version: "0.22.0",
     icon: "bookmark",
     accent: "primary",
     title: "Your watchlist",
     summary: "The full library, filtered any way you like.",
     body: [
       "Filter by status (Plan / Watching / Tuned / Completed / Dropped) and kind (TV / Movies). Search by title narrows the list. Sort by recently updated, recently added, A–Z, progress, your rating, or release date.",
+      "The Sort & view sheet adds two extra filters — Rewatchable only and a Started / Untouched pair — so you can split anything in your library by whether you've actually cracked it open. Pairs especially well with Plan to watch when some entries already have a few episodes ticked off.",
       "Switch between List view (with backdrop bleed and notes) and Grid view (poster cards). Long-press any card on mobile for quick actions — change status, mark next episode, or remove — without opening the detail page.",
       "Two shortcuts ride along: Pick (the bracket-style decision tool) and Upcoming (next-air dates for everything you're watching, with a calendar export).",
     ],
@@ -218,13 +219,13 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "picker",
-    version: "0.17.0",
+    version: "0.22.0",
     icon: "trophy",
     accent: "accent",
     title: "Can't decide?",
     summary: "A bracket-style picker (and a quick Surprise sheet) for indecisive nights.",
     body: [
-      "Filter your library by status and kind, then go head-to-head matchup by matchup until one title is left. The winner gets a 'More like this' rail powered by TMDB recommendations, and you can review the bracket round-by-round to see which titles you knocked out.",
+      "Filter your library by status, kind, and progress (Started / Untouched), then go head-to-head matchup by matchup until one title is left. The winner gets a 'More like this' rail powered by TMDB recommendations, and you can review the bracket round-by-round to see which titles you knocked out.",
       "For something faster, the Surprise sheet on Discover rolls a single random pick from your plan-list mixed with what's trending. Re-roll until you commit — recent picks won't repeat back-to-back.",
     ],
     visual: "picker",

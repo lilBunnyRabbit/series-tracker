@@ -76,6 +76,15 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "started-untouched-filter",
+            title: "Started / Untouched filter",
+            summary:
+              "Watchlist and Picker can now split anything in your library by whether you've actually cracked open a title — most useful for separating fresh Plan to watch entries from ones you've parked partway through.",
+            status: "shipped",
+            shippedIn: "0.22.0",
+            complexity: "S",
+          },
+          {
             id: "movie-progress",
             title: "Movie progress tracking",
             summary:
