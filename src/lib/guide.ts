@@ -189,13 +189,14 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "tracking",
-    version: "0.17.0",
+    version: "0.20.0",
     icon: "play",
     accent: "primary",
     title: "Tracking what you watch",
-    summary: "Per-season episode counters, per-episode toggles, season ratings, and a Diary.",
+    summary: "Per-season counters, per-episode toggles, season ratings, a Diary, and a Home dashboard that knows what's next.",
     body: [
-      "TV shows track per-season progress. The show page lists every season with a counter; the season tracker page shows the full episode list with air dates, runtimes, and the option to mark-watched up to a tapped episode (or toggle individual episodes for non-contiguous watches like 'E1 and E3 but not E2').",
+      "Home reads as a dashboard. Continue Watching is a rail of landscape episode cards — the show's backdrop, the runtime in the corner, and an 'N remaining · Md' line for what's left and how long it's been. Upcoming sits right under it with cards for unaired episodes, badged 'In Nd' / 'Today' / 'Tomorrow'.",
+      "TV shows track per-season progress. The show page lists every season with a counter; the season tracker page shows the full episode list with air dates, runtimes, and the option to mark-watched up to a tapped episode (or toggle individual episodes for non-contiguous watches like 'E1 and E3 but not E2'). Counters flip with a small slide-and-fade whenever you tap +/- so every press registers visually.",
       "Catch up jumps progress to the latest aired episode in one tap. Specials live in their own section and don't block completion unless you opt in per show. Background sync demotes a Completed show back to Watching when new episodes air.",
       "Rate the whole show, individual seasons, or movies on a 0–10 scale. Add notes, mark titles as Rewatchable, and (for everything you watch) log a Diary entry — a date-stamped journal independent of episode progress, with optional rating and per-viewing notes.",
     ],
@@ -283,14 +284,15 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "activity",
-    version: "0.17.0",
+    version: "0.20.0",
     icon: "list",
     accent: "secondary",
     inTour: false,
     title: "Activity log",
-    summary: "Every library change, grouped by day.",
+    summary: "Every library change, grouped by day — with a 24-hour undo on each entry.",
     body: [
       "The Activity page is a chronological feed of recent library mutations: adds, removes, status flips, progress, ratings, season completions, episode toggles. Grouped by day with relative timestamps. Useful for retracing 'wait, when did I drop that show?' moments. Linked from Settings → Activity.",
+      "Each entry from the last 24 hours has an Undo button — tap it to revert that single library change without touching anything else. Undone rows stay visible (greyed out, marked 'undone') so the timeline still tells the full story. Settings → Danger zone has a Clear activity log button when you want to start the timeline fresh; your library, ratings, and progress aren't affected.",
     ],
   },
   {

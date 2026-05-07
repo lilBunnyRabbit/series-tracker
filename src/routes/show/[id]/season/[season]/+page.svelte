@@ -12,7 +12,8 @@
   import { posterUrl, seasonDetail } from "$lib/tmdb";
   import { isEpisodeWatched, STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, SeasonDetail, TvEntry } from "$lib/types";
-  import { fade } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
+  import { fade, fly } from "svelte/transition";
 
   const onBack = smartBack();
 
@@ -315,7 +316,7 @@
           Episodes
           {#if total > 0}
             <span class="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-normal tabular-nums text-muted">
-              {current}/{total}
+              {#key current}<span class="inline-block" in:fly={{ y: 4, duration: 180, easing: cubicOut }}>{current}</span>{/key}/{total}
             </span>
           {/if}
         </h2>

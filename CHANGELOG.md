@@ -4,6 +4,19 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-05-08
+
+### Added
+- Home: new "Upcoming" rail of landscape episode cards for shows you're watching, sitting between Continue Watching and Start Watching. Each card shows the next unaired episode's still or backdrop, an "In Nd" / "Today" / "Tomorrow" badge, and the runtime. Tap to open the show.
+- Show info → Actors rail: each cast card now shows "N eps." in the corner so you can read an actor's involvement in the show at a glance.
+- Settings → Haptics toggle now fires a confirmation pulse — a "success" pattern on enable and a "warn" pattern on disable — so you get device-level feedback the moment you flip it.
+- Activity log: each entry from the last 24 hours now has an "Undo" button that reverts that single library change — handy for an accidental status flip, episode tick, or rating tap. Undone rows stay visible (greyed out, marked "undone") so the timeline still tells the full story.
+- Settings → Danger zone: new "Clear activity log" button wipes the entire timeline of changes without touching your library, ratings, or progress.
+
+### Changed
+- Home → Continue Watching now shows landscape episode cards with the show's backdrop, per-episode runtime, and a "N remaining · Md" line so the rail reads as a real "what to play next" dashboard. The warm Temptation halo carries through onto cards in the Hot / Burning bands.
+- Season counters now flip with a small slide-and-fade whenever progress changes, so every +/- press registers visually alongside the haptic.
+
 ## [0.19.1] - 2026-05-07
 
 ### Added

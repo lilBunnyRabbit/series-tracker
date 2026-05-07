@@ -503,9 +503,35 @@ export type Video = {
 };
 export type Videos = { results: Video[] };
 
+/** TV-only "credits aggregated across the whole series." Differs from
+ *  `Credits` in that each cast member carries `total_episode_count` (their
+ *  involvement across the show) and a `roles` array (since one actor can play
+ *  multiple roles across seasons). Used for the Actors rail on the show info
+ *  page so each card can show "N eps." at a glance. */
+export type AggregateCastRole = {
+  credit_id: string;
+  character: string;
+  episode_count: number;
+};
+
+export type AggregateCastMember = {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  order: number;
+  roles: AggregateCastRole[];
+  total_episode_count: number;
+  popularity?: number;
+};
+
+export type AggregateCredits = {
+  cast: AggregateCastMember[];
+};
+
 export type TvDetailFull = TvDetail & {
   networks?: { id: number; name: string; logo_path: string | null }[];
   credits?: Credits;
+  aggregate_credits?: AggregateCredits;
   external_ids?: ExternalIds;
   images?: Images;
   videos?: Videos;

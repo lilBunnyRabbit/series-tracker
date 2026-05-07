@@ -130,7 +130,10 @@ export const tvDetailFull = (id: number, key: string, signal?: AbortSignal) =>
   get<TvDetailFull>(
     `/tv/${id}`,
     key,
-    { append_to_response: "credits,external_ids,images,videos", include_image_language: "en,null" },
+    {
+      append_to_response: "credits,aggregate_credits,external_ids,images,videos",
+      include_image_language: "en,null",
+    },
     { signal }
   );
 

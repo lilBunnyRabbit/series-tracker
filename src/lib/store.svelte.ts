@@ -1148,6 +1148,38 @@ function createStore() {
       state.searchHistory = [];
     },
 
+    /** Undo a single action from the activity log. Returns true on success.
+     *  Honors a 24-hour window — older entries can't be undone (the activity
+     *  card hides the affordance once it expires). For "add" actions we
+     *  delete the entry; for "remove" we restore from `prev`; for in-place
+     *  mutations (status, rating, progress, etc.) we overwrite the live
+     *  entry with the snapshot taken before the change. The action itself
+     *  is stamped with `undoneAt` so the row renders as already-undone and
+     *  no second undo lands on top. The undo doesn't push a new action —
+     *  it's a meta-operation, not a library mutation worth logging. */
+    undoAction(actionId: string): boolean {
+      const action = state.actions.find((a) => a.id === actionId);
+      if (!action) return false;
+      if (action.undoneAt) return false;
+      const ageMs = Date.now() - new Date(action.createdAt).getTime();
+      if (ageMs > 24 * 60 * 60 * 1000) return false;
+
+      const key = entryKey(action.kind, action.refId);
+      if (action.type === "add") {
+        delete state.library[key];
+      } else if (action.prev) {
+        state.library[key] = structuredClone(action.prev);
+      } else {
+        return false;
+      }
+      action.undoneAt = new Date().toISOString();
+      return true;
+    },
+
+    clearActions() {
+      state.actions = [];
+    },
+
     /** Export library + search history. API key is excluded by default to avoid leaking secrets. */
     exportJson({ includeApiKey = false }: { includeApiKey?: boolean } = {}): string {
       return JSON.stringify(

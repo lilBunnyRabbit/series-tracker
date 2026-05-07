@@ -16,10 +16,12 @@ export function setHapticsMuted(value: boolean): void {
   mutedOverride = value;
 }
 
-export function vibrate(pattern: Pattern = "tap"): void {
+export function vibrate(pattern: Pattern = "tap", { force = false }: { force?: boolean } = {}): void {
   if (!browser) return;
-  const muted = mutedOverride ?? store.preferences.hapticsMuted ?? false;
-  if (muted) return;
+  if (!force) {
+    const muted = mutedOverride ?? store.preferences.hapticsMuted ?? false;
+    if (muted) return;
+  }
   const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
   if (typeof nav.vibrate !== "function") return;
   try {

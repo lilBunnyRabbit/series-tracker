@@ -76,6 +76,60 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "continue-watching-episode-card",
+            title: "Continue Watching → landscape cards",
+            summary:
+              "Home rail now uses landscape EpisodeCards with the show's backdrop, runtime, and an 'N remaining · Md' line so the rail reads like a real 'what to play next' dashboard.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "M",
+          },
+          {
+            id: "upcoming-rail-home",
+            title: "Upcoming Schedule rail on home",
+            summary:
+              "A landscape rail of upcoming episodes with 'In Nd' / 'Today' / 'Tomorrow' badges, sitting between Continue Watching and Start Watching.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "S",
+          },
+          {
+            id: "activity-undo",
+            title: "Activity log: undo + clear-all",
+            summary:
+              "Undo individual library changes from the activity feed (24h window) and a clear-all in Settings → Danger zone.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "M",
+          },
+          {
+            id: "season-counter-flip",
+            title: "Counter flip animation",
+            summary:
+              "Season counters flip between values with a small slide-and-fade so every +/- press registers visually alongside the haptic.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "S",
+          },
+          {
+            id: "person-card-episode-count",
+            title: "Episode count badge on actor cards",
+            summary:
+              "Shows 'N eps.' on the actors rail so you can read this actor's involvement in this show at a glance.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "XS",
+          },
+          {
+            id: "haptics-toggle-confirmation",
+            title: "Haptic feedback on Settings toggles",
+            summary:
+              "Settings → Preferences haptics toggle fires a 'success' on enable and a 'warn' on disable so you get immediate device-level feedback.",
+            status: "shipped",
+            shippedIn: "0.20.0",
+            complexity: "XS",
+          },
+          {
             id: "roadmap-page",
             title: "Roadmap page",
             summary:
@@ -105,57 +159,10 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         ],
       },
       {
-        id: "must-ship",
-        title: "Completing the dashboard",
-        description: "The home dashboard story v1.0 promises — landscape episode cards and an upcoming-schedule rail.",
-        items: [
-          {
-            id: "continue-watching-episode-card",
-            title: "Continue Watching → landscape cards",
-            summary:
-              "Swap the home rail to the landscape EpisodeCard with backdrop, runtime, 'N remaining · Md', and an inline ✓ + ⋯ menu.",
-            status: "planned",
-            complexity: "M",
-          },
-          {
-            id: "upcoming-rail-home",
-            title: "Upcoming Schedule rail on home",
-            summary:
-              "A landscape rail of upcoming episodes with 'In Nd' badges, sitting between Continue Watching and Start Watching.",
-            status: "planned",
-            complexity: "S",
-          },
-        ],
-      },
-      {
         id: "polish",
         title: "Design polish",
         description: "Smaller items completing design intent that's already half-wired.",
         items: [
-          {
-            id: "person-card-episode-count",
-            title: "Episode count badge on actor cards",
-            summary:
-              "Shows '20 eps.' on the actors rail so you can read this actor's involvement in this show at a glance.",
-            status: "planned",
-            complexity: "XS",
-          },
-          {
-            id: "haptics-toggle-confirmation",
-            title: "Haptic feedback on Settings toggles",
-            summary:
-              "Settings → Preferences haptics toggle fires a 'success' on enable and a 'warn' on disable so you get immediate device-level feedback.",
-            status: "planned",
-            complexity: "XS",
-          },
-          {
-            id: "season-counter-flip",
-            title: "Counter flip animation",
-            summary:
-              "The season counter number flips between values with a small translateY+fade — completes the 'press feedback fires for every action' loop.",
-            status: "planned",
-            complexity: "S",
-          },
           {
             id: "list-card-status-chip",
             title: "Watchlist status chip under poster",
@@ -163,14 +170,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
               "Move the status indicator out of the metadata row and into the poster column for a cleaner row layout.",
             status: "planned",
             complexity: "S",
-          },
-          {
-            id: "activity-undo",
-            title: "Activity log: undo + clear-all",
-            summary:
-              "Undo individual library changes from the activity feed (24h window) and a clear-all in Settings → Danger zone.",
-            status: "planned",
-            complexity: "M",
           },
         ],
       },

@@ -1,18 +1,32 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import ContinueWatchingCard from "$lib/components/ContinueWatchingCard.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
+  import UpcomingCard from "$lib/components/UpcomingCard.svelte";
+  import {
+    getLatestSeasonNumber,
+    getUpcomingEpisodes,
+    warmUpForWatching,
+  } from "$lib/newEpisodes.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { effectiveSeasons } from "$lib/types";
-  import type { Entry, TvEntry } from "$lib/types";
+  import type { EpisodeBrief, Entry, TvEntry } from "$lib/types";
 
   type ContinueItem = {
     entry: TvEntry;
     season: number;
     episode: number;
     remaining: number;
+  };
+
+  type UpcomingItem = {
+    entry: TvEntry;
+    season: number;
+    episode: EpisodeBrief;
+    daysOut: number;
   };
 
   function nextEpisode(e: TvEntry): { season: number; episode: number } | null {
@@ -47,6 +61,47 @@
       .slice(0, 12);
   });
 
+  const watchingEntries = $derived.by<TvEntry[]>(() =>
+    store.entries.filter((e): e is TvEntry => e.kind === "tv" && e.status === "watching")
+  );
+
+  // Warm the upcoming-episodes cache for shows the user is watching so the
+  // home rail (and the /upcoming page) can render synchronously. Same module
+  // cache used by /upcoming, so a session only pays for one fetch per show.
+  $effect(() => {
+    if (!store.apiKey) return;
+    const apiKey = store.apiKey;
+    const entries = watchingEntries;
+    if (entries.length === 0) return;
+    void warmUpForWatching(entries, apiKey);
+  });
+
+  function startOfDay(d: Date): Date {
+    const out = new Date(d);
+    out.setHours(0, 0, 0, 0);
+    return out;
+  }
+
+  function daysBetween(iso: string): number {
+    const today = startOfDay(new Date());
+    const air = startOfDay(new Date(iso));
+    return Math.round((air.getTime() - today.getTime()) / 86_400_000);
+  }
+
+  const upcoming = $derived.by<UpcomingItem[]>(() => {
+    const all: UpcomingItem[] = [];
+    for (const e of watchingEntries) {
+      const ups = getUpcomingEpisodes(e.id);
+      const season = getLatestSeasonNumber(e.id);
+      if (!ups || season === undefined) continue;
+      for (const ep of ups) {
+        if (!ep.air_date) continue;
+        all.push({ entry: e, season, episode: ep, daysOut: daysBetween(ep.air_date) });
+      }
+    }
+    return all.sort((a, b) => a.daysOut - b.daysOut).slice(0, 12);
+  });
+
   const startWatching = $derived.by<Entry[]>(() => {
     return store.entries
       .filter((e) => e.status === "plan")
@@ -64,10 +119,6 @@
   function tvMeta(e: TvEntry): string {
     const total = effectiveSeasons(e).reduce((a, s) => a + s.episodeCount, 0);
     return total > 0 ? `${total} ep` : "";
-  }
-
-  function continueMeta(item: ContinueItem): string {
-    return `S${item.season} · E${item.episode} · ${item.remaining} left`;
   }
 </script>
 
@@ -103,16 +154,24 @@
         seeAllHref="{base}/watchlist/?status=watching"
       >
         {#each continueWatching as item (item.entry.kind + ":" + item.entry.id)}
-          <PosterCard
-            kind="tv"
-            id={item.entry.id}
-            title={item.entry.title}
-            poster={item.entry.poster}
-            year={item.entry.year}
-            meta={continueMeta(item)}
-            voteAverage={item.entry.voteAverage}
-            rating={item.entry.rating}
-            status={item.entry.status}
+          <ContinueWatchingCard
+            entry={item.entry}
+            season={item.season}
+            episode={item.episode}
+            remaining={item.remaining}
+          />
+        {/each}
+      </Rail>
+    {/if}
+
+    {#if upcoming.length > 0}
+      <Rail title="Upcoming" subtitle="New episodes airing soon" seeAllHref="{base}/upcoming/">
+        {#each upcoming as item (item.entry.id + ":" + item.season + ":" + item.episode.id)}
+          <UpcomingCard
+            entry={item.entry}
+            season={item.season}
+            episode={item.episode}
+            daysOut={item.daysOut}
           />
         {/each}
       </Rail>

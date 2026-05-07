@@ -104,7 +104,34 @@
       []
   );
 
-  const cast = $derived(detail?.credits?.cast?.slice(0, 16) ?? []);
+  // Prefer aggregate_credits for the actors rail — it carries per-show episode
+  // counts so each card can show "N eps." at a glance. Falls back to credits
+  // (no counts) when the aggregate endpoint isn't populated yet.
+  type CastItem = {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+    episodeCount?: number;
+  };
+  const cast = $derived.by<CastItem[]>(() => {
+    const agg = detail?.aggregate_credits?.cast;
+    if (agg && agg.length > 0) {
+      return agg.slice(0, 16).map((c) => ({
+        id: c.id,
+        name: c.name,
+        character: c.roles?.[0]?.character ?? "",
+        profile_path: c.profile_path,
+        episodeCount: c.total_episode_count,
+      }));
+    }
+    return (detail?.credits?.cast ?? []).slice(0, 16).map((c) => ({
+      id: c.id,
+      name: c.name,
+      character: c.character,
+      profile_path: c.profile_path,
+    }));
+  });
   const trailers = $derived(detail?.videos?.results ?? []);
   const hasTrailer = $derived(
     trailers.some((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"))
@@ -455,13 +482,17 @@
 
     <!-- ACTORS RAIL -->
     {#if cast.length > 0}
-      <Rail title="Actors" subtitle="{detail.credits?.cast?.length ?? cast.length} in cast">
+      <Rail
+        title="Actors"
+        subtitle="{detail.aggregate_credits?.cast?.length ?? detail.credits?.cast?.length ?? cast.length} in cast"
+      >
         {#each cast as c (c.id)}
           <PersonCard
             id={c.id}
             name={c.name}
             role={c.character}
             profile={posterUrl(c.profile_path, "w185")}
+            episodeCount={c.episodeCount}
           />
         {/each}
       </Rail>

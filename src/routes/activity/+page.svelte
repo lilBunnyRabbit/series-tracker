@@ -78,6 +78,25 @@
     return a.kind === "tv" ? `${base}/show/${a.refId}/info/` : `${base}/movie/${a.refId}/info/`;
   }
 
+  // Tick `now` once a minute so the 24-hour undo window expires gracefully
+  // for a tab left open overnight, instead of pinning at the page-load value.
+  let now = $state(Date.now());
+  $effect(() => {
+    const t = setInterval(() => (now = Date.now()), 60_000);
+    return () => clearInterval(t);
+  });
+
+  const UNDO_WINDOW_MS = 24 * 60 * 60 * 1000;
+  function isUndoable(a: ActionEntry): boolean {
+    if (a.undoneAt) return false;
+    if (now - new Date(a.createdAt).getTime() > UNDO_WINDOW_MS) return false;
+    return a.type === "add" || a.prev !== undefined;
+  }
+
+  function handleUndo(a: ActionEntry): void {
+    store.undoAction(a.id);
+  }
+
   // The action's `prev` is the snapshot *before* the mutation. To describe
   // what changed we sometimes look at the live entry (e.g. the new status),
   // falling back to "—" when the entry has been removed since.
@@ -207,7 +226,8 @@
             {@const live = store.get(a.kind, a.refId)}
             {@const v = verbFor(a)}
             {@const bucketKey = iconBucket[a.type]}
-            <li class="rounded-lg border border-border bg-surface p-2.5">
+            {@const undoable = isUndoable(a)}
+            <li class="rounded-lg border border-border bg-surface p-2.5 {a.undoneAt ? 'opacity-60' : ''}">
               <div class="flex items-start gap-3">
                 <span
                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full {iconClasses[bucketKey]}"
@@ -232,9 +252,20 @@
                     {#if v.suffix}<span class="text-muted">{v.suffix}</span>{/if}
                   </p>
                   <p class="mt-0.5 text-[11px] tabular-nums text-muted/70">
-                    {relativeTime(a.createdAt)}
+                    {relativeTime(a.createdAt)}{#if a.undoneAt}<span class="ml-1.5 uppercase tracking-wider">· undone</span>{/if}
                   </p>
                 </div>
+                {#if undoable}
+                  <button
+                    type="button"
+                    use:tactile={{ haptic: "warn" }}
+                    onclick={() => handleUndo(a)}
+                    aria-label="Undo {v.verb} {a.title}"
+                    class="tap-target tap-target--btn shrink-0 rounded-md border border-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted hover-border-accent hover-text-text"
+                  >
+                    Undo
+                  </button>
+                {/if}
               </div>
             </li>
           {/each}

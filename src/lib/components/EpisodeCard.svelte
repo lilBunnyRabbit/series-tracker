@@ -17,8 +17,9 @@
     bottomLeft?: string;
     /** Watched ✓ chip. */
     watched?: boolean;
-    /** Optional ⋯ menu click. */
-    onMenu?: () => void;
+    /** Optional CSS custom properties for the temptation halo — `--tt` for
+     *  intensity, `--tt-c` for hue. Consumed by the global `.tt-glow` rule. */
+    glowStyle?: string;
     width?: "sm" | "md" | "lg";
     href?: string;
   };
@@ -33,7 +34,7 @@
     topLeft,
     bottomLeft,
     watched = false,
-    onMenu,
+    glowStyle,
     width = "md",
     href,
   }: Props = $props();
@@ -49,7 +50,8 @@
   <a
     href={finalHref}
     use:tactile
-    class="tap-target tap-target--card hover-zoom relative block aspect-video w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm"
+    style={glowStyle}
+    class="tap-target tap-target--card tt-glow hover-zoom relative block aspect-video w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm"
     aria-label={title}
   >
     {#if image}
@@ -71,27 +73,11 @@
     {/if}
 
     {#if bottomLeft}
-      <span class="absolute bottom-1.5 left-1.5 right-10 truncate text-[11px] font-medium text-text drop-shadow">
+      <span class="absolute bottom-1.5 left-1.5 right-1.5 truncate text-[11px] font-medium text-text drop-shadow">
         {bottomLeft}
       </span>
     {/if}
   </a>
-
-  {#if onMenu}
-    <button
-      type="button"
-      use:tactile={{ haptic: "tap" }}
-      onclick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onMenu?.();
-      }}
-      aria-label="Quick actions for {title}"
-      class="tap-target tap-target--icon absolute right-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-lg leading-none text-text backdrop-blur-sm"
-    >
-      ⋯
-    </button>
-  {/if}
 
   <div class="min-w-0 px-0.5">
     <div class="line-clamp-1 text-sm font-medium leading-snug text-text">{title}</div>

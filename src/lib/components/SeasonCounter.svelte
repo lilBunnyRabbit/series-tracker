@@ -1,5 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import { cubicOut } from "svelte/easing";
+  import { fly } from "svelte/transition";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { STATUS_COLOR } from "$lib/types";
@@ -54,7 +56,7 @@
         {/if}
       </div>
       <div class="mt-0.5 truncate text-xs text-muted">
-        Season {season} · {current}/{total} ep{total === 1 ? "" : "s"}
+        Season {season} · {#key current}<span class="inline-block tabular-nums" in:fly={{ y: 4, duration: 180, easing: cubicOut }}>{current}</span>{/key}/{total} ep{total === 1 ? "" : "s"}
       </div>
       {#if total > 0}
         <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-2">

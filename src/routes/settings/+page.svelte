@@ -2,6 +2,7 @@
   import { base } from "$app/paths";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
+  import { vibrate } from "$lib/haptics";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { PACING_PRESETS } from "$lib/temptation";
@@ -217,6 +218,12 @@
     keyDraft = "";
   }
 
+  function clearActivity(): void {
+    if (store.actions.length === 0) return;
+    if (!confirm("Clear the entire activity log? This can't be undone — your library and progress are not affected.")) return;
+    store.clearActions();
+  }
+
   function handleClearCache(): void {
     clearCache();
     cacheCleared = true;
@@ -227,6 +234,9 @@
     const checked = (e.currentTarget as HTMLInputElement).checked;
     // Stored as muted=true when the toggle is OFF (haptics disabled).
     store.setPreference("hapticsMuted", !checked || undefined);
+    // Confirmation pulse — `success` on enable, `warn` on disable. Forced so
+    // the disable case still fires once even though haptics are now muted.
+    vibrate(checked ? "success" : "warn", { force: true });
   }
 
   function setDefaultStatus(e: Event): void {
@@ -651,15 +661,32 @@
   <!-- Danger zone -->
   <div class="space-y-3 rounded-lg border border-error/40 bg-surface p-5">
     <h2 class="text-sm font-medium uppercase tracking-wider text-error">Danger zone</h2>
-    <p class="text-sm text-muted">Wipes the API key, library, search history, and preferences. There is no undo.</p>
-    <button
-      type="button"
-      use:tactile={{ haptic: "warn" }}
-      onclick={wipe}
-      class="tap-target tap-target--btn rounded-md border border-error/60 px-4 py-2 text-sm text-error transition-colors duration-150 active:bg-error/10"
-    >
-      Wipe everything
-    </button>
+    <div class="space-y-2">
+      <p class="text-sm text-muted">
+        Clear the activity log. The library, ratings and progress are untouched — only the timeline of recent changes goes away.
+      </p>
+      <button
+        type="button"
+        use:tactile={{ haptic: "warn" }}
+        onclick={clearActivity}
+        disabled={store.actions.length === 0}
+        class="tap-target tap-target--btn rounded-md border border-error/60 px-4 py-2 text-sm text-error transition-colors duration-150 active:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Clear activity log{store.actions.length > 0 ? ` (${store.actions.length})` : ""}
+      </button>
+    </div>
+    <hr class="border-error/20" />
+    <div class="space-y-2">
+      <p class="text-sm text-muted">Wipes the API key, library, search history, and preferences. There is no undo.</p>
+      <button
+        type="button"
+        use:tactile={{ haptic: "warn" }}
+        onclick={wipe}
+        class="tap-target tap-target--btn rounded-md border border-error/60 px-4 py-2 text-sm text-error transition-colors duration-150 active:bg-error/10"
+      >
+        Wipe everything
+      </button>
+    </div>
   </div>
 </section>
 
