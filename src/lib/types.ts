@@ -96,6 +96,36 @@ export type Season = {
   episodeCount: number;
 };
 
+// Temptation — bounded engagement score in [0, 1], updated by activity
+// (episodes watched, picker outcomes, detail-page opens, etc.) and faded by
+// time decay according to the user's pacing preference. Drives the watchlist
+// Temptation sort and a refined glow on high-temptation cards.
+export type TemptationAction =
+  | "episode-watched"
+  | "season-completed"
+  | "picker-win"
+  | "picker-loss"
+  | "detail-opened"
+  | "episode-page-opened"
+  | "rated-high"
+  | "rewatchable-on"
+  | "marked-finished";
+
+export type TemptationEvent = {
+  /** ISO timestamp of when the kick was applied. */
+  at: string;
+  /** Signed delta applied to the bounded score. The stored value is always
+   *  clamped to [0, 1] before persist; this records the raw nudge. */
+  delta: number;
+  action: TemptationAction;
+  /** Human-readable hint for the last-bump caption (e.g. "S2E5"). */
+  meta?: string;
+};
+
+/** Pacing presets — map onto a per-day decay constant in temptation.ts.
+ *  "Lingering" fades slowly (~70d half-life); "Restless" fades fast (~10d). */
+export type TemptationPacing = "lingering" | "balanced" | "reactive" | "restless";
+
 export type TvEntry = {
   kind: "tv";
   id: number;
@@ -133,6 +163,17 @@ export type TvEntry = {
    *  dropped one usually isn't). Surfaces: 2× weight in the picker pool,
    *  watchlist filter chip, profile shelf. */
   rewatchable?: boolean;
+  /** Engagement score in [0, 1] — built up by activity (watching, picker
+   *  wins, opening detail page) and faded by time decay. Drives the
+   *  Temptation watchlist sort and a refined glow on high-temptation cards. */
+  temptation?: number;
+  /** ISO timestamp of the last temptation update. Decay is computed lazily
+   *  from this on read so the persisted value only changes when an action
+   *  fires, not on every render. */
+  temptationUpdatedAt?: string;
+  /** Bounded log of recent temptation kicks. Powers the trend arrow and the
+   *  last-bump caption on the temptation bar. Trimmed to LOG_LIMIT entries. */
+  temptationLog?: TemptationEvent[];
   addedAt: string;
   updatedAt: string;
 };
@@ -194,6 +235,12 @@ export type MovieEntry = {
   genres?: { id: number; name: string }[];
   /** See TvEntry — same flag, same surfaces. */
   rewatchable?: boolean;
+  /** See TvEntry — same field, same semantics. */
+  temptation?: number;
+  /** See TvEntry. */
+  temptationUpdatedAt?: string;
+  /** See TvEntry. */
+  temptationLog?: TemptationEvent[];
   addedAt: string;
   updatedAt: string;
 };
@@ -216,6 +263,16 @@ export type Preferences = {
    *  replay (via Settings → Guide → Take the tour) toggles a separate flag in
    *  $lib/tour.svelte.ts and bypasses this field. */
   tourSeen?: boolean;
+  /** Last app version whose guide content the user has seen — set when they
+   *  close any tour run (full or update). Drives the post-update auto-tour
+   *  in $lib/tour.svelte.ts: after an upgrade, sections tagged with a
+   *  version newer than this open in a filtered tour showing only the
+   *  changes. Undefined for users predating the post-update flow; the tour
+   *  module migrates them lazily based on `tourSeen`. */
+  lastSeenGuideVersion?: string;
+  /** Pacing for the temptation score's time decay. Maps to a per-day decay
+   *  constant in temptation.ts. Defaults to "balanced" when unset. */
+  temptationPacing?: TemptationPacing;
 };
 
 export type ActionType =

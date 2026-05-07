@@ -173,6 +173,13 @@
       { a: currentMatch.a, b: currentMatch.b, winnerSide: side, round },
     ];
     const win = side === "a" ? currentMatch.a : currentMatch.b;
+    const lose = side === "a" ? currentMatch.b : currentMatch.a;
+    // Each matchup nudges both contenders' temptation: winners gain a small
+    // amount, losers lose a smaller one. The kicks land in the bracket pool's
+    // entries (rewatchable doubling notwithstanding) — duplicates don't
+    // double-fire because applyTemptation looks up by (kind, id).
+    store.applyTemptation(win.kind, win.id, "picker-win");
+    store.applyTemptation(lose.kind, lose.id, "picker-loss");
     vibrate("tick");
     setTimeout(() => {
       advanced = [...advanced, win];

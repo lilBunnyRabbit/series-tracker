@@ -6,6 +6,7 @@
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { backdropUrl, posterUrl } from "$lib/tmdb";
   import type { RecommendationItem } from "$lib/tmdb";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
@@ -70,6 +71,12 @@
   const statusColor = $derived(existing ? STATUS_COLOR[existing.status] : null);
   // Poster border: full-opacity status colour once added, neutral otherwise.
   const posterBorder = $derived(statusColor ? statusColor.border : "border-border");
+
+  // Refined high-temptation glow on the poster — only when this feed item is
+  // already a library entry. The intensity ramp is centralised in
+  // temptation.ts so all card surfaces share the same curve.
+  const tempt = $derived(existing ? currentTemptation(existing, store.preferences.temptationPacing) : 0);
+  const glow = $derived(glowIntensity(tempt));
 
   const voteCountLabel = $derived.by(() => {
     if (voteCount <= 0) return "";
@@ -138,7 +145,9 @@
     <a
       href={detailHref}
       use:tactile={{ haptic: false }}
-      class="feed-poster tap-target border-2 {posterBorder}"
+      class="feed-poster tap-target tt-glow border-2 {posterBorder}"
+      style:--tt={existing ? glow.toFixed(3) : "0"}
+      style:--tt-c={existing ? TEMPTATION_GLOW_COLOR[existing.status] : "var(--color-accent)"}
       aria-label="Open {title}"
     >
       {#if poster}

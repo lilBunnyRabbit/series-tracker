@@ -4,6 +4,16 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-05-07
+
+### Added
+- Temptation: every title in your library now carries a 0–100% Temptation score that builds up as you engage (watching episodes, opening pages, picking it in the bracket, rating it highly) and fades over time when you don't. Visible as a heat-gradient bar on each show / movie page with band, percent, trend arrow, and a caption for the last bump.
+- Watchlist: new "Temptation" sort (now the default) surfaces what you're actively in plus the candidates pulling at you for what's next.
+- Watchlist + grid cards: a refined warm halo lights up cards in the Hot or Burning bands so high-temptation titles catch your eye without studying the list. The halo's hue follows the entry's status colour.
+- Settings → Preferences → Temptation pacing: a 4-preset selector (Lingering / Balanced / Reactive / Restless) controls how fast scores fade — anywhere from a ~70-day half-life to ~10 days.
+- Guide: a Temptation section in the in-app guide explains the score, the bands, and the pacing presets, with an animated demo bar.
+- Post-update tour: after an app update, the guide tour auto-opens with just the new or updated sections (e.g. only "Temptation" this time), banner-tagged "What's new in vX.Y.Z". Skipped on builds that don't change any guide content.
+
 ## [0.17.0] - 2026-05-07
 
 ### Added

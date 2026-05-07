@@ -4,9 +4,10 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { PACING_PRESETS } from "$lib/temptation";
   import { clearCache, defaultLanguage, LANGUAGE_OPTIONS, ping } from "$lib/tmdb";
   import { STATUS_LABEL } from "$lib/types";
-  import type { Status } from "$lib/types";
+  import type { Status, TemptationPacing } from "$lib/types";
   import {
     applyUpdate,
     checkForUpdate,
@@ -77,6 +78,7 @@
   const hapticsMuted = $derived(store.preferences.hapticsMuted ?? false);
   const defaultAddStatus = $derived<Status | "">(store.preferences.defaultAddStatus ?? "");
   const languagePref = $derived(store.preferences.language ?? "");
+  const pacingPref = $derived<TemptationPacing>(store.preferences.temptationPacing ?? "balanced");
   const detectedLanguage = defaultLanguage();
 
   // Display names rendered in the user's UI locale so the picker reads
@@ -240,6 +242,10 @@
     const val = (e.currentTarget as HTMLSelectElement).value;
     if (!val) store.setPreference("language", null);
     else store.setPreference("language", val);
+  }
+
+  function setPacing(value: TemptationPacing): void {
+    store.setPreference("temptationPacing", value);
   }
 
   const ADD_STATUSES: Status[] = ["plan", "watching", "tuned", "completed", "dropped"];
@@ -531,6 +537,38 @@
         {/each}
       </select>
     </label>
+
+    <hr class="border-border" />
+
+    <div class="space-y-2">
+      <div>
+        <h3 class="text-sm font-medium">Temptation pacing</h3>
+        <p class="mt-0.5 text-xs text-muted">
+          How fast a title's temptation score fades when you stop engaging. Picks the
+          decay half-life — pick a faster preset if you want only this week's
+          activity to dominate, slower if you want things to stay warm for weeks.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {#each PACING_PRESETS as preset (preset.value)}
+          {@const active = pacingPref === preset.value}
+          <button
+            type="button"
+            use:tactile
+            onclick={() => setPacing(preset.value)}
+            aria-pressed={active}
+            class="tap-target tap-target--btn flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors duration-150 {active
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border text-muted hover-text-text'}"
+          >
+            <span class="text-sm font-semibold">{preset.label}</span>
+            <span class="text-[11px] {active ? 'opacity-90' : 'opacity-70'}">
+              {preset.hint}
+            </span>
+          </button>
+        {/each}
+      </div>
+    </div>
   </div>
 
   <!-- About -->

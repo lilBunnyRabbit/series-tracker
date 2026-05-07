@@ -10,17 +10,18 @@
   import Pagination from "$lib/components/Pagination.svelte";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
+  import { currentTemptation } from "$lib/temptation";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
 
   type Filter = "all" | Status;
   type KindFilter = "all" | "tv" | "movie";
-  type Sort = "updated" | "added" | "title" | "progress" | "rating" | "release";
+  type Sort = "updated" | "added" | "title" | "progress" | "rating" | "release" | "temptation";
   type View = "list" | "grid";
 
   const VALID_FILTER: Filter[] = ["all", ...STATUSES];
   const VALID_KIND: KindFilter[] = ["all", "tv", "movie"];
-  const VALID_SORT: Sort[] = ["updated", "added", "title", "progress", "rating", "release"];
+  const VALID_SORT: Sort[] = ["updated", "added", "title", "progress", "rating", "release", "temptation"];
   const VALID_VIEW: View[] = ["list", "grid"];
 
   const SORT_LABEL: Record<Sort, string> = {
@@ -30,6 +31,7 @@
     progress: "Progress",
     rating: "Your rating",
     release: "Release date",
+    temptation: "Temptation",
   };
   const VIEW_LABEL: Record<View, string> = {
     list: "List",
@@ -50,7 +52,7 @@
   });
   const sort = $derived.by<Sort>(() => {
     const v = page.url.searchParams.get("sort");
-    return VALID_SORT.includes(v as Sort) ? (v as Sort) : "updated";
+    return VALID_SORT.includes(v as Sort) ? (v as Sort) : "temptation";
   });
   const view = $derived.by<View>(() => {
     const v = page.url.searchParams.get("view");
@@ -97,7 +99,9 @@
     updateParams({ kind: k === "all" ? null : k, page: null });
   }
   function setSort(s: Sort): void {
-    updateParams({ sort: s === "updated" ? null : s, page: null });
+    // "temptation" is the default — drop the URL param when picked so the
+    // canonical /watchlist/ URL stays clean.
+    updateParams({ sort: s === "temptation" ? null : s, page: null });
   }
   function setView(v: View): void {
     updateParams({ view: v === "list" ? null : v });
@@ -137,6 +141,7 @@
         if (e.notes && e.notes.toLowerCase().includes(q)) return true;
         return false;
       });
+    const pacing = store.preferences.temptationPacing;
     return [...list].sort((a, b) => {
       switch (sort) {
         case "title":
@@ -151,6 +156,10 @@
           // year is the 4-char "YYYY" we extract from TMDB's first_air_date /
           // release_date at add time; entries without a year sort to the end.
           return (b.year ?? "0").localeCompare(a.year ?? "0");
+        case "temptation":
+          // Live decay applied lazily at compare time so the order reflects
+          // the score *now*, not just the persisted value.
+          return currentTemptation(b, pacing) - currentTemptation(a, pacing);
         case "updated":
         default:
           return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");

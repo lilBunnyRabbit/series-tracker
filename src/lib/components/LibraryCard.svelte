@@ -2,7 +2,9 @@
   import { base } from "$app/paths";
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
+  import { store } from "$lib/store.svelte";
   import { longPress, tactile } from "$lib/tactile";
+  import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
@@ -30,6 +32,14 @@
     entry.status === "dropped" ? `${c.borderSoft} opacity-60` : c.borderSoft
   );
 
+  // Refined high-temptation glow. --tt drives intensity, --tt-c picks the
+  // hue from the entry's status palette. Both are consumed by the global
+  // .tt-glow rule in routes/layout.css. The intensity ramp is quadratic so
+  // Hot is a hint, Burning is the full halo.
+  const tempt = $derived(currentTemptation(entry, store.preferences.temptationPacing));
+  const glow = $derived(glowIntensity(tempt));
+  const glowStyle = $derived(`--tt: ${glow.toFixed(3)}; --tt-c: ${TEMPTATION_GLOW_COLOR[entry.status]};`);
+
   let actionsOpen = $state(false);
   function openActions(): void {
     actionsOpen = true;
@@ -45,7 +55,8 @@
       {href}
       use:tactile
       use:longPress={{ onLongPress: openActions }}
-      class="tap-target tap-target--card flex items-stretch gap-3 rounded-md border bg-surface p-2 {borderClass}"
+      style={glowStyle}
+      class="tap-target tap-target--card tt-glow flex items-stretch gap-3 rounded-md border bg-surface p-2 {borderClass}"
     >
       <div class="relative h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
         {#if entry.poster}
@@ -95,7 +106,8 @@
       {href}
       use:tactile
       use:longPress={{ onLongPress: openActions }}
-      class="tap-target tap-target--card flex h-full flex-col overflow-hidden rounded-lg border bg-surface {borderClass}"
+      style={glowStyle}
+      class="tap-target tap-target--card tt-glow flex h-full flex-col overflow-hidden rounded-lg border bg-surface {borderClass}"
     >
       <div class="relative aspect-[2/3] w-full bg-surface-2">
         {#if entry.poster}

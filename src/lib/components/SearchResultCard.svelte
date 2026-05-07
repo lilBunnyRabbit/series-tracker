@@ -4,6 +4,7 @@
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { backdropUrl, posterUrl } from "$lib/tmdb";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { SearchMultiResult, Status } from "$lib/types";
@@ -35,6 +36,12 @@
   );
   // Soft status-tinted border once added to library, neutral otherwise.
   const cardBorder = $derived(existing ? STATUS_COLOR[existing.status].borderSoft : "border-border");
+
+  // Refined high-temptation glow — only fires for results that are already
+  // in the library. Hue mirrors the entry's status colour so it layers
+  // cleanly on the soft tinted border.
+  const tempt = $derived(existing ? currentTemptation(existing, store.preferences.temptationPacing) : 0);
+  const glow = $derived(glowIntensity(tempt));
 
   async function handleStatusPick(status: Status): Promise<void> {
     if (result.media_type === "person") return;
@@ -161,9 +168,11 @@
     onpointermove={onPointerMove}
     onpointerup={onPointerUp}
     onpointercancel={onPointerUp}
-    class="tap-target tap-target--card swipe-card relative flex gap-3 overflow-hidden rounded-lg border bg-surface p-3 focus-within:border-primary {cardBorder}"
+    class="tap-target tap-target--card swipe-card tt-glow relative flex gap-3 overflow-hidden rounded-lg border bg-surface p-3 focus-within:border-primary {cardBorder}"
     style:transform={swipeDx > 0 ? `translateX(${swipeDx}px)` : ""}
     style:transition={swiping ? "none" : "transform 220ms var(--ease-spring)"}
+    style:--tt={existing ? glow.toFixed(3) : "0"}
+    style:--tt-c={existing ? TEMPTATION_GLOW_COLOR[existing.status] : "var(--color-accent)"}
   >
     {#if backdrop}
       <div

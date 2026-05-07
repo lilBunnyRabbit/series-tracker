@@ -289,3 +289,40 @@ html.scroll-locked main {
   flex-direction: column;
   min-height: 0;
 }
+
+@layer utilities {
+  /* Refined high-temptation glow — applied to cards rendering library entries.
+     Invisible by default; cards opt in by setting two CSS vars inline:
+       --tt   (0..1): glow intensity. Stays at 0 below the Hot band so cards
+                      that don't qualify wear the class with no visible effect.
+                      The ramp is quadratic (computed in temptation.ts) so Hot
+                      is a hint and Burning hits the full halo.
+       --tt-c: hue.   `var(--color-primary)` etc. — usually the entry's status
+                      colour so the glow layers cleanly on top of the
+                      status-tinted border instead of clashing with it.
+
+     Why two surfaces (host + ::after):
+       • The outer aura goes on the host's box-shadow because outset shadows
+         paint OUTSIDE the box, where overflow:hidden can't clip them.
+       • The inset edge + inset blur go on a ::after pseudo-element so they
+         render ON TOP of the host's children. Without this, an `<img>`
+         filling a poster card occludes a host-applied inset shadow and the
+         glow only shows in the text/meta area below the image. The pseudo
+         is pointer-events:none so it doesn't intercept clicks. */
+  .tt-glow {
+    position: relative;
+    box-shadow: 0 0 14px -4px color-mix(in oklab, var(--tt-c, var(--color-accent)) calc(var(--tt, 0) * 35%), transparent);
+    transition: box-shadow 600ms ease-out;
+  }
+  .tt-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklab, var(--tt-c, var(--color-accent)) calc(var(--tt, 0) * 70%), transparent),
+      inset 0 0 18px -3px color-mix(in oklab, var(--tt-c, var(--color-accent)) calc(var(--tt, 0) * 55%), transparent);
+    transition: box-shadow 600ms ease-out;
+  }
+}

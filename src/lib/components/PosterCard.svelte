@@ -1,7 +1,9 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
+  import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Status } from "$lib/types";
 
@@ -55,6 +57,19 @@
   const c = $derived(status ? STATUS_COLOR[status] : null);
   // In-library posters get a soft status-tinted border; unfiled cards stay neutral.
   const posterBorder = $derived(c ? c.borderSoft : "border-border/60");
+
+  // Refined high-temptation glow — only fires when the poster represents a
+  // library entry. Looking up the entry by (kind, id) keeps PosterCard
+  // unaware of full Entry shape; rails and recommendations that show
+  // not-yet-added items just see a missing entry → no glow.
+  const libraryEntry = $derived(store.get(kind, id));
+  const tempt = $derived(libraryEntry ? currentTemptation(libraryEntry, store.preferences.temptationPacing) : 0);
+  const glow = $derived(glowIntensity(tempt));
+  const glowStyle = $derived(
+    libraryEntry
+      ? `--tt: ${glow.toFixed(3)}; --tt-c: ${TEMPTATION_GLOW_COLOR[libraryEntry.status]};`
+      : ""
+  );
 </script>
 
 <a
@@ -63,7 +78,10 @@
   class="tap-target tap-target--card hover-zoom group flex flex-col gap-1.5 {widthClass}"
   aria-label={title}
 >
-  <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-surface-2 shadow-sm {posterBorder}">
+  <div
+    style={glowStyle}
+    class="tt-glow relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-surface-2 shadow-sm {posterBorder}"
+  >
     {#if poster}
       <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}

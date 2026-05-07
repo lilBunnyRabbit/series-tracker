@@ -12,19 +12,20 @@
   import { base } from "$app/paths";
   import GuideVisual from "$lib/components/GuideVisual.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import { GUIDE_SECTIONS, type GuideAccent, type GuideSection } from "$lib/guide";
+  import { type GuideAccent } from "$lib/guide";
   import { portal } from "$lib/portal";
   import { tactile } from "$lib/tactile";
   import { tour } from "$lib/tour.svelte";
+  import { version } from "$lib/version.svelte";
   import { quintOut } from "svelte/easing";
   import { fade, fly } from "svelte/transition";
 
-  // Tour subset — sections explicitly opted out via `inTour: false` are kept
-  // in the static guide but skipped here, so the first-launch flow stays
-  // short and focused on essentials.
-  const sections = $derived<GuideSection[]>(
-    GUIDE_SECTIONS.filter((s) => s.inTour !== false)
-  );
+  // Sections come from the tour module so this component doesn't have to
+  // know which mode is active. First-launch / manual replay → all in-tour
+  // sections. Post-update → only those tagged with a version newer than
+  // `lastSeenGuideVersion`. The `inTour: false` filter is applied upstream.
+  const sections = $derived(tour.sections);
+  const isUpdateMode = $derived(tour.isUpdateMode);
 
   let stepIndex = $state(0);
   // 1 = forward (slide in from right), -1 = back (slide in from left). The
@@ -200,10 +201,23 @@
     transition:fade={{ duration: 200 }}
   >
     <div class="flex w-full flex-col bg-bg shadow-2xl sm:max-h-[90vh] sm:max-w-md sm:rounded-2xl sm:border sm:border-border">
+      {#if isUpdateMode}
+        <!-- Post-update mode: a small banner orients the user before the
+             progress bar so they know this is a "what's new" walkthrough,
+             not a fresh-install onboarding. Renders once above the header. -->
+        <div
+          class="flex items-center justify-center gap-1.5 border-b border-accent/30 bg-accent/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] text-accent"
+          style="padding-top: max(env(safe-area-inset-top), 0.375rem)"
+        >
+          <Icon name="sparkles" size={12} />
+          <span>What's new in v{version.current.version}</span>
+        </div>
+      {/if}
+
       <!-- Header: progress + skip -->
       <header
         class="flex items-center gap-3 border-b border-border px-4 py-3"
-        style="padding-top: max(env(safe-area-inset-top), 0.75rem)"
+        style:padding-top={isUpdateMode ? "0.75rem" : "max(env(safe-area-inset-top), 0.75rem)"}
       >
         <div class="flex flex-1 items-center gap-1" aria-label="Progress">
           {#each sections as _, i (i)}

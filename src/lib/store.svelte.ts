@@ -1,5 +1,6 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbSet } from "./idb";
+import { applyAction as applyTemptationAction } from "./temptation";
 import { effectiveSeasons } from "./types";
 import type {
   ActionEntry,
@@ -11,12 +12,13 @@ import type {
   Season,
   Status,
   Store,
+  TemptationAction,
   TvEntry,
 } from "./types";
 
 const IDB_KEY = "state";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 const SEARCH_HISTORY_LIMIT = 8;
 const ACTIONS_LIMIT = 200;
 const SAVE_DEBOUNCE_MS = 300;
@@ -53,6 +55,11 @@ type PersistedV7 = PersistedV6 & {
 type PersistedV8 = PersistedV7 & {
   feedSessions?: FeedSession[];
 };
+// V9 — added optional temptation/temptationUpdatedAt/temptationLog to TvEntry
+// and MovieEntry, plus optional `temptationPacing` on Preferences. Purely
+// additive; missing fields are treated as score=0 / log=[] / pacing="balanced"
+// by the lazy decay in src/lib/temptation.ts.
+type PersistedV9 = PersistedV8;
 
 const empty: Store = {
   apiKey: null,
@@ -65,7 +72,7 @@ const empty: Store = {
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV8): Store {
+function migrate(parsed: PersistedV9): Store {
   // Fold V7's single `feedSession` into V8's `feedSessions[]` so older
   // exports/imports still resume correctly.
   const sessions = parsed.feedSessions ?? (parsed.feedSession ? [parsed.feedSession] : []);
@@ -106,7 +113,7 @@ function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV7);
+    return migrate(JSON.parse(raw) as PersistedV9);
   } catch {
     return null;
   }
@@ -217,7 +224,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV7>(IDB_KEY);
+        let data = await idbGet<PersistedV9>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -304,6 +311,14 @@ function createStore() {
     if (state.actions.length > ACTIONS_LIMIT) {
       state.actions.length = ACTIONS_LIMIT;
     }
+  }
+
+  /** Fire a temptation kick on an entry under the user's current pacing.
+   *  Thin wrapper so call sites don't have to thread `state.preferences` —
+   *  applyTemptationAction reads pacing once per call and folds decay +
+   *  kick + log into the entry in place. */
+  function applyKick(e: Entry, action: TemptationAction, meta?: string): void {
+    applyTemptationAction(e, action, state.preferences.temptationPacing, meta);
   }
 
   return {
@@ -537,6 +552,7 @@ function createStore() {
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
       else if (!anyProgress && e.status === "completed") e.status = "watching";
+      if (newCount > prevCount) applyKick(e, "episode-watched", `S${season}E${newCount}`);
       pushAction({
         type: "progress",
         kind: "tv",
@@ -573,6 +589,7 @@ function createStore() {
       const anyProgress = Object.values(e.progress).some((v) => v > 0);
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
+      if (newCount > prevCount) applyKick(e, "episode-watched", `S${season}E${newCount}`);
       pushAction({
         type: "progress",
         kind: "tv",
@@ -596,7 +613,8 @@ function createStore() {
       if (episodeNumber < 1 || episodeNumber > s.episodeCount) return;
       const prev = snapshotEntry("tv", showId);
       const set = currentWatchedSet(e, season);
-      if (set.has(episodeNumber)) set.delete(episodeNumber);
+      const wasWatched = set.has(episodeNumber);
+      if (wasWatched) set.delete(episodeNumber);
       else set.add(episodeNumber);
       applyWatchedSet(e, season, set);
       withTimestamp(e);
@@ -606,6 +624,7 @@ function createStore() {
       if (allDone) e.status = "completed";
       else if (anyProgress && (e.status === "plan" || e.status === "completed")) e.status = "watching";
       else if (!anyProgress && e.status === "completed") e.status = "watching";
+      if (!wasWatched) applyKick(e, "episode-watched", `S${season}E${episodeNumber}`);
       pushAction({
         type: "episode-toggle",
         kind: "tv",
@@ -636,6 +655,7 @@ function createStore() {
       const allDone = counted.length > 0 && counted.every((x) => (e.progress[x.number] ?? 0) === x.episodeCount);
       if (allDone) e.status = "completed";
       else if (e.status === "plan") e.status = "watching";
+      applyKick(e, "season-completed", `Season ${season}`);
       pushAction({
         type: "season-complete",
         kind: "tv",
@@ -712,6 +732,11 @@ function createStore() {
         }
       }
       withTimestamp(e);
+      // "Completed" or "Dropped" wraps the title up — temptation resets to 0.
+      // Other status flips don't reset; the score keeps drifting under decay.
+      if (status === "completed" || status === "dropped") {
+        applyKick(e, "marked-finished");
+      }
       pushAction({
         type: "status",
         kind,
@@ -837,6 +862,7 @@ function createStore() {
       if (value) e.rewatchable = true;
       else delete e.rewatchable;
       withTimestamp(e);
+      if (value) applyKick(e, "rewatchable-on");
       pushAction({
         type: "rewatchable",
         kind,
@@ -853,9 +879,14 @@ function createStore() {
       const next = rating === null ? undefined : Math.max(0, Math.min(10, rating));
       if (e.rating === next) return;
       const prev = snapshotEntry(kind, id);
+      const wasHigh = (e.rating ?? 0) >= 8;
+      const isHigh = (next ?? 0) >= 8;
       if (next === undefined) delete e.rating;
       else e.rating = next;
       withTimestamp(e);
+      // Crossing into the high-rating band fires once; nudges 9→10 don't
+      // double-bump the score.
+      if (isHigh && !wasHigh) applyKick(e, "rated-high", `rated ${next}`);
       pushAction({
         type: "rating",
         kind,
@@ -864,6 +895,17 @@ function createStore() {
         poster: e.poster,
         prev,
       });
+    },
+
+    /** Fire a temptation kick on a library entry from outside the store
+     *  (picker results, detail-page mounts, etc). No-op when the entry isn't
+     *  in the library — kicks only persist on saved entries. Does not bump
+     *  `updatedAt` or push to the activity log; this is engagement metadata,
+     *  not a user-visible mutation. */
+    applyTemptation(kind: "tv" | "movie", id: number, action: TemptationAction, meta?: string): void {
+      const e = state.library[entryKey(kind, id)];
+      if (!e) return;
+      applyKick(e, action, meta);
     },
 
     setNotes(kind: "tv" | "movie", id: number, notes: string) {
@@ -941,7 +983,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV8);
+      const parsed = migrate(JSON.parse(text) as PersistedV9);
       let added = 0;
       let merged = 0;
 

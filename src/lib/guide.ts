@@ -59,6 +59,7 @@ export type GuideVisual =
   | "watchlist-filters"
   | "tv-progress"
   | "picker"
+  | "temptation"
   | "stats"
   | "mobile-ui";
 
@@ -93,11 +94,25 @@ export type GuideSection = {
    *  rendered in the static `/settings/guide` page. Used to keep the tour
    *  short and focused on essentials. Defaults to true (in-tour). */
   inTour?: boolean;
+  /** Semver of the build that introduced (or last meaningfully changed)
+   *  this section's content. Drives the post-update tour: after the user
+   *  upgrades, sections newer than their `lastSeenGuideVersion` are
+   *  automatically surfaced. Bump this when you rewrite a section's body /
+   *  highlights so the change resurfaces; leave alone for typo fixes. */
+  version: string;
 };
+
+/** Baseline used when migrating users who have `tourSeen: true` but no
+ *  `lastSeenGuideVersion` (i.e. saw the original tour before the post-update
+ *  flow shipped). Treats them as having seen everything in this version,
+ *  so only sections explicitly tagged with a *newer* version trigger an
+ *  auto post-update tour for them. */
+export const GUIDE_BASELINE_VERSION = "0.17.0";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
     id: "welcome",
+    version: "0.17.0",
     icon: "sparkles",
     accent: "accent",
     title: "What Series Tracker is",
@@ -109,6 +124,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "tmdb-key",
+    version: "0.17.0",
     icon: "settings",
     accent: "primary",
     title: "Add a TMDB key",
@@ -120,6 +136,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "statuses",
+    version: "0.17.0",
     icon: "tag",
     accent: "primary",
     title: "Five statuses, five colours",
@@ -138,6 +155,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "discover",
+    version: "0.17.0",
     icon: "compass",
     accent: "secondary",
     title: "Find new titles",
@@ -157,6 +175,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "watchlist",
+    version: "0.17.0",
     icon: "bookmark",
     accent: "primary",
     title: "Your watchlist",
@@ -170,6 +189,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "tracking",
+    version: "0.17.0",
     icon: "play",
     accent: "primary",
     title: "Tracking what you watch",
@@ -183,6 +203,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "detail-pages",
+    version: "0.17.0",
     icon: "film",
     accent: "tertiary",
     inTour: false,
@@ -195,6 +216,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "picker",
+    version: "0.17.0",
     icon: "trophy",
     accent: "accent",
     title: "Can't decide?",
@@ -206,7 +228,35 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     visual: "picker",
   },
   {
+    id: "temptation",
+    version: "0.18.0",
+    icon: "flame",
+    accent: "accent",
+    title: "Temptation",
+    summary: "An ambient 0–100% score per title that surfaces what you're in and what's pulling at you next.",
+    body: [
+      "Every title in your library carries a Temptation score that builds up as you engage — watching episodes, opening the show or movie page, picking it in the picker, rating it highly — and fades naturally over time when you don't.",
+      "Sort the watchlist by Temptation to surface what you're actively in (the highest scores) plus the candidates pulling at you for what's next (mid-band). Cards in the Hot or Burning bands wear a subtle warm halo so a quick glance picks them out without studying the list.",
+    ],
+    visual: "temptation",
+    highlights: [
+      {
+        label: "Bands",
+        description: "Cold → Drifting → Warming → Hot → Burning, with the warm halo lighting up from Hot upward.",
+      },
+      {
+        label: "Pacing",
+        description: "Settings → Preferences → Temptation pacing picks how fast scores fade — Lingering (~70d), Balanced (~34d), Reactive (~17d), Restless (~10d).",
+      },
+      {
+        label: "Resets",
+        description: "Marking a title Completed or Dropped resets its score to zero. Other actions (rating, rewatchable, picker) keep adding from there.",
+      },
+    ],
+  },
+  {
     id: "profile",
+    version: "0.17.0",
     icon: "user",
     accent: "secondary",
     title: "Profile, stats & Leaderboard",
@@ -219,6 +269,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "mobile",
+    version: "0.17.0",
     icon: "grid",
     accent: "tertiary",
     inTour: false,
@@ -232,6 +283,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "activity",
+    version: "0.17.0",
     icon: "list",
     accent: "secondary",
     inTour: false,
@@ -243,6 +295,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "backup",
+    version: "0.17.0",
     icon: "download",
     accent: "primary",
     inTour: false,
@@ -255,6 +308,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "updates",
+    version: "0.17.0",
     icon: "rotate-ccw",
     accent: "accent",
     inTour: false,

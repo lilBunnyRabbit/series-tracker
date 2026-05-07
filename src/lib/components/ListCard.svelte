@@ -2,7 +2,9 @@
   import { base } from "$app/paths";
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
+  import { store } from "$lib/store.svelte";
   import { longPress, tactile } from "$lib/tactile";
+  import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
@@ -20,6 +22,12 @@
   const cardClass = $derived(
     entry.status === "dropped" ? `${c.borderSoft} opacity-70` : c.borderSoft
   );
+
+  // Refined high-temptation glow — see LibraryCard for the rationale. The
+  // ramp lives in temptation.ts so all card surfaces share the same curve.
+  const tempt = $derived(currentTemptation(entry, store.preferences.temptationPacing));
+  const glow = $derived(glowIntensity(tempt));
+  const glowStyle = $derived(`--tt: ${glow.toFixed(3)}; --tt-c: ${TEMPTATION_GLOW_COLOR[entry.status]};`);
 
   const countedSeasons = $derived(entry.kind === "tv" ? effectiveSeasons(entry) : []);
   const totalEpisodes = $derived(countedSeasons.reduce((a, s) => a + s.episodeCount, 0));
@@ -44,7 +52,8 @@
     {href}
     use:tactile
     use:longPress={{ onLongPress: openActions }}
-    class="tap-target tap-target--card relative flex items-stretch gap-3 overflow-hidden rounded-lg border bg-surface p-2 {cardClass}"
+    style={glowStyle}
+    class="tap-target tap-target--card tt-glow relative flex items-stretch gap-3 overflow-hidden rounded-lg border bg-surface p-2 {cardClass}"
   >
     <!-- Backdrop bleed: faded-from-right wash behind metadata. Subtle, non-loud. -->
     {#if backdrop}

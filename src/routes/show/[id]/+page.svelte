@@ -8,9 +8,11 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import StatusSegmented from "$lib/components/StatusSegmented.svelte";
+  import TemptationBar from "$lib/components/TemptationBar.svelte";
   import { smartBack } from "$lib/back.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { debouncedPageOpen } from "$lib/temptation";
   import { backdropUrl, entryFromTvDetail, posterUrl, tvDetail } from "$lib/tmdb";
   import { effectiveSeasons, isSpecialSeason, sortSeasonsForDisplay, STATUS_COLOR } from "$lib/types";
   import type { Status, TvDetail, TvEntry } from "$lib/types";
@@ -67,6 +69,17 @@
         if (!ctrl.signal.aborted && !hasEntry) loading = false;
       });
     return () => ctrl.abort();
+  });
+
+  // Refined "you opened this" temptation kick — fires at most once per 30
+  // minutes per entry. Skipped when the show isn't in the library; kicks
+  // only persist on saved entries.
+  $effect(() => {
+    if (!id || Number.isNaN(id)) return;
+    if (!store.has("tv", id)) return;
+    debouncedPageOpen(`tt:open:detail-opened:tv:${id}`, () => {
+      store.applyTemptation("tv", id, "detail-opened");
+    });
   });
 
   const headerInfo = $derived.by(() => {
@@ -308,7 +321,6 @@
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Status</h2>
         <StatusSegmented value={tvEntry.status} onChange={(s) => store.setStatus("tv", id, s)} />
       </div>
-
     {/if}
 
     {#if regularSeasons.length > 0}
@@ -378,6 +390,10 @@
            seasons — the controls a user actually taps every visit. -->
       <div class="space-y-3 border-t border-border pt-6">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Extras</h2>
+
+        <div class="rounded-md border border-border bg-bg px-3 py-3">
+          <TemptationBar entry={tvEntry} />
+        </div>
 
         <div class="rounded-md border border-border bg-surface px-3 py-3">
           <RatingPicker

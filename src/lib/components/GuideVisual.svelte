@@ -112,6 +112,26 @@
     return () => clearInterval(id);
   });
 
+  // ---- temptation: cycle through values that visit each band so the
+  // demo bar tweens cool→warm and the active band chip lights up in turn.
+  const TEMPT_SEQUENCE = [0.32, 0.55, 0.72, 0.88, 0.65, 0.42];
+  let temptStep = $state(0);
+  const temptValue = $derived(TEMPT_SEQUENCE[temptStep]!);
+  const TEMPT_BANDS = [
+    { label: "Cold", lo: 0, hi: 0.2 },
+    { label: "Drifting", lo: 0.2, hi: 0.4 },
+    { label: "Warming", lo: 0.4, hi: 0.6 },
+    { label: "Hot", lo: 0.6, hi: 0.8 },
+    { label: "Burning", lo: 0.8, hi: 1.01 },
+  ] as const;
+  $effect(() => {
+    if (visual !== "temptation" || !visible) return;
+    const id = setInterval(() => {
+      temptStep = (temptStep + 1) % TEMPT_SEQUENCE.length;
+    }, 1500);
+    return () => clearInterval(id);
+  });
+
   // ---- mobile-ui: cycle the active tab so the indicator slides.
   const MOBILE_TABS = [
     { icon: "home", label: "Home" },
@@ -277,6 +297,50 @@
       </div>
       <div class="mt-1.5 text-center text-[10px] uppercase tracking-wider text-muted">
         Round 2 · 4 left
+      </div>
+    </div>
+
+  {:else if visual === "temptation"}
+    {@const pct = Math.round(temptValue * 100)}
+    {@const activeBand = TEMPT_BANDS.find((b) => temptValue >= b.lo && temptValue < b.hi) ?? TEMPT_BANDS[TEMPT_BANDS.length - 1]}
+    <div class="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] uppercase tracking-wider">
+          <span class="text-muted">Temptation</span>
+          <span class="flex items-center gap-1.5 tabular-nums">
+            <span class="font-medium text-text">{activeBand.label}</span>
+            <span class="text-muted/60">·</span>
+            <span class="font-medium text-text">{pct}%</span>
+          </span>
+        </div>
+        <div
+          class="relative h-1.5 w-full overflow-hidden rounded-full"
+          style="background: color-mix(in oklab, var(--color-border) 50%, transparent);"
+        >
+          <span
+            class="absolute inset-0"
+            aria-hidden="true"
+            style="background: linear-gradient(90deg, hsl(215 55% 56%) 0%, hsl(190 65% 56%) 25%, hsl(140 50% 56%) 45%, hsl(45 85% 58%) 70%, hsl(15 80% 58%) 100%);"
+          ></span>
+          <span
+            class="absolute inset-y-0 right-0 transition-all duration-700 ease-out"
+            aria-hidden="true"
+            style="width: {100 - pct}%; background: color-mix(in oklab, var(--color-border) 50%, transparent);"
+          ></span>
+        </div>
+        <p class="text-[11px] text-muted/80">+0.25 · watched S2E5 · 2d ago</p>
+      </div>
+      <div class="grid grid-cols-5 gap-1 text-center text-[9px] uppercase tracking-wider">
+        {#each TEMPT_BANDS as b (b.label)}
+          {@const active = b.label === activeBand.label}
+          <span
+            class="rounded-sm px-1 py-1 transition-colors duration-300 {active
+              ? 'bg-accent/15 font-medium text-accent'
+              : 'bg-bg/60 text-muted'}"
+          >
+            {b.label}
+          </span>
+        {/each}
       </div>
     </div>
 

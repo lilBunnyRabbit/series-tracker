@@ -7,8 +7,10 @@
   import PersonCard from "$lib/components/PersonCard.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import SearchResultCard from "$lib/components/SearchResultCard.svelte";
+  import TemptationBar from "$lib/components/TemptationBar.svelte";
+  import { PACING_PRESETS } from "$lib/temptation";
   import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
-  import type { MovieEntry, SearchMultiResult, Season, Status, TvEntry } from "$lib/types";
+  import type { MovieEntry, SearchMultiResult, Season, Status, TemptationEvent, TvEntry } from "$lib/types";
 
   // Mock IDs are intentionally absurd so clicking through can't collide with a
   // real TMDB entry on the user's library. Style-guide actions are demo-only.
@@ -33,6 +35,16 @@
     actor: "https://image.tmdb.org/t/p/w185/4N1IKeRMGgbSQQA3IIZJ3OBF8DZ.jpg",
   };
 
+  // Anchored "now" used by every temptation demo entry — keeps decay frozen
+  // at the value we set rather than letting `currentTemptation` walk the
+  // value down from a stale addedAt timestamp.
+  const TT_NOW = new Date().toISOString();
+  function fakeBump(action: TemptationEvent["action"], delta: number, meta?: string): TemptationEvent {
+    const ev: TemptationEvent = { at: TT_NOW, delta, action };
+    if (meta) ev.meta = meta;
+    return ev;
+  }
+
   // Mock entries — one per status × kind so every card variant gets exercised.
   function makeTv(opts: {
     id: number;
@@ -45,6 +57,8 @@
     rating?: number;
     voteAverage?: number;
     year?: string;
+    temptation?: number;
+    temptationLog?: TemptationEvent[];
   }): TvEntry {
     const seasons: Season[] = opts.seasons ?? [
       { number: 1, name: "Season 1", episodeCount: 9 },
@@ -62,6 +76,9 @@
       year: opts.year ?? "2022",
       voteAverage: opts.voteAverage,
       rating: opts.rating,
+      temptation: opts.temptation,
+      temptationUpdatedAt: opts.temptation !== undefined ? TT_NOW : undefined,
+      temptationLog: opts.temptationLog,
       addedAt: "2025-09-01T00:00:00Z",
       updatedAt: "2025-12-01T00:00:00Z",
     };
@@ -77,6 +94,8 @@
     voteAverage?: number;
     year?: string;
     runtime?: number;
+    temptation?: number;
+    temptationLog?: TemptationEvent[];
   }): MovieEntry {
     return {
       kind: "movie",
@@ -90,6 +109,9 @@
       voteAverage: opts.voteAverage,
       rating: opts.rating,
       runtime: opts.runtime ?? 120,
+      temptation: opts.temptation,
+      temptationUpdatedAt: opts.temptation !== undefined ? TT_NOW : undefined,
+      temptationLog: opts.temptationLog,
       addedAt: "2025-09-01T00:00:00Z",
       updatedAt: "2025-12-01T00:00:00Z",
     };
@@ -105,6 +127,8 @@
     voteAverage: 8.4,
     rating: 9,
     year: "2022",
+    temptation: 0.82,
+    temptationLog: [fakeBump("episode-watched", 0.25, "S2E5"), fakeBump("rated-high", 0.1, "rated 9")],
   });
   const tvCompleted = makeTv({
     id: MOCK_BASE + 2,
@@ -159,6 +183,8 @@
     rating: 9,
     year: "2024",
     runtime: 166,
+    temptation: 0.94,
+    temptationLog: [fakeBump("detail-opened", 0.03), fakeBump("picker-win", 0.15)],
   });
   const movieCompleted = makeMovie({
     id: MOCK_BASE + 12,
@@ -209,6 +235,65 @@
     moviePlan,
     movieDropped,
     movieTuned,
+  ];
+
+  // Temptation showcase entries — one per band so the bar + card glow can be
+  // demoed at every intensity from Cold (no glow) to Burning (full halo).
+  // All "watching" so the glow's hue stays in the primary palette and the
+  // band-by-band intensity ramp reads cleanly.
+  const ttBandEntries = [
+    makeTv({
+      id: MOCK_BASE + 901,
+      title: "Cold · ignored for weeks",
+      poster: POSTERS.severance,
+      status: "watching",
+      progress: { 1: 1 },
+      year: "2022",
+      temptation: 0.08,
+      temptationLog: [fakeBump("detail-opened", 0.03)],
+    }),
+    makeTv({
+      id: MOCK_BASE + 902,
+      title: "Drifting · half-remembered",
+      poster: POSTERS.bridgerton,
+      status: "watching",
+      progress: { 1: 3 },
+      year: "2020",
+      temptation: 0.32,
+      temptationLog: [fakeBump("episode-watched", 0.25, "S1E3")],
+    }),
+    makeTv({
+      id: MOCK_BASE + 903,
+      title: "Warming · poking around",
+      poster: POSTERS.arcane,
+      status: "watching",
+      progress: { 1: 5 },
+      year: "2021",
+      temptation: 0.52,
+      temptationLog: [fakeBump("episode-watched", 0.25, "S1E5"), fakeBump("detail-opened", 0.03)],
+    }),
+    makeTv({
+      id: MOCK_BASE + 904,
+      title: "Hot · in the middle of",
+      poster: POSTERS.severance,
+      backdrop: BACKDROPS.severance,
+      status: "watching",
+      progress: { 1: 9, 2: 4 },
+      year: "2022",
+      temptation: 0.74,
+      temptationLog: [fakeBump("episode-watched", 0.25, "S2E5"), fakeBump("rated-high", 0.1, "rated 9")],
+    }),
+    makeMovie({
+      id: MOCK_BASE + 905,
+      title: "Burning · obsessed right now",
+      poster: POSTERS.dune,
+      backdrop: BACKDROPS.dune,
+      status: "watching",
+      year: "2024",
+      runtime: 166,
+      temptation: 0.96,
+      temptationLog: [fakeBump("picker-win", 0.15), fakeBump("detail-opened", 0.03)],
+    }),
   ];
 
   // SearchResultCard wants raw TMDB-shaped results (not Entry).
@@ -574,6 +659,82 @@
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       {#each searchResults as r (r.media_type + ":" + r.id)}
         <SearchResultCard result={r} onAdd={noopAdd} />
+      {/each}
+    </div>
+  </section>
+
+  <!-- ============================== TEMPTATION =========================== -->
+  <section class="space-y-4">
+    <header>
+      <h2 class="text-lg font-semibold tracking-tight">
+        Temptation
+        <span class="text-xs font-normal text-muted">— bar, bands, card glow, pacing</span>
+      </h2>
+      <p class="mt-0.5 text-xs text-muted">
+        Bounded 0–1 engagement score per library entry. Built up by activity (episodes
+        watched, picker outcomes, opening detail pages, rating highly), faded by exponential
+        time decay. Drives the Temptation watchlist sort and a refined warm halo on cards
+        in the Hot or Burning bands.
+      </p>
+    </header>
+
+    <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">TemptationBar — one per band</h3>
+    <div class="grid gap-3 sm:grid-cols-2">
+      {#each ttBandEntries as e (e.kind + ":" + e.id)}
+        <div class="rounded-md border border-border bg-bg p-3">
+          <p class="mb-2 text-xs text-muted">{e.title}</p>
+          <TemptationBar entry={e} />
+        </div>
+      {/each}
+    </div>
+
+    <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">Card glow ramp</h3>
+    <p class="text-xs text-muted">
+      The same five entries rendered as <code class="rounded bg-surface-2 px-1 py-0.5 text-[11px]">LibraryCard</code>.
+      Cold and Drifting stay neutral; Warming sits just below the glow threshold; Hot blooms
+      with a subtle inset halo; Burning gets the full intensity. Hue follows the entry's
+      status colour so the glow layers cleanly with the tinted border instead of fighting it.
+    </p>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+      {#each ttBandEntries as e (e.kind + ":" + e.id)}
+        <LibraryCard entry={e} />
+      {/each}
+    </div>
+
+    <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">Pacing presets</h3>
+    <p class="text-xs text-muted">
+      User picks one in Settings → Preferences. The mapping translates to a per-day
+      decay coefficient applied lazily on read.
+    </p>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {#each PACING_PRESETS as preset (preset.value)}
+        <div class="rounded-md border border-border bg-surface px-3 py-2">
+          <p class="text-sm font-semibold">{preset.label}</p>
+          <p class="text-[11px] text-muted">{preset.hint}</p>
+        </div>
+      {/each}
+    </div>
+
+    <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">Status colour mapping</h3>
+    <p class="text-xs text-muted">
+      The glow inherits each entry's status hue so a "Plan" card glows in accent, a
+      "Watching" card glows in primary, etc. Below: a Hot LibraryCard at every status to
+      show the tone variation.
+    </p>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+      {#each STATUSES as s (s)}
+        <LibraryCard
+          entry={makeTv({
+            id: MOCK_BASE + 920 + STATUSES.indexOf(s),
+            title: STATUS_LABEL[s],
+            poster: POSTERS.severance,
+            status: s,
+            progress: { 1: 5 },
+            year: "2022",
+            temptation: 0.85,
+            temptationLog: [fakeBump("episode-watched", 0.25, "S1E5")],
+          })}
+        />
       {/each}
     </div>
   </section>

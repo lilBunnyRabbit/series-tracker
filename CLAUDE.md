@@ -55,9 +55,9 @@ Don't push without the version bump — users won't see that anything changed.
 
 Update `src/lib/guide.ts` in the **same commit** as `CHANGELOG.md` and the version bump. Concretely:
 
-- **New feature** → add a new `GuideSection` (or extend the relevant existing one's `body` / `highlights`). Pick an `id`, `icon`, and `accent` consistent with the section's home in the app.
-- **Renamed / removed feature** → update or delete the matching section so the guide doesn't promise something that no longer exists.
-- **New visual demo** → extend the `GuideVisual` union in `guide.ts`, then add the matching `{#snippet}` block in `src/routes/settings/guide/+page.svelte` and wire it into the `visualFor` dispatch.
+- **New feature** → add a new `GuideSection` (or extend the relevant existing one's `body` / `highlights`). Pick an `id`, `icon`, and `accent` consistent with the section's home in the app. Set `version` to the build that ships it — this is what triggers the post-update auto-tour for existing users.
+- **Renamed / removed feature** → update or delete the matching section so the guide doesn't promise something that no longer exists. When you meaningfully rewrite the `body` / `highlights` of an existing section, **bump its `version`** so the post-update tour resurfaces it. Leave alone for typo fixes.
+- **New visual demo** → extend the `GuideVisual` union in `guide.ts`, then add the matching `{:else if}` block in `src/lib/components/GuideVisual.svelte` (used by both the static page and the tour).
 
 ### Guide section conventions
 
@@ -67,9 +67,15 @@ Update `src/lib/guide.ts` in the **same commit** as `CHANGELOG.md` and the versi
 - `inTour` defaults to true; set `inTour: false` for sections that should appear in the static guide but be skipped in the first-launch tour (advanced / post-use features). Keep the tour at ~8 essentials max.
 - No file paths, no implementation details — users read this. Same rule as `CHANGELOG.md`.
 
-### First-launch tour
+### First-launch & post-update tour
 
-The tour is mounted by `src/routes/+layout.svelte` via `{#if tour.open}` from `$lib/tour.svelte.ts`. It auto-opens for brand-new users (`store.loaded && !preferences.tourSeen && entries.length === 0`) and on manual replay from `/settings/guide` (the "Take the tour" button calls `tour.show()`). Closing the tour sets `preferences.tourSeen = true`.
+The tour is mounted by `src/routes/+layout.svelte` via `{#if tour.open}` from `$lib/tour.svelte.ts`. Three trigger paths:
+
+- **First-launch** — new user, empty library, `tourSeen` unset → full tour.
+- **Post-update** — `tourSeen: true` but at least one section has a `version` newer than `lastSeenGuideVersion` → filtered tour showing only the new/updated sections, with a "What's new in vX.Y.Z" banner.
+- **Manual replay** — `tour.show()` from Settings → Guide → "Take the tour" → full tour.
+
+`tour.close()` stamps both `tourSeen: true` and `lastSeenGuideVersion = current build version`, so the post-update path won't re-fire until something newer ships.
 
 The visual demos in both surfaces are rendered by `<GuideVisual>` (`src/lib/components/GuideVisual.svelte`). To add a new demo: extend the `GuideVisual` union in `guide.ts`, add the matching block in `GuideVisual.svelte`, and reference it from a section's `visual` field.
 

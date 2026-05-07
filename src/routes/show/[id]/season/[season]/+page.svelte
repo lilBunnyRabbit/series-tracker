@@ -8,6 +8,7 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { debouncedPageOpen } from "$lib/temptation";
   import { posterUrl, seasonDetail } from "$lib/tmdb";
   import { isEpisodeWatched, STATUS_COLOR } from "$lib/types";
   import type { EpisodeBrief, SeasonDetail, TvEntry } from "$lib/types";
@@ -64,6 +65,18 @@
   // back to home — the controls would all no-op anyway without an entry.
   $effect(() => {
     if (store.loaded && !entry) void goto(`${base}/`);
+  });
+
+  // Episode-page-opened temptation kick. Fires once per ~30 min per
+  // (show, season). When upcoming gets per-season deep-links this becomes
+  // the signal that "user is checking the next episode" — for now it just
+  // means a season tracker view.
+  $effect(() => {
+    if (!showId || Number.isNaN(showId) || Number.isNaN(season)) return;
+    if (!store.has("tv", showId)) return;
+    debouncedPageOpen(`tt:open:episode-page-opened:tv:${showId}:s${season}`, () => {
+      store.applyTemptation("tv", showId, "episode-page-opened", `Season ${season}`);
+    });
   });
 
   // When the season transitions into "complete" (last episode marked),

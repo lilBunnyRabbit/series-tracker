@@ -7,9 +7,11 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import StatusSegmented from "$lib/components/StatusSegmented.svelte";
+  import TemptationBar from "$lib/components/TemptationBar.svelte";
   import { smartBack } from "$lib/back.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
+  import { debouncedPageOpen } from "$lib/temptation";
   import { backdropUrl, entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
   import { STATUS_COLOR } from "$lib/types";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
@@ -51,6 +53,17 @@
         if (!ctrl.signal.aborted && !hasEntry) loading = false;
       });
     return () => ctrl.abort();
+  });
+
+  // Refined "you opened this" temptation kick — fires at most once per 30
+  // minutes per entry. Skipped when the movie isn't in the library; kicks
+  // only persist on saved entries.
+  $effect(() => {
+    if (!id || Number.isNaN(id)) return;
+    if (!store.has("movie", id)) return;
+    debouncedPageOpen(`tt:open:detail-opened:movie:${id}`, () => {
+      store.applyTemptation("movie", id, "detail-opened");
+    });
   });
 
   const headerInfo = $derived.by(() => {
@@ -271,6 +284,10 @@
            on the status the user just came to update. -->
       <div class="space-y-3 border-t border-border pt-6">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Extras</h2>
+
+        <div class="rounded-md border border-border bg-bg px-3 py-3">
+          <TemptationBar entry={movieEntry} />
+        </div>
 
         <div class="rounded-md border border-border bg-surface px-3 py-3">
           <RatingPicker
