@@ -4,6 +4,17 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-05-07
+
+### Added
+- Feed setup: a "Try to restore" affordance below the saved-feeds list — scans local backups (a load-time snapshot, the previous-save snapshot, the raw IDB record, and any legacy localStorage data) for any saved feed sessions that aren't in the live list, and merges them back in. Newer wins on conflicts.
+
+### Changed
+- Storage saves are now bulletproofed against the failure mode that could overwrite a healthy IDB record with the empty default. Saves now require an explicit successful load (not just "load attempt finished"), and every save first rotates the previous successful state into a backup slot. A second load-time backup is written once per session.
+
+### Fixed
+- Post-update guide tour ("What's new in vX.Y.Z") now reliably closes when you press Skip or Get started.
+
 ## [0.18.0] - 2026-05-07
 
 ### Added

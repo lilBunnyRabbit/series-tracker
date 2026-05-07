@@ -58,6 +58,18 @@ function allInTourSections(): GuideSection[] {
   return GUIDE_SECTIONS.filter((s) => s.inTour !== false);
 }
 
+/** Highest version among all GUIDE_SECTIONS — used as a dev-mode fallback when
+ *  `version.current.version` isn't a real semver (vite dev sets it to "dev").
+ *  Stamping this on close keeps the post-update tour from re-firing on every
+ *  render in dev, while still letting prod stamp the actual build version. */
+function highestSectionVersion(): string {
+  let highest = GUIDE_BASELINE_VERSION;
+  for (const s of GUIDE_SECTIONS) {
+    if (compareSemver(s.version, highest) > 0) highest = s.version;
+  }
+  return highest;
+}
+
 export const tour = {
   /** True iff the overlay should be visible right now. */
   get open(): boolean {
@@ -113,9 +125,14 @@ export const tour = {
     if (!store.preferences.tourSeen) {
       store.setPreference("tourSeen", true);
     }
+    // In `vite dev` the bundled manifest is the literal string "dev" — stamping
+    // that as lastSeenGuideVersion would fail compareSemver (parses to 0.0.0)
+    // and the post-update tour would re-fire on the very next render. Fall
+    // back to the highest known section version so the close sticks in dev.
     const current = version.current.version;
-    if (current && store.preferences.lastSeenGuideVersion !== current) {
-      store.setPreference("lastSeenGuideVersion", current);
+    const stamp = /^\d+\.\d+\.\d+$/.test(current) ? current : highestSectionVersion();
+    if (store.preferences.lastSeenGuideVersion !== stamp) {
+      store.setPreference("lastSeenGuideVersion", stamp);
     }
   },
 };

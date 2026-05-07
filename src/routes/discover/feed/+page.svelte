@@ -935,6 +935,53 @@
   );
   const isFreshlyLoaded = $derived(items.length > 0);
 
+  // ---- "Try to restore" recovery flow ----
+  // For users who lost saved feeds (e.g. the 0.18.0 wipe). Walks every backup
+  // surface in store.findFeedSessionRecoveryCandidates() and merges anything
+  // it finds into state.feedSessions by filter-set key. Idempotent: running
+  // it twice on the same data does nothing the second time.
+  type RestoreResult =
+    | { kind: "idle" }
+    | { kind: "running" }
+    | { kind: "empty" }
+    | { kind: "done"; added: number; updated: number; sources: string[] }
+    | { kind: "error"; message: string };
+  let restoreState = $state<RestoreResult>({ kind: "idle" });
+
+  async function tryRestoreFeeds(): Promise<void> {
+    if (restoreState.kind === "running") return;
+    restoreState = { kind: "running" };
+    try {
+      const candidates = await store.findFeedSessionRecoveryCandidates();
+      // Flatten then dedupe by the same filter key the store uses, preferring
+      // the newest updatedAt across sources for a given filter set.
+      const keyOf = (s: FeedSession): string =>
+        `${s.kind}|${s.sort}|${[...s.genres].sort((a, b) => a - b).join(",")}|${s.hideAdded ? "1" : "0"}`;
+      const best = new Map<string, FeedSession>();
+      const sources = new Set<string>();
+      for (const c of candidates) {
+        for (const s of c.sessions) {
+          const k = keyOf(s);
+          const cur = best.get(k);
+          if (!cur || s.updatedAt > cur.updatedAt) best.set(k, s);
+          sources.add(c.source);
+        }
+      }
+      const all = Array.from(best.values());
+      if (all.length === 0) {
+        restoreState = { kind: "empty" };
+        return;
+      }
+      const { added, updated } = store.restoreFeedSessions(all);
+      restoreState = { kind: "done", added, updated, sources: Array.from(sources) };
+    } catch (e) {
+      restoreState = {
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      };
+    }
+  }
+
   // Position counter ("3142 / 11921") in absolute-feed terms, not relative to
   // whatever sparse window we currently have loaded. Using `currentIndex /
   // items.length` would jump from "201 / 482" before resume to "1 / 20"
@@ -975,6 +1022,12 @@
   <PageHeader title="Feed" subtitle="Swipe through new shows and movies." />
 
   <section class="space-y-6">
+    <!-- Saved feeds + recovery footer. Renders the recovery row whether or
+         not there are saved feeds — either you have some but suspect more
+         are missing (failed update, partial restore from a previous click),
+         or you have none and the row is the only path back. The button is
+         a low-key text-style affordance so it doesn't compete with the
+         resume cards for attention when you do have saved feeds. -->
     {#if savedSessions.length > 0}
       <div class="space-y-2">
         <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">
@@ -1038,6 +1091,50 @@
         {/each}
       </div>
     {/if}
+
+    <!-- Try-to-restore row. Compact when idle so it doesn't draw the eye on
+         the happy path; expands inline with a result chip after a click. -->
+    <div class="restore-row">
+      {#if restoreState.kind === "idle" || restoreState.kind === "running"}
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-xs text-muted">
+            {savedSessions.length === 0
+              ? "Missing feeds you had before? Try to recover them from local backups."
+              : "Missing some feeds? Try to recover anything still in local backups."}
+          </p>
+          <button
+            type="button"
+            use:tactile
+            onclick={tryRestoreFeeds}
+            disabled={restoreState.kind === "running"}
+            class="tap-target tap-target--btn shrink-0 rounded-md border border-border px-3 py-1.5 text-xs hover-border-accent disabled:opacity-50"
+          >
+            {restoreState.kind === "running" ? "Searching…" : "Try to restore"}
+          </button>
+        </div>
+      {:else if restoreState.kind === "done"}
+        {@const r = restoreState}
+        <div class="space-y-1">
+          {#if r.added > 0 || r.updated > 0}
+            <p class="text-xs text-primary">
+              Restored {r.added} session{r.added === 1 ? "" : "s"}{#if r.updated > 0}, refreshed {r.updated}{/if}
+              from {r.sources.join(", ")}.
+            </p>
+          {:else}
+            <p class="text-xs text-muted">
+              Found backups in {r.sources.join(", ")} but everything was already up to date.
+            </p>
+          {/if}
+        </div>
+      {:else if restoreState.kind === "empty"}
+        <p class="text-xs text-muted">
+          No recoverable feed sessions found in local backups. If you have an older JSON export, restore it from
+          <a href="{base}/settings/" use:tactile={{ haptic: false }} class="underline hover-text-text">Settings → Backup</a>.
+        </p>
+      {:else if restoreState.kind === "error"}
+        <p class="text-xs text-error">Restore failed: {restoreState.message}</p>
+      {/if}
+    </div>
 
     <div class="space-y-3">
       <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">Show me</div>
@@ -1329,6 +1426,16 @@
     display: flex;
     align-items: stretch;
     gap: 0.5rem;
+  }
+
+  /* Recovery row. Sits between the saved-feeds list and the filter setup;
+     padded surface so it reads as a distinct affordance, but lower-key than
+     a resume card so it doesn't compete for primary attention. */
+  .restore-row {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    padding: 0.625rem 0.875rem;
   }
 
   /* Resume card. Three rows of info inside: title (TV/Movies + sort),

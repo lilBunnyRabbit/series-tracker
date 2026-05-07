@@ -58,3 +58,16 @@ export async function idbEstimate(): Promise<{ usage?: number; quota?: number }>
   if (!navigator.storage?.estimate) return {};
   return navigator.storage.estimate();
 }
+
+/** List every key currently in the kv store. Used by the restore flow to
+ *  scan for stale / unmigrated entries (e.g. old backup keys from a
+ *  predecessor build). */
+export async function idbList(): Promise<string[]> {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).getAllKeys();
+    req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String));
+    req.onerror = () => reject(req.error);
+  });
+}

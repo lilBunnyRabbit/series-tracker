@@ -1,5 +1,5 @@
 import { browser } from "$app/environment";
-import { idbDelete, idbGet, idbSet } from "./idb";
+import { idbDelete, idbGet, idbList, idbSet } from "./idb";
 import { applyAction as applyTemptationAction } from "./temptation";
 import { effectiveSeasons } from "./types";
 import type {
@@ -17,6 +17,15 @@ import type {
 } from "./types";
 
 const IDB_KEY = "state";
+// Snapshot taken right after a successful IDB load — stable for the whole
+// session so anything that corrupts state in-flight can be rolled back to
+// "what was on disk when the app opened". Written once per session.
+const IDB_BACKUP_LOAD_KEY = "state.bak.load";
+// The state from the previous successful save — rotated forward on every
+// save so it always represents "what we'd have rolled back to one save ago".
+// Two-deep history (load + prev) is enough to recover from a single bad save
+// without paying for unbounded backup storage.
+const IDB_BACKUP_PREV_KEY = "state.bak.prev";
 const LEGACY_LS_KEY = "series-tracker:v1";
 const SCHEMA_VERSION = 9;
 const SEARCH_HISTORY_LIMIT = 8;
@@ -206,19 +215,46 @@ function mergeEntries(a: Entry, b: Entry): Entry {
 
 function createStore() {
   const state = $state<Store>(structuredClone(empty));
-  const meta = $state({ loaded: !browser, error: null as string | null, migratedFromLs: false });
+  // `loaded` flips true when the load attempt finishes (success OR failure) —
+  // it's the gate for "we've stopped showing the loading state".
+  // `loadOk` flips true ONLY on successful load — it's the gate for saves.
+  // Splitting them prevents the failure mode that nuked feeds: if the IDB
+  // read throws, the old code still flipped `loaded` true in the finally
+  // block, which let the empty in-memory state get persisted on top of the
+  // real one. Now saves require `loadOk`, so a failed load can never
+  // overwrite the real data with the empty default.
+  const meta = $state({
+    loaded: !browser,
+    loadOk: !browser,
+    error: null as string | null,
+    migratedFromLs: false,
+  });
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  // Cached "what we last successfully wrote to IDB_KEY" — rotated to
+  // IDB_BACKUP_PREV_KEY at the start of the next save so recovery has a
+  // step-back snapshot without paying an extra IDB read per save.
+  let lastSavedSnapshot: Store | null = null;
 
   function flushPendingSave(): void {
     if (!saveTimer) return;
     clearTimeout(saveTimer);
     saveTimer = null;
+    // Same `loadOk` gate as the debounced save — a beforeunload/visibility
+    // flush during a session whose load failed must not stomp the real data.
+    if (!meta.loadOk) return;
     const snapshot = $state.snapshot(state) as Store;
-    void idbSet(IDB_KEY, snapshot).catch((e) => {
-      meta.error = e instanceof Error ? e.message : String(e);
-      console.error("[store] IDB save failed", e);
-    });
+    const prev = lastSavedSnapshot;
+    void (async () => {
+      try {
+        if (prev) await idbSet(IDB_BACKUP_PREV_KEY, prev);
+        await idbSet(IDB_KEY, snapshot);
+        lastSavedSnapshot = snapshot;
+      } catch (e) {
+        meta.error = e instanceof Error ? e.message : String(e);
+        console.error("[store] IDB save failed", e);
+      }
+    })();
   }
 
   if (browser) {
@@ -247,6 +283,17 @@ function createStore() {
         state.actions = next.actions;
         state.feedSessions = next.feedSessions ?? [];
         state.version = next.version;
+        lastSavedSnapshot = structuredClone(next);
+        meta.loadOk = true;
+        // Write the load-time backup once per session. Only after a non-empty
+        // load — there's no point seeding the backup with the empty default
+        // for a brand-new install (would waste a write and would mask a real
+        // backup later if the user imports something).
+        if (data) {
+          void idbSet(IDB_BACKUP_LOAD_KEY, structuredClone(next)).catch((e) => {
+            console.warn("[store] load-time backup write failed", e);
+          });
+        }
       } catch (e) {
         meta.error = e instanceof Error ? e.message : String(e);
         console.error("[store] IDB load failed", e);
@@ -260,14 +307,32 @@ function createStore() {
         // $state.snapshot traverses every property, so any nested mutation
         // (e.g. state.library[key] = entry) registers a dep and fires this effect.
         const snapshot = $state.snapshot(state) as Store;
-        if (!meta.loaded) return;
+        // Two gates instead of one. `loaded` alone isn't enough — the old
+        // code flipped that to true even on load failure, which is exactly
+        // how the empty default got persisted on top of real data. `loadOk`
+        // is only set when the load actually succeeded, so a failed load
+        // can never trigger an overwrite save.
+        if (!meta.loaded || !meta.loadOk) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
           saveTimer = null;
-          void idbSet(IDB_KEY, snapshot).catch((e) => {
-            meta.error = e instanceof Error ? e.message : String(e);
-            console.error("[store] IDB save failed", e);
-          });
+          // Rotate the previous successful save into the prev-backup slot
+          // BEFORE writing the new one. If the new write succeeds we have
+          // both N and N-1 available for recovery; if it fails the prev
+          // backup stays at N-2 (still valid) and IDB_KEY still has N-1.
+          const prev = lastSavedSnapshot;
+          void (async () => {
+            try {
+              if (prev) {
+                await idbSet(IDB_BACKUP_PREV_KEY, prev);
+              }
+              await idbSet(IDB_KEY, snapshot);
+              lastSavedSnapshot = snapshot;
+            } catch (e) {
+              meta.error = e instanceof Error ? e.message : String(e);
+              console.error("[store] IDB save failed", e);
+            }
+          })();
         }, SAVE_DEBOUNCE_MS);
       });
     });
@@ -394,6 +459,125 @@ function createStore() {
 
     clearAllFeedSessions(): void {
       state.feedSessions = [];
+    },
+
+    /** Best-effort scan for feed sessions that may have been wiped from
+     *  state.feedSessions but still survive somewhere on this device. Looks at:
+     *
+     *    • the load-time backup written this session (`state.bak.load`)
+     *    • the previous-save backup (`state.bak.prev`)
+     *    • the raw IDB record at `state` (in case the in-memory state
+     *      diverged from disk for any reason)
+     *    • legacy localStorage (`series-tracker:v1`) — pre-IDB persistence
+     *    • any other unrecognised keys in our IDB store (forward-compat with
+     *      future backup keys, or stale keys left by predecessor builds)
+     *
+     *  Returns one entry per unique filter set found, with the source that
+     *  contributed it and the highest `updatedAt` across sources tied for
+     *  that filter set. Caller decides whether to merge them in. */
+    async findFeedSessionRecoveryCandidates(): Promise<
+      { source: string; sessions: FeedSession[] }[]
+    > {
+      if (!browser) return [];
+      const out: { source: string; sessions: FeedSession[] }[] = [];
+
+      const tryAdd = (source: string, sessions: FeedSession[] | undefined): void => {
+        if (!sessions || sessions.length === 0) return;
+        out.push({ source, sessions });
+      };
+      const sessionsFromBlob = (blob: PersistedV9 | undefined): FeedSession[] => {
+        if (!blob) return [];
+        if (Array.isArray(blob.feedSessions)) return blob.feedSessions;
+        if (blob.feedSession) return [blob.feedSession];
+        return [];
+      };
+
+      // Backups written by the bulletproof-save logic.
+      try {
+        tryAdd(
+          "Load-time backup",
+          sessionsFromBlob(await idbGet<PersistedV9>(IDB_BACKUP_LOAD_KEY)),
+        );
+      } catch (e) {
+        console.warn("[store] backup(load) read failed", e);
+      }
+      try {
+        tryAdd(
+          "Previous-save backup",
+          sessionsFromBlob(await idbGet<PersistedV9>(IDB_BACKUP_PREV_KEY)),
+        );
+      } catch (e) {
+        console.warn("[store] backup(prev) read failed", e);
+      }
+
+      // Raw IDB state. Same key the live load reads, but we re-read it here
+      // to catch the (rare) case where the in-memory state diverged from disk.
+      try {
+        const raw = await idbGet<PersistedV9>(IDB_KEY);
+        const fromRaw = sessionsFromBlob(raw);
+        // Only surface if it differs from what's already in state — otherwise
+        // we'd offer to "restore" what the user already has.
+        const inState = new Set(state.feedSessions.map((s) => feedFilterKey(s)));
+        const novel = fromRaw.filter((s) => !inState.has(feedFilterKey(s)));
+        tryAdd("Raw IDB record", novel);
+      } catch (e) {
+        console.warn("[store] raw IDB read failed", e);
+      }
+
+      // Legacy localStorage from before we moved to IDB. Long-tail recovery —
+      // very few users will still have anything there, but it's a free check.
+      try {
+        const raw = localStorage.getItem(LEGACY_LS_KEY);
+        if (raw) {
+          tryAdd("Legacy localStorage", sessionsFromBlob(JSON.parse(raw) as PersistedV9));
+        }
+      } catch (e) {
+        console.warn("[store] legacy LS read failed", e);
+      }
+
+      // Catch-all: scan all IDB keys for unrecognised entries that look like
+      // they hold feed data. Forward-compat with future backup schemes and a
+      // hedge against off-by-one renames in this file.
+      try {
+        const keys = await idbList();
+        const known = new Set([IDB_KEY, IDB_BACKUP_LOAD_KEY, IDB_BACKUP_PREV_KEY]);
+        for (const k of keys) {
+          if (known.has(k)) continue;
+          try {
+            const blob = await idbGet<PersistedV9>(k);
+            tryAdd(`Other IDB key (${k})`, sessionsFromBlob(blob));
+          } catch {
+            // ignore per-key failures
+          }
+        }
+      } catch (e) {
+        console.warn("[store] IDB list failed", e);
+      }
+
+      return out;
+    },
+
+    /** Merge `incoming` sessions into `state.feedSessions`. Same filter set
+     *  on both sides → keep whichever `updatedAt` is newer. Returns the
+     *  number of sessions added (filter set wasn't already present) and
+     *  the number that overwrote a stale local copy. */
+    restoreFeedSessions(incoming: FeedSession[]): { added: number; updated: number } {
+      let added = 0;
+      let updated = 0;
+      const byKey = new Map(state.feedSessions.map((s) => [feedFilterKey(s), s]));
+      for (const s of incoming) {
+        const key = feedFilterKey(s);
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, s);
+          added++;
+        } else if (s.updatedAt > existing.updatedAt) {
+          byKey.set(key, s);
+          updated++;
+        }
+      }
+      state.feedSessions = Array.from(byKey.values());
+      return { added, updated };
     },
 
     setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
@@ -1057,8 +1241,16 @@ function createStore() {
       state.actions = [];
       state.feedSessions = [];
       state.version = SCHEMA_VERSION;
+      lastSavedSnapshot = null;
+      // Drop backups too — leaving them around after an explicit wipe would
+      // turn "Try to restore" into a footgun ("I wiped, why is it offering
+      // to bring everything back?"). The user opted into total deletion.
       try {
-        await idbDelete(IDB_KEY);
+        await Promise.all([
+          idbDelete(IDB_KEY),
+          idbDelete(IDB_BACKUP_LOAD_KEY),
+          idbDelete(IDB_BACKUP_PREV_KEY),
+        ]);
       } catch (e) {
         console.error("[store] wipe failed", e);
       }
