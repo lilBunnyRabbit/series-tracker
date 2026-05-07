@@ -77,8 +77,7 @@ Screenshots show 5 tabs: home, ✨ (discover), ☰ (watchlist), 🔍 (search), �
 
 ## Polish details worth stealing
 
-- [ ] **`⊕` quick-add affordance** on every section header — opens the StatusMenu pre-targeted to that section's intent (e.g. "+" on Plan rail defaults to status=plan).
-  - **Status:** `SectionHeader` supports `onAction`; only the home Start Watching rail wires it. To complete: wire on every applicable rail (info Watch next/More like this, etc.).
+- [~] ~~**`⊕` quick-add affordance** on every section header~~ — **killed.** Tried briefly (Start Watching had one in 0.x), removed in 0.16.0 along with the home top-right search button. Cards read better when the only library affordance is the status border + dot; rails get to where they need via tap, not a corner button. See `src/lib/roadmap.ts` → "Won't ship".
 - [ ] **Episode count badge on actor cards** — clever way to show "this actor's involvement in THIS show", not their general fame.
   - **Status:** `PersonCard` accepts `episodeCount`; show info doesn't pass it. To complete: pass `c.episode_count` from TMDB credits in `show/[id]/info/+page.svelte`.
 - [x] **"In Nd" / "X remaining" copy** — relative time strings instead of absolute dates on watching/upcoming cards.

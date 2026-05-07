@@ -25,3 +25,8 @@ vite.config.ts.timestamp-*
 # Build-generated (see scripts/gen-version.ts)
 /static/version.json
 /static/CHANGELOG.md
+
+# Claude — per-user / per-machine state. Project skills under .claude/skills/
+# are committed; everything else here is local.
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock

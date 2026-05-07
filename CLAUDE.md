@@ -1,6 +1,6 @@
 # Claude instructions
 
-Project-specific guidance for working in this repo. See also: existing TODOs in `TODO.md` / `DESIGN_TODO.md`.
+Project-specific guidance for working in this repo. See also: existing TODOs in `TODO.md` / `DESIGN_TODO.md` / `QA.md`, and the user-facing roadmap in `src/lib/roadmap.ts`.
 
 ## Version & update detection system
 
@@ -30,12 +30,14 @@ If a commit is internal-only (refactor, build tooling, types), don't bump.
 
 ### When the user asks to "ship", "release", or "deploy"
 
-Deploy is automatic on push to `master`. Before pushing:
+Use the `release` skill — it walks the full flow. The short version: deploy is automatic on push to `master`, so before pushing:
 
 1. Bump `package.json` version.
 2. Promote `[Unreleased]` to a dated section in `CHANGELOG.md`.
-3. Run `bun run check`.
-4. Commit both changes together, push.
+3. Update `src/lib/guide.ts` for any user-visible feature added or reworded (and bump that section's `version` so the post-update tour resurfaces it).
+4. Update `src/lib/roadmap.ts` for any roadmap item that landed in this release — flip `status` to `"shipped"`, set `shippedIn`, and move it into the milestone's `just-shipped` group.
+5. Run `bun run check`.
+6. Commit all changes together with the version as the message (e.g. `feat: 0.18.0`), push.
 
 Don't push without the version bump — users won't see that anything changed.
 
@@ -83,6 +85,33 @@ The visual demos in both surfaces are rendered by `<GuideVisual>` (`src/lib/comp
 
 - Don't put guide content directly in the page Svelte file; it belongs in `guide.ts` so the future tour can consume it.
 - Don't add a guide section for internal-only changes (refactors, build tooling). Those don't ship to users.
+
+## In-app roadmap
+
+`/settings/roadmap/` renders `src/lib/roadmap.ts` — typed milestones grouped by tier (must-ship, polish, tactile, considering, won't-ship). It's the in-app replacement for what used to live in `ROAD_TO_V1.md`.
+
+### When something ships in a release
+
+In the same commit that bumps `package.json` and promotes `[Unreleased]` in `CHANGELOG.md`, for each roadmap item that landed:
+
+- Flip its `status` from `"planned"` / `"in-progress"` to `"shipped"`.
+- Set `shippedIn` to the new release version (e.g. `"1.0.0"`).
+- Move it from its tier group (e.g. `must-ship`, `polish`, `tactile`) into the milestone's `just-shipped` group, so the user-facing surface keeps the most recent wins at the top.
+- If a release scope grew or shrank, add or remove items rather than letting roadmap.ts and reality drift apart.
+- If something was killed mid-flight, move it to the `wont-ship` group with a one-line note about *why*.
+
+### When adding a new roadmap item
+
+- Default to `"planned"` if committed to a milestone, `"considering"` if not yet.
+- Pick the right group: `must-ship` (core gap), `polish` (completing design intent), `tactile` (movement / feedback), `considering` (post-1.0). Don't invent a new group unless several items want it.
+- Put a complexity tag (`XS` / `S` / `M` / `L`) on anything you can scope. Same scale as `QA.md`.
+- One-line summary, user-facing language. No file paths, no implementation details — same rule as `CHANGELOG.md` and `guide.ts`.
+
+### Don't
+
+- Don't render internal items (`internal: true`) on the in-app surface — the page filters them out, but the typed config keeps them so things like the README rewrite stay tracked.
+- Don't duplicate every TODO.md item onto the roadmap. The roadmap is a curated user-facing summary; TODO.md is the granular dev backlog.
+- Don't flip an item to `"shipped"` without setting `shippedIn`. The page surfaces the version inline, and an empty value reads as "shipped in nothing".
 
 ## Stack reminders
 

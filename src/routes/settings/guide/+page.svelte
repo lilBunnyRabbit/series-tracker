@@ -50,7 +50,7 @@
   <a
     href="{base}/activity/"
     use:tactile={{ haptic: false }}
-    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
+    class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
   >
     <Icon name="list" size={14} />
     <span>Activity</span>

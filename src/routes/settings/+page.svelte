@@ -256,15 +256,23 @@
     <a
       href="{base}/settings/guide/"
       use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm text-primary hover-border-primary"
+      class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm text-primary hover-border-primary"
     >
       <Icon name="sparkles" size={14} />
       <span>Guide</span>
     </a>
     <a
+      href="{base}/settings/roadmap/"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm text-accent hover-border-accent"
+    >
+      <Icon name="trending-up" size={14} />
+      <span>Roadmap</span>
+    </a>
+    <a
       href="{base}/activity/"
       use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
+      class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-sm text-secondary hover-border-secondary"
     >
       <Icon name="list" size={14} />
       <span>Activity</span>
@@ -272,7 +280,7 @@
     <a
       href="{base}/style-guide/"
       use:tactile={{ haptic: false }}
-      class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-tertiary/40 bg-tertiary/10 px-3 py-1.5 text-sm text-tertiary hover-border-tertiary"
+      class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-tertiary/40 bg-tertiary/10 px-3 py-1.5 text-sm text-tertiary hover-border-tertiary"
     >
       <Icon name="grid" size={14} />
       <span>Style guide</span>

@@ -2,6 +2,8 @@
 
 Deep-dive backlog for series-tracker. Ordered by `simple × useful`.
 
+> The user-facing roadmap and the v1.0 punch list now live in `src/lib/roadmap.ts` (rendered at `/settings/roadmap/`). This file is for the granular dev-facing backlog only — bug-tracker for ideas, not the v1.0 plan. When a TODO item belongs on the roadmap, copy it across.
+
 ## Tier 1 — high value, low effort
 
 - [x] **Continue watching rail on `/`** — filter `status === "watching"`, sort by `updatedAt`, show 5–8 cards with next-episode hint + `+` quick action. Surface the most-used path.
@@ -73,7 +75,7 @@ Pulls still-open items from this file + `DESIGN_TODO.md`, grouped into shippable
 One-touch fixes on infrastructure that already exists.
 
 - [ ] Wire `episodeCount={c.episode_count}` on `PersonCard` in `show/[id]/info/+page.svelte` — `PersonCard` already accepts the prop.
-- [ ] Pass `onAction` to the `Watch next` and `More like this` `Rail`s on info pages so the `⊕` quick-add affordance shows there too.
+- [~] ~~Pass `onAction` to the `Watch next` and `More like this` `Rail`s on info pages so the `⊕` quick-add affordance shows there too.~~ — **killed.** The `⊕` quick-add idea is abandoned everywhere (cards and rail headers); rails get to where they need via tap, not a corner button. See `roadmap.ts` → "Won't ship".
 - [ ] Fire `success` haptic on enable / `warn` on disable in the Settings haptics toggle.
 - [ ] Counter flip animation in `SeasonCounter` — key the number `<span>` on `current`; `@starting-style` for the entry transform.
 

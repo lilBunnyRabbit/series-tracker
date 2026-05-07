@@ -4,6 +4,14 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-05-07
+
+### Added
+- New Roadmap page in Settings — see what's lined up for v1.0, what already shipped (with the version it landed in), what's being considered post-1.0, and what's been ruled out. Linked from a new chip in the Settings header alongside Guide / Activity / Style guide.
+
+### Fixed
+- Settings header chips no longer wrap onto two lines on narrow viewports — "Style guide" now stays on a single line; the row scrolls horizontally if it overflows instead.
+
 ## [0.18.1] - 2026-05-07
 
 ### Added

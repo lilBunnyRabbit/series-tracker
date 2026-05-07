@@ -158,6 +158,7 @@
     if (relPath.startsWith("/leaderboard")) return "Leaderboard";
     if (relPath.startsWith("/diary")) return "Diary";
     if (relPath.startsWith("/settings/guide")) return "Guide";
+    if (relPath.startsWith("/settings/roadmap")) return "Roadmap";
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.startsWith("/activity")) return "Activity";
     if (relPath.startsWith("/style-guide")) return "Style Guide";
@@ -190,6 +191,7 @@
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;
     if (relPath.startsWith("/settings/guide")) return `${base}/settings/`;
+    if (relPath.startsWith("/settings/roadmap")) return `${base}/settings/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
     if (relPath.startsWith("/leaderboard")) return `${base}/stats/`;
     if (relPath.startsWith("/diary")) return `${base}/stats/`;

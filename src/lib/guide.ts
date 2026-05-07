@@ -307,6 +307,19 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
   },
   {
+    id: "roadmap",
+    version: "0.19.0",
+    icon: "trending-up",
+    accent: "accent",
+    inTour: false,
+    title: "Roadmap",
+    summary: "What's planned for v1.0, what already shipped, and what's been ruled out.",
+    body: [
+      "Settings → Roadmap renders the public plan: every milestone, the items inside it, and their status. Each shipped item is stamped with the version that landed it, so you can trace anything you remember seeing back to its release notes.",
+      "The 'After v1.0' and 'Won't ship' sections are intentionally honest about what's deferred or off the table — so you don't end up waiting for something that isn't coming.",
+    ],
+  },
+  {
     id: "updates",
     version: "0.17.0",
     icon: "rotate-ccw",
