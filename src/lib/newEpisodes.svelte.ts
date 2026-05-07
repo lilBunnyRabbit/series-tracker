@@ -40,7 +40,11 @@ async function loadOne(entry: TvEntry, apiKey: string): Promise<void> {
     }
     cache[entry.id] = { latestSeason: latest, upcomingEpisodes: upcoming };
   } catch {
-    // ignore — a missing snapshot just means we skip this show in the UI.
+    // Cache an empty snapshot on failure so a transient TMDB error doesn't
+    // re-fetch on every effect re-run. Without this, every other show's
+    // successful cache write triggers a retry of every failed show — with M
+    // failures and N successes that cascades into M·N extra requests.
+    cache[entry.id] = { latestSeason: latest, upcomingEpisodes: [] };
   } finally {
     inFlight.delete(entry.id);
   }

@@ -12,6 +12,7 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import type { EpisodeBrief, TvEntry } from "$lib/types";
+  import { untrack } from "svelte";
 
   type UpcomingItem = {
     entry: TvEntry;
@@ -28,14 +29,25 @@
 
   let warming = $state(false);
 
+  // See the home page for why this is `untrack`'d — loadOne's synchronous
+  // cache reads would otherwise refire this effect on every fetch completion,
+  // and on failure they'd retry the failed shows once per other show's
+  // success.
+  const watchingIds = $derived(
+    watchingEntries.map((e) => e.id).sort((a, b) => a - b).join(",")
+  );
+
   $effect(() => {
     if (!store.apiKey) return;
     const apiKey = store.apiKey;
-    const entries = watchingEntries;
-    if (entries.length === 0) return;
-    warming = true;
-    void warmUpForWatching(entries, apiKey).finally(() => {
-      warming = false;
+    void watchingIds;
+    untrack(() => {
+      const entries = watchingEntries;
+      if (entries.length === 0) return;
+      warming = true;
+      void warmUpForWatching(entries, apiKey).finally(() => {
+        warming = false;
+      });
     });
   });
 

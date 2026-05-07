@@ -14,6 +14,7 @@
   import { tactile } from "$lib/tactile";
   import { effectiveSeasons, movieProgress, movieRuntime } from "$lib/types";
   import type { EpisodeBrief, Entry, MovieEntry, TvEntry } from "$lib/types";
+  import { untrack } from "svelte";
 
   // Continue Watching mixes TV (next-episode driven) and partial-progress
   // movies (minutes-watched driven). Optional props on each side keep the
@@ -80,15 +81,31 @@
     store.entries.filter((e): e is TvEntry => e.kind === "tv" && e.status === "watching")
   );
 
+  // Track only the *set* of watching show IDs as a primitive so the warm
+  // re-fires when shows enter or leave the bucket — but NOT on per-entry
+  // mutations (progress, ratings, temptation kicks). The string is
+  // Object.is-stable when contents match, so dependents only refire on real
+  // membership changes.
+  const watchingIds = $derived(
+    watchingEntries.map((e) => e.id).sort((a, b) => a - b).join(",")
+  );
+
   // Warm the upcoming-episodes cache for shows the user is watching so the
   // home rail (and the /upcoming page) can render synchronously. Same module
   // cache used by /upcoming, so a session only pays for one fetch per show.
+  // The actual warm runs inside `untrack`: loadOne reads `cache[id]`
+  // synchronously to dedupe, and without untracking, every successful fetch's
+  // cache write would re-fire this effect (cheap on the happy path, but with
+  // many watching shows it adds up to N² reactive reads per page load).
   $effect(() => {
     if (!store.apiKey) return;
     const apiKey = store.apiKey;
-    const entries = watchingEntries;
-    if (entries.length === 0) return;
-    void warmUpForWatching(entries, apiKey);
+    void watchingIds;
+    untrack(() => {
+      const entries = watchingEntries;
+      if (entries.length === 0) return;
+      void warmUpForWatching(entries, apiKey);
+    });
   });
 
   function startOfDay(d: Date): Date {

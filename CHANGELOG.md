@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-05-08
+
+### Fixed
+- Home and Upcoming pages no longer fire redundant TMDB requests when warming the upcoming-episodes cache. Most noticeable on libraries with many watching shows — page opens are far quieter on the network tab.
+
 ## [0.21.0] - 2026-05-08
 
 ### Added
