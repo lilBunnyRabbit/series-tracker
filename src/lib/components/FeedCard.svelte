@@ -30,6 +30,19 @@
 
   let { item, genreById, isLastViewed = false, onAdd, backHref, onBack }: Props = $props();
 
+  // Rail-specific status labels. Mirrors STATUS_LABEL except "Plan to watch"
+  // collapses to "Plan" — the long form pushed the action column wide
+  // enough that every circle in the rail visibly shifted leftward when a
+  // user toggled to/from plan status. The full label still appears in the
+  // StatusMenu picker where there's room for it.
+  const RAIL_LABEL: Record<Status, string> = {
+    watching: "Watching",
+    completed: "Completed",
+    plan: "Plan",
+    dropped: "Dropped",
+    tuned: "Tuned in",
+  };
+
   const kind = $derived<"tv" | "movie">(item.media_type);
   const title = $derived(item.media_type === "movie" ? item.title : item.name);
   const dateRaw = $derived(item.media_type === "movie" ? item.release_date : item.first_air_date);
@@ -220,7 +233,7 @@
         {/if}
       </span>
       <span class="feed-action-label {existing && statusColor ? statusColor.text : ''}">
-        {busy ? "..." : existing ? STATUS_LABEL[existing.status] : "Add"}
+        {busy ? "..." : existing ? RAIL_LABEL[existing.status] : "Add"}
       </span>
     </button>
 
@@ -382,10 +395,10 @@
 
   .feed-text {
     position: absolute;
-    /* Right inset clears the action rail (~4.5rem of rail visual width) plus
-       a small breathing gap so the text never feels like it's hugging the
-       circles. */
-    inset: auto 5rem 0 0;
+    /* Right inset clears the action rail (4rem pinned width + 0.875rem
+       right offset = 4.875rem total extent) plus a small breathing gap so
+       the text never hugs the circles. */
+    inset: auto 5.25rem 0 0;
     z-index: 3;
     padding: 0 0 1.25rem 1rem;
     padding-bottom: max(env(safe-area-inset-bottom), 1.25rem);
@@ -517,6 +530,13 @@
     flex-direction: column;
     align-items: center;
     gap: 0.875rem;
+    /* Pin the column width so the rail doesn't reflow when one action's
+       label is longer than the others. Without this, swapping in a longer
+       label (e.g. "Completed") visibly shifts every circle leftward as the
+       column re-centres on its widest child. 4rem comfortably fits every
+       label up to "Completed"; "Plan to watch" is shortened to "Plan" in
+       this rail (see RAIL_LABEL). */
+    width: 4rem;
   }
 
   .feed-action {
@@ -561,7 +581,10 @@
     font-weight: 500;
     letter-spacing: 0.02em;
     color: color-mix(in oklab, var(--color-text) 80%, transparent);
-    max-width: 4.5rem;
+    /* Match the rail's pinned width so the label can't overshoot the
+       column and shove neighbouring circles around. Ellipsis is a
+       safety net — every actual rail label fits within 4rem at 10px. */
+    max-width: 4rem;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;

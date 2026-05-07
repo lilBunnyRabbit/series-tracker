@@ -58,18 +58,26 @@
 
   // ---- Setup screen ----
 
-  let availableGenres = $state<Genre[]>([]);
+  // Genre lists are loaded for BOTH kinds, not just the active one, so the
+  // saved-feed list on the setup screen can show genre names for a Movies
+  // session even while the active filter is on TV (and vice versa). TMDB
+  // caches per kind for 24h server-side and our client cache mirrors that,
+  // so concurrently fetching both is at most two requests per day total.
+  let tvGenres = $state<Genre[]>([]);
+  let movieGenres = $state<Genre[]>([]);
+  const availableGenres = $derived(kind === "tv" ? tvGenres : movieGenres);
 
-  // Genre list is fetched in both phases — the setup screen renders the chips
-  // and the feed cards resolve TMDB genre_ids to names. TMDB caches the call
-  // server-side for 24h and our client cache for 24h, so the network cost is
-  // a single request per kind per day.
   $effect(() => {
     if (!store.apiKey) return;
     const ctrl = new AbortController();
-    genreList(kind, store.apiKey, ctrl.signal)
-      .then((g) => {
-        if (!ctrl.signal.aborted) availableGenres = g.toSorted((a, b) => a.name.localeCompare(b.name));
+    Promise.all([
+      genreList("tv", store.apiKey, ctrl.signal),
+      genreList("movie", store.apiKey, ctrl.signal),
+    ])
+      .then(([tv, mv]) => {
+        if (ctrl.signal.aborted) return;
+        tvGenres = tv.toSorted((a, b) => a.name.localeCompare(b.name));
+        movieGenres = mv.toSorted((a, b) => a.name.localeCompare(b.name));
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
@@ -159,15 +167,63 @@
     });
   }
 
-  // Pretty summary of the saved session shown next to the Resume button so the
-  // user knows what they're about to jump back into.
+  // Pretty summary of the saved session — used as the aria-label for the
+  // resume row's remove button (so screen readers say "Remove saved feed:
+  // TV shows · Popular · Action, Comedy"). The visible row uses richer
+  // structured layout instead of this single string.
   function describeSession(s: FeedSession): string {
     const parts: string[] = [];
     parts.push(s.kind === "tv" ? "TV shows" : "Movies");
     parts.push(SORT_LABELS[s.sort] ?? s.sort);
-    if (s.genres.length > 0) parts.push(`${s.genres.length} genre${s.genres.length === 1 ? "" : "s"}`);
+    const names = genreNamesFor(s);
+    if (names.length > 0) parts.push(names.join(", "));
+    else if (s.genres.length > 0) parts.push(`${s.genres.length} genre${s.genres.length === 1 ? "" : "s"}`);
     if (s.hideAdded) parts.push("hide added");
     return parts.join(" · ");
+  }
+
+  // Resolve genre IDs → names for the kind the session belongs to. Falls
+  // back to an empty array when that kind's list hasn't loaded yet — the
+  // caller switches to a "N genres" fallback in that case.
+  function genreNamesFor(s: FeedSession): string[] {
+    const list = s.kind === "tv" ? tvGenres : movieGenres;
+    if (list.length === 0) return [];
+    const map = new Map(list.map((g) => [g.id, g.name]));
+    const out: string[] = [];
+    for (const id of s.genres) {
+      const n = map.get(id);
+      if (n) out.push(n);
+    }
+    return out;
+  }
+
+  // Visible "meta" line under the resume card title: every genre the user
+  // applied (named where we can, count-only as a fallback) plus the
+  // hideAdded flag. The card lets this row wrap so users can read every
+  // filter their session was using — truncating genres after three would
+  // hide exactly the data they came here to glance at. Intentionally omits
+  // kind/sort because those already render bigger above.
+  function describeMeta(s: FeedSession): string {
+    const parts: string[] = [];
+    if (s.genres.length > 0) {
+      const names = genreNamesFor(s);
+      if (names.length > 0) parts.push(names.join(", "));
+      else parts.push(`${s.genres.length} genre${s.genres.length === 1 ? "" : "s"}`);
+    } else {
+      parts.push("All genres");
+    }
+    if (s.hideAdded) parts.push("Hide added");
+    return parts.join(" · ");
+  }
+
+  // Approximate absolute item index from the saved session. For unfiltered
+  // sessions `lastSeenIndex` IS the absolute index; for hideAdded sessions
+  // it undercounts (filtered items don't bump the array index), but it's
+  // still the closest count we have without re-fetching. +1 to display
+  // 1-based ("Item 1" reads better than "Item 0" for the first card).
+  function itemNumberOf(s: FeedSession): number | null {
+    if (s.lastSeenIndex === undefined) return null;
+    return s.lastSeenIndex + 1;
   }
 
   const SORT_LABELS: Record<DiscoverSort, string> = {
@@ -927,27 +983,47 @@
         {#each savedSessions as s (s.kind + "|" + s.sort + "|" + s.genres.join(",") + "|" + s.hideAdded)}
           <!-- Two side-by-side targets so a stray tap on the small remove
                icon never fires the resume action and vice versa. The
-               resume button stretches to fill; the remove button is a
-               narrow icon-only square at the end with `haptic: warn` and
-               a confirm() guard inside removeSavedSession. -->
+               resume button carries kind-specific colour (TV vs Movies)
+               via a class modifier so multiple saved feeds at once read
+               as visually distinct rows; the remove button is a narrow
+               icon-only square at the end with `haptic: warn` and a
+               confirm() guard inside removeSavedSession. -->
+          {@const meta = describeMeta(s)}
+          {@const itemN = itemNumberOf(s)}
           <div class="resume-row">
             <button
               type="button"
               use:tactile
               onclick={() => resumeFromSaved(s)}
-              class="tap-target tap-target--card hover-border-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-accent/60 bg-accent/10 p-4 text-left"
+              class="resume-card tap-target tap-target--card resume-card--{s.kind}"
             >
-              <span
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent"
-                aria-hidden="true"
-              >
-                <Icon name="rotate-ccw" size={18} />
+              <span class="resume-card-icon" aria-hidden="true">
+                <Icon name="rotate-ccw" size={20} />
               </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold text-accent">Resume</span>
-                <span class="mt-0.5 block truncate text-xs text-muted">{describeSession(s)}</span>
+              <span class="resume-card-body">
+                <span class="resume-card-title">
+                  <span class="resume-card-kind">{s.kind === "tv" ? "TV" : "Movies"}</span>
+                  <span class="resume-card-sort">{SORT_LABELS[s.sort] ?? s.sort}</span>
+                </span>
+                {#if meta}
+                  <span class="resume-card-meta">{meta}</span>
+                {/if}
+                <span class="resume-card-position">
+                  <Icon name="bookmark" size={11} />
+                  <span>
+                    Page <span class="font-semibold tabular-nums">{s.lastSeenPage ?? "?"}</span>
+                  </span>
+                  {#if itemN !== null}
+                    <span class="text-muted" aria-hidden="true">·</span>
+                    <span>
+                      Item <span class="font-semibold tabular-nums">{itemN}</span>
+                    </span>
+                  {/if}
+                </span>
               </span>
-              <Icon name="chevron-right" size={16} class="text-muted" />
+              <span class="resume-card-chevron" aria-hidden="true">
+                <Icon name="chevron-right" size={18} />
+              </span>
             </button>
             <button
               type="button"
@@ -1254,6 +1330,136 @@
     align-items: stretch;
     gap: 0.5rem;
   }
+
+  /* Resume card. Three rows of info inside: title (TV/Movies + sort),
+     meta (genres + hideAdded), and position (page + item count). The
+     left edge carries a 4px bar in the kind's accent colour so multiple
+     saved feeds read as visually distinct at a glance — TV always teal,
+     Movies always cyan — instead of a stack of identical rows. */
+  .resume-card {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem 0.875rem 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition:
+      border-color 150ms var(--ease-out),
+      background 150ms var(--ease-out),
+      transform 150ms var(--ease-out);
+  }
+  .resume-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--resume-accent, var(--color-accent));
+  }
+  .resume-card:hover {
+    border-color: var(--resume-accent, var(--color-accent));
+    background: color-mix(in oklab, var(--resume-accent) 5%, var(--color-surface));
+  }
+  .resume-card--tv {
+    --resume-accent: var(--color-secondary);
+  }
+  .resume-card--movie {
+    --resume-accent: var(--color-tertiary);
+  }
+
+  .resume-card-icon {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in oklab, var(--resume-accent) 18%, transparent);
+    color: var(--resume-accent);
+  }
+
+  .resume-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .resume-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  /* Kind chip — a small pill that mirrors the accent bar on the left so
+     "this is a TV session" / "this is a Movies session" reads at a glance
+     even when the user's eye is on the title row, not the bar. */
+  .resume-card-kind {
+    flex-shrink: 0;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.125rem 0.4rem;
+    border-radius: 0.25rem;
+    background: color-mix(in oklab, var(--resume-accent) 15%, transparent);
+    color: var(--resume-accent);
+    line-height: 1.4;
+  }
+  .resume-card-sort {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .resume-card-meta {
+    font-size: 0.75rem;
+    color: color-mix(in oklab, var(--color-text) 72%, transparent);
+    /* Allow wrap so every filter (genres + hideAdded) stays visible —
+       a truncated "Animation, Action…" hides exactly the info the user
+       opened the setup screen to scan. The card grows taller for
+       sessions with many genres; that's the right tradeoff. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+  .resume-card-position {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+  .resume-card-position :global(svg) {
+    color: var(--resume-accent);
+    flex-shrink: 0;
+  }
+  .resume-card-chevron {
+    flex-shrink: 0;
+    color: var(--color-muted);
+    transition: transform 150ms var(--ease-out), color 150ms var(--ease-out);
+  }
+  .resume-card:hover .resume-card-chevron {
+    color: var(--resume-accent);
+    transform: translateX(2px);
+  }
+
   .resume-remove {
     flex-shrink: 0;
     width: 2.5rem;
