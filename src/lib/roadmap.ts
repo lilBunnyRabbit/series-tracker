@@ -499,6 +499,31 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
       "Bigger ideas not blocking 1.0. Order here is a prediction, not a contract — items will move as priorities settle.",
     groups: [
       {
+        id: "vaults-and-sync",
+        title: "Vaults & cloud sync",
+        description:
+          "Run separate libraries side-by-side and (optionally) back any of them up to your own cloud. Local-first stays local — Series Tracker never holds your data.",
+        items: [
+          {
+            id: "vaults",
+            title: "Multiple vaults",
+            summary:
+              "Keep separate libraries side-by-side (main, kid-safe, experiments) and switch the whole app between them in one tap.",
+            status: "planned",
+            complexity: "L",
+          },
+          {
+            id: "cloud-sync",
+            title: "Cloud sync to your own storage",
+            summary:
+              "Optional per-vault sync to your own Google Drive (or similar). Your data stays in your account — Series Tracker never runs a server.",
+            status: "considering",
+            complexity: "L",
+            note: "Depends on vaults landing first.",
+          },
+        ],
+      },
+      {
         id: "considering",
         title: "Considering",
         description: "Past idea stage but not yet committed to a milestone.",

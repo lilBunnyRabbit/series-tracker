@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-05-07
+
+### Added
+- Roadmap: new "Vaults & cloud sync" section under After v1.0, covering multiple separate libraries (committed) and optional per-vault sync to your own cloud storage like Google Drive (under consideration).
+
 ## [0.19.0] - 2026-05-07
 
 ### Added
