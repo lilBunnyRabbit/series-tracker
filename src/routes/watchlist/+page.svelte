@@ -3,6 +3,7 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import Icon from "$lib/components/Icon.svelte";
+  import KindFilter from "$lib/components/KindFilter.svelte";
   import LibraryCard from "$lib/components/LibraryCard.svelte";
   import ListCard from "$lib/components/ListCard.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
@@ -33,18 +34,6 @@
   const VIEW_LABEL: Record<View, string> = {
     list: "List",
     grid: "Grid",
-  };
-  // Kind tabs each get their own colour family so the row reads as three
-  // distinct categories rather than three slots of the same chip. Mirrors the
-  // STATUS_COLOR pattern (bg/border for active, /60 borderSoft for inactive,
-  // dot for the leading marker).
-  // "all" mirrors the "All" status tab: neutral border + muted text when
-  // inactive (so the row reads as "neutral default + 2 typed alternatives"
-  // instead of three coloured peers), primary only when selected.
-  const KIND_COLOR: Record<KindFilter, { bg: string; border: string; borderSoft: string; dot: string; text: string }> = {
-    all: { bg: "bg-primary", border: "border-primary", borderSoft: "border-border/60", dot: "bg-primary", text: "text-muted" },
-    tv: { bg: "bg-secondary", border: "border-secondary", borderSoft: "border-secondary/60", dot: "bg-secondary", text: "text-secondary" },
-    movie: { bg: "bg-tertiary", border: "border-tertiary", borderSoft: "border-tertiary/60", dot: "bg-tertiary", text: "text-tertiary" },
   };
   // Page size for the library list. 24 covers a few rows on grid view (3-5
   // cols) and ~24 list rows — large enough to feel substantial, small enough
@@ -416,34 +405,7 @@
            kind takes flex-1 to fill the row, inactives stay content-sized.
            Each tab includes a count that narrows to the active status filter
            so the user sees "Watching → TV: 8 / Movies: 2" at a glance. -->
-      <div class="flex items-stretch gap-1 text-xs" role="tablist" aria-label="Media kind filter">
-        {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
-          {@const active = kindFilter === k}
-          {@const c = KIND_COLOR[k]}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={active}
-            use:tactile
-            onclick={() => setKind(k)}
-            class="hero-tab {active ? 'flex-1' : 'shrink-0'} {active
-              ? `hero-tab-active ${c.border} ${c.bg} text-bg`
-              : `bg-transparent ${c.borderSoft} text-muted hover-text-text`}"
-          >
-            {#if k !== "all"}
-              <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
-            {/if}
-            <span class="hero-tab-label">{label}</span>
-            <span
-              class="tabular-nums {active
-                ? 'ml-auto text-sm font-semibold text-bg/85'
-                : `text-[10px] ${c.text}`}"
-            >
-              {kindCounts[k]}
-            </span>
-          </button>
-        {/each}
-      </div>
+      <KindFilter value={kindFilter} onChange={setKind} counts={kindCounts} />
 
       <!-- Title filter row + sort/view trigger. The trigger lives next to the
            search input so the two "narrowing" controls (filter text + open
@@ -632,15 +594,6 @@
     contain-intrinsic-size: 100% 100px;
   }
 
-  /* Hero-tab base. Used by:
-       - the closed-state status bar (active filter rendered as a full-width
-         bar — combined with `.hero-tab-active` for big padding + shadow)
-       - the open-state status picker (every status as a compact tab — base
-         only, no `.hero-tab-active`; bg/border come from per-tab Tailwind
-         utilities so the picker can show the selected one as bg-filled
-         without a competing border)
-       - the kind row (compact bordered tabs with `.hero-tab-active` reserved
-         for the currently-selected category) */
   /* Status row, two-state with animated resize.
      The same flex container holds every status tab + the chevron trigger;
      `.is-closed` / `.is-open` swaps the geometry by toggling flex-grow on
@@ -726,68 +679,6 @@
       padding 280ms var(--ease-spring),
       border-width 200ms var(--ease-out),
       opacity 200ms var(--ease-out);
-  }
-
-  .hero-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    border-radius: 0.5rem;
-    /* Border-width/style only — border-color is set per-tab via Tailwind
-       utility classes (e.g. border-primary, border-primary/60). Setting a
-       full `border: ...` here would have higher specificity than the
-       Tailwind class (Svelte scopes component styles into the unlayered
-       cascade above @layer utilities) and the per-tab tint would silently
-       fail to apply. Same for background — only set per-tab. */
-    border-width: 1px;
-    border-style: solid;
-    white-space: nowrap;
-    cursor: pointer;
-    line-height: 1;
-    /* Consistent 40px height across every variant (closed-state hero bar,
-       open-state picker tabs, kind row tabs) so the selection never looks
-       like it shrank when you opened the picker — only the width differs.
-       Horizontal padding still varies by variant for content density. */
-    min-height: 2.5rem;
-    padding: 0 0.875rem;
-    /* Dot + label flow from the left so the eye scans reading order; the
-       count gets `ml-auto` on the active bar to push it to the right edge. */
-    justify-content: flex-start;
-    /* Smooth bg/border/colour swap + flex-grow / max-width / padding /
-       border-width / opacity transitions. The flex-grow change drives the
-       active tab's resize between content-size (open picker) and flex-1
-       (closed bar / kind selection). The max-width + padding + border-width
-       + opacity changes drive the open/close picker animation: inactive
-       status tabs collapse to nothing in the closed state and ease back to
-       full size when the picker opens. */
-    transition:
-      background-color 200ms var(--ease-out),
-      border-color 200ms var(--ease-out),
-      color 200ms var(--ease-out),
-      flex-grow 280ms var(--ease-spring),
-      flex-basis 280ms var(--ease-spring),
-      max-width 280ms var(--ease-spring),
-      padding 280ms var(--ease-spring),
-      margin 280ms var(--ease-spring),
-      border-width 200ms var(--ease-out),
-      opacity 200ms var(--ease-out);
-  }
-  .hero-tab-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  .hero-tab-active {
-    /* Used on the closed-state status bar and on the kind row's active tab —
-       slightly more horizontal padding + soft shadow so the active selection
-       reads as a solid filled block dominant in its row. Height stays the
-       same as the picker tabs (via min-height on .hero-tab). */
-    padding: 0 1rem;
-    box-shadow: 0 4px 12px -6px color-mix(in oklab, currentColor 30%, transparent);
-  }
-  .hero-tab-active .hero-tab-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
   }
 
   /* Sheet styling — copied from CardActionsSheet so this page-local sheet

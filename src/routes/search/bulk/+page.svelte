@@ -22,8 +22,6 @@
 </script>
 
 <script lang="ts">
-  import { base } from "$app/paths";
-  import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import Rail from "$lib/components/Rail.svelte";
@@ -144,21 +142,9 @@
   const queryCount = $derived(parseQueries(input).length);
 </script>
 
-{#snippet headerActions()}
-  <a
-    href="{base}/search/"
-    use:tactile={{ haptic: false }}
-    class="tap-target tap-target--btn flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted hover-border-primary hover-text-text"
-  >
-    <Icon name="arrow-left" size={12} />
-    <span>Single search</span>
-  </a>
-{/snippet}
-
 <PageHeader
   title="Bulk search"
   subtitle="Paste a list of titles — one per line or comma-separated. Up to {MAX_QUERIES} per run."
-  actions={headerActions}
 />
 
 <section class="space-y-5">

@@ -3,6 +3,7 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import Icon from "$lib/components/Icon.svelte";
+  import KindFilter from "$lib/components/KindFilter.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
   import StatusMenu from "$lib/components/StatusMenu.svelte";
   import { store } from "$lib/store.svelte";
@@ -151,6 +152,20 @@
 
   const isQueryEmpty = $derived(!query.trim());
 
+  // Counts narrow to whichever set the page is currently rendering — search
+  // results when there's a query, popular when empty — so the kind tabs read
+  // as "of what's on screen, how many TV vs Movies".
+  const kindCounts = $derived.by<Record<KindFilter, number>>(() => {
+    const source: { media_type: string }[] = isQueryEmpty
+      ? popular
+      : (results?.results.filter((r) => r.media_type !== "person") ?? []);
+    return {
+      all: source.length,
+      tv: source.filter((r) => r.media_type === "tv").length,
+      movie: source.filter((r) => r.media_type === "movie").length,
+    };
+  });
+
   const matchingHistory = $derived.by<string[]>(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -177,28 +192,17 @@
        (replaces the old bottom-docked search island). The bottom floating
        nav now shows on this route in hub mode like every other tab. -->
   <div class="space-y-2">
-    <!-- Kind filter: Media / TV / Movies. Sits above the input so the user
-         picks scope first, then types. -->
-    <div class="flex flex-wrap items-center gap-1.5 text-xs">
-      {#each [["all", "Media"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
-        <button
-          type="button"
-          use:tactile
-          onclick={() => (kindFilter = k)}
-          class="tap-target tap-target--chip shrink-0 rounded-full border px-3 py-1.5 transition-colors duration-150 {kindFilter === k
-            ? 'border-primary bg-primary text-bg'
-            : 'border-border text-muted hover-border-primary'}"
-        >
-          {label}
-        </button>
-      {/each}
-    </div>
+    <!-- Kind filter: All / TV / Movies. Sits above the input so the user
+         picks scope first, then types. Shares KindFilter with the watchlist
+         so the visual treatment (active fills the row, per-kind colour
+         family, counts) is identical across the app. -->
+    <KindFilter value={kindFilter} onChange={(k) => (kindFilter = k)} counts={kindCounts} />
 
     <div class="flex items-stretch gap-2">
       <label class="relative block flex-1">
         <span class="sr-only">Search</span>
         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-          <Icon name="search" size={16} />
+          <Icon name="search" size={14} />
         </span>
         <!-- svelte-ignore a11y_autofocus -->
         <input
@@ -210,7 +214,7 @@
           autofocus
           autocomplete="off"
           spellcheck="false"
-          class="w-full rounded-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none transition-colors duration-150 focus:border-primary"
+          class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none transition-colors duration-150 focus:border-primary"
         />
       </label>
       <a
@@ -218,9 +222,9 @@
         use:tactile={{ haptic: false }}
         aria-label="Bulk search — paste multiple titles"
         title="Bulk search — paste multiple titles"
-        class="tap-target tap-target--icon flex shrink-0 items-center justify-center rounded-full border border-border px-4 text-muted hover-border-primary hover-text-primary"
+        class="flex shrink-0 items-center justify-center rounded-md border border-border px-3 text-muted hover-border-primary"
       >
-        <Icon name="list" size={16} />
+        <Icon name="list" size={18} />
       </a>
     </div>
 

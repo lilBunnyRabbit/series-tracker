@@ -177,6 +177,55 @@
   }
 }
 
+@layer components {
+  /* Shared filter-tab styling. Used by the watchlist's status row + kind row
+     and by the search page's kind selector. Border-color/background are set
+     per-tab via Tailwind utilities (border-primary, bg-secondary, etc.); only
+     border-width/style + layout/transition belong here so the tints don't
+     compete. Padding switches between base and `.hero-tab-active` for visual
+     weight on the selected tab. Transitions cover bg/border/color plus the
+     flex-grow/max-width/padding/opacity that drive the watchlist's status
+     picker resize animation; harmless on simpler consumers. */
+  .hero-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    white-space: nowrap;
+    cursor: pointer;
+    line-height: 1;
+    min-height: 2.5rem;
+    padding: 0 0.875rem;
+    justify-content: flex-start;
+    transition:
+      background-color 200ms var(--ease-out),
+      border-color 200ms var(--ease-out),
+      color 200ms var(--ease-out),
+      flex-grow 280ms var(--ease-spring),
+      flex-basis 280ms var(--ease-spring),
+      max-width 280ms var(--ease-spring),
+      padding 280ms var(--ease-spring),
+      margin 280ms var(--ease-spring),
+      border-width 200ms var(--ease-out),
+      opacity 200ms var(--ease-out);
+  }
+  .hero-tab-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .hero-tab-active {
+    padding: 0 1rem;
+    box-shadow: 0 4px 12px -6px color-mix(in oklab, currentColor 30%, transparent);
+  }
+  .hero-tab-active .hero-tab-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+}
+
 /* Sheet & dialog enter animations. Kept outside @layer so component @keyframes
    imports stay simple. */
 @keyframes sheet-in {

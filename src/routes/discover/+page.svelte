@@ -194,20 +194,24 @@
 <PageHeader title="Discover" actions={headerActions} srOnly />
 
 <!-- Page-level filter: hides items already in the user's library across
-     every rail below. Lives outside the external-actions rail because it
-     mutates this page's content rather than navigating elsewhere. -->
-<div class="mb-4 flex items-center gap-1.5 text-xs">
-  <button
-    type="button"
-    use:tactile
-    onclick={toggleHideAdded}
-    aria-pressed={hideAdded}
-    class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {hideAdded
-      ? 'border-primary bg-primary text-bg'
-      : 'border-border text-muted hover-border-primary'}"
-  >
-    {hideAdded ? "✓ Hiding added" : "Hide added"}
-  </button>
+     every rail below. Wrapped in a labelled "Filters" group so it reads as
+     intentional page-level chrome instead of a lone chip floating between
+     the header and the trending rail — mirrors /discover/browse. -->
+<div class="mb-4 space-y-1.5">
+  <div class="text-[10px] uppercase tracking-wider text-muted">Filters</div>
+  <div class="flex flex-wrap items-center gap-2">
+    <button
+      type="button"
+      use:tactile
+      onclick={toggleHideAdded}
+      aria-pressed={hideAdded}
+      class="tap-target tap-target--chip rounded-full border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
+        ? 'border-primary bg-primary text-bg'
+        : 'border-border text-muted hover-border-primary'}"
+    >
+      {hideAdded ? "✓ Hiding added" : "Hide added"}
+    </button>
+  </div>
 </div>
 
 <section class="space-y-7">

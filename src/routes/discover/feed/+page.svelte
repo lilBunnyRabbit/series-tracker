@@ -527,6 +527,7 @@
         currentIndex = 0;
         feedError = null;
         loading = false;
+        pendingForward = false;
         return;
       }
       if (captured) return;
@@ -573,6 +574,18 @@
         // hideAdded filter bypasses these so re-fetch produces the same
         // items list and resume can find its target.
         addedKeys = [...(s.addedDuringSession ?? [])];
+        // Always bypass the filter for the resume target itself. Without
+        // this, an external add of the saved show (user taps card → opens
+        // /show/[id]/ → adds from there) silently strands them at the top
+        // of the saved page on the next mount — the show gets filtered
+        // out, tryResumeScroll can't find it, "where you left off"
+        // disappears, and the position counter reads ~20 cards behind the
+        // user's actual progress. Treating the resume key as if it was
+        // added during this session keeps it in `items` regardless of
+        // where it was added from.
+        if (s.lastSeenKey && !addedKeys.includes(s.lastSeenKey)) {
+          addedKeys.push(s.lastSeenKey);
+        }
       } else {
         resumeTargetKey = null;
         resumeTargetPages = 0;
@@ -592,6 +605,7 @@
       currentIndex = 0;
       feedError = null;
       loading = false;
+      pendingForward = false;
 
       const ctrl = dataCtrl;
       void (async () => {
@@ -711,6 +725,13 @@
   let touchStartTime = 0;
   let touchActive = false;
   let wheelLockedUntil = 0;
+  // Forward-swipe deferral. When the user swipes past the last loaded card
+  // while loadNext is still in flight, the clamp pins them to the last card
+  // and they have to swipe AGAIN once items grow — feels like the feed is
+  // unresponsive while the network catches up. Set when a forward intent is
+  // clamped; consumed by an effect that watches items.length and finishes
+  // the advance as soon as a fresh card is available.
+  let pendingForward = false;
 
   function snapTo(target: number): void {
     const s = scroller;
@@ -745,11 +766,16 @@
     // still resolves to a clean ±1 step rather than landing the user where
     // their drag happened to stop.
     const startIdx = Math.round(touchStartScroll / h);
-    let target = startIdx;
+    let intended = startIdx;
     if (Math.abs(dy) > SWIPE_DISTANCE_PX || Math.abs(velocity) > SWIPE_VELOCITY_PX_MS) {
-      target = startIdx + (dy > 0 ? 1 : -1);
+      intended = startIdx + (dy > 0 ? 1 : -1);
     }
-    target = Math.max(0, Math.min(items.length - 1, target));
+    const target = Math.max(0, Math.min(items.length - 1, intended));
+    // Forward intent past loaded items? Defer it — the items.length effect
+    // below finishes the advance as soon as loadNext appends a fresh card.
+    // Any other swipe (backward, no-op tap) clears any stale pending so the
+    // deferral can't fire over a fresh, contradicting gesture.
+    pendingForward = intended > target;
     snapTo(target * h);
   }
 
@@ -772,11 +798,33 @@
       const h = s.clientHeight;
       if (h <= 0) return;
       const dir = e.deltaY > 0 ? 1 : -1;
-      const target = Math.max(0, Math.min(items.length - 1, currentIndex + dir));
+      const intended = currentIndex + dir;
+      const target = Math.max(0, Math.min(items.length - 1, intended));
+      // Same deferral as the touch path — a forward wheel tick that the
+      // clamp swallows is held until items grow, instead of forcing the
+      // user to re-trigger.
+      pendingForward = intended > target;
       snapTo(target * h);
     };
     s.addEventListener("wheel", handler, { passive: false });
     return () => s.removeEventListener("wheel", handler);
+  });
+
+  // Consume a deferred forward swipe once items grow enough to honour it.
+  // Re-runs on every items.length change; the early-return chain keeps the
+  // effect cheap when there's nothing pending. Skip while a touch is in
+  // flight so we don't override a gesture the user is mid-way through.
+  $effect(() => {
+    void items.length;
+    if (!pendingForward) return;
+    if (touchActive) return;
+    const s = scroller;
+    if (!s) return;
+    const h = s.clientHeight;
+    if (h <= 0) return;
+    if (currentIndex >= items.length - 1) return;
+    pendingForward = false;
+    s.scrollTop = (currentIndex + 1) * h;
   });
 
   async function handleAdd(item: RecommendationItem, status: Status): Promise<void> {

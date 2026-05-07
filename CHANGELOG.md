@@ -4,6 +4,21 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-05-07
+
+### Added
+- Search: the kind tabs (All / TV / Movies) now show counts of what's on screen — search hits when you've typed a query, popular titles when empty.
+
+### Changed
+- Search: kind tabs picked up the watchlist's hero-tab styling — active tab fills the row in its category colour, inactive tabs sit compact alongside — replacing the previous round pill chips.
+- Search: the input is more compact (square corners, smaller icon) so the kind tabs above it carry the visual weight of the row.
+- Discover: the "Hide added" chip is now under a labelled "Filters" group, matching /discover/browse.
+- Bulk search: removed the redundant "Single search" back button from the header; the bottom island already carries that affordance.
+
+### Fixed
+- Feed: a forward swipe on the last loaded card while the next page is still loading no longer leaves you stuck — the advance lands automatically as soon as the next card arrives, instead of forcing a re-swipe.
+- Feed: adding a saved show from its details page no longer breaks resume. Coming back to the feed with "hide already added" on used to drop you at the top of the page (no "where you left off" marker) and not save further progress until you scrolled well past your old spot.
+
 ## [0.16.1] - 2026-05-06
 
 ### Changed
