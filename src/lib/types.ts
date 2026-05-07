@@ -211,6 +211,11 @@ export type Preferences = {
   language?: string | null;
   /** Has the diary backfill prompt been answered (yes or dismissed)? Set after first /diary/ visit. */
   diaryBackfilled?: boolean;
+  /** Has the user finished or skipped the first-launch guide tour? Set on
+   *  finish/skip so the tour doesn't auto-open on subsequent visits. Manual
+   *  replay (via Settings → Guide → Take the tour) toggles a separate flag in
+   *  $lib/tour.svelte.ts and bypasses this field. */
+  tourSeen?: boolean;
 };
 
 export type ActionType =

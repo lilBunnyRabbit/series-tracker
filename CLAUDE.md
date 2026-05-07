@@ -47,6 +47,37 @@ Don't push without the version bump — users won't see that anything changed.
 - Don't add `version.json` to workbox `globPatterns` — it must always hit the network.
 - Don't switch `registerType` back to `"autoUpdate"` — the prompt-based flow is intentional so users see what changed.
 
+## In-app feature guide
+
+`/settings/guide/` is a user-facing tour of every feature in the app. Its content lives in `src/lib/guide.ts` as a typed `GUIDE_SECTIONS` array. The same array is the planned source for a first-launch interactive tour, so it's the single source of truth for both surfaces.
+
+### When you add or change a user-visible feature
+
+Update `src/lib/guide.ts` in the **same commit** as `CHANGELOG.md` and the version bump. Concretely:
+
+- **New feature** → add a new `GuideSection` (or extend the relevant existing one's `body` / `highlights`). Pick an `id`, `icon`, and `accent` consistent with the section's home in the app.
+- **Renamed / removed feature** → update or delete the matching section so the guide doesn't promise something that no longer exists.
+- **New visual demo** → extend the `GuideVisual` union in `guide.ts`, then add the matching `{#snippet}` block in `src/routes/settings/guide/+page.svelte` and wire it into the `visualFor` dispatch.
+
+### Guide section conventions
+
+- `summary` is one line (~110 chars) — shown in the TOC chip and as the step subhead.
+- `body` paragraphs are short. The whole section should read in under a minute.
+- `highlights` are for distinct sub-features within the section. Skip them when prose is enough.
+- `inTour` defaults to true; set `inTour: false` for sections that should appear in the static guide but be skipped in the first-launch tour (advanced / post-use features). Keep the tour at ~8 essentials max.
+- No file paths, no implementation details — users read this. Same rule as `CHANGELOG.md`.
+
+### First-launch tour
+
+The tour is mounted by `src/routes/+layout.svelte` via `{#if tour.open}` from `$lib/tour.svelte.ts`. It auto-opens for brand-new users (`store.loaded && !preferences.tourSeen && entries.length === 0`) and on manual replay from `/settings/guide` (the "Take the tour" button calls `tour.show()`). Closing the tour sets `preferences.tourSeen = true`.
+
+The visual demos in both surfaces are rendered by `<GuideVisual>` (`src/lib/components/GuideVisual.svelte`). To add a new demo: extend the `GuideVisual` union in `guide.ts`, add the matching block in `GuideVisual.svelte`, and reference it from a section's `visual` field.
+
+### Don't
+
+- Don't put guide content directly in the page Svelte file; it belongs in `guide.ts` so the future tour can consume it.
+- Don't add a guide section for internal-only changes (refactors, build tooling). Those don't ship to users.
+
 ## Stack reminders
 
 - Svelte 5 runes only (`$state`, `$derived`, `$effect`, `$props`). No legacy stores, no `<script>` without `lang="ts"`.

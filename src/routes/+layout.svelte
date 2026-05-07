@@ -5,9 +5,11 @@
   import { page } from "$app/state";
   import { initBackTracker, smartBack } from "$lib/back.svelte";
   import ApiKeyGate from "$lib/components/ApiKeyGate.svelte";
+  import GuideTour from "$lib/components/GuideTour.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import UpdateProgressOverlay from "$lib/components/UpdateProgressOverlay.svelte";
   import { tactile } from "$lib/tactile";
+  import { tour } from "$lib/tour.svelte";
 
   type IconName = "home" | "compass" | "bookmark" | "search" | "user";
   import { pageActions } from "$lib/page-actions.svelte";
@@ -155,6 +157,7 @@
     if (relPath.startsWith("/stats")) return "Profile";
     if (relPath.startsWith("/leaderboard")) return "Leaderboard";
     if (relPath.startsWith("/diary")) return "Diary";
+    if (relPath.startsWith("/settings/guide")) return "Guide";
     if (relPath.startsWith("/settings")) return "Settings";
     if (relPath.startsWith("/activity")) return "Activity";
     if (relPath.startsWith("/style-guide")) return "Style Guide";
@@ -186,6 +189,7 @@
     // Search hides the floating footer, so give it a back button to return home.
     if (relPath.startsWith("/search/bulk")) return `${base}/search/`;
     if (relPath.startsWith("/search")) return `${base}/`;
+    if (relPath.startsWith("/settings/guide")) return `${base}/settings/`;
     if (relPath.startsWith("/settings")) return `${base}/stats/`;
     if (relPath.startsWith("/leaderboard")) return `${base}/stats/`;
     if (relPath.startsWith("/diary")) return `${base}/stats/`;
@@ -333,6 +337,15 @@
   {/if}
 
   <UpdateProgressOverlay />
+
+  <!-- First-launch tour. Lazy-mounted: the {#if} guard means the overlay's
+       DOM only exists when it should be visible (per project rule on
+       dialogs). Trigger logic lives in $lib/tour.svelte.ts — auto-opens for
+       brand-new users (no library + tourSeen unset) and on manual replay
+       from /settings/guide. -->
+  {#if tour.open}
+    <GuideTour />
+  {/if}
 </div>
 
 <style>

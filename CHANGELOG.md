@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-05-07
+
+### Added
+- New Guide page in Settings — a paged walkthrough of every feature, with a TOC chip rail at the top and animated demos for each section (cycling status colours, a fake season counter ticking up and down, a picker showdown alternating winners, the mobile floating-island indicator sliding between tabs). Linked from the Settings header alongside Activity and Style guide.
+- First-launch tour — auto-opens once for brand-new users (empty library) on top of whatever route they land on. Eight paged steps cover the essentials: Welcome, TMDB key, statuses, finding titles, watchlist, tracking, picker, profile. Swipe, arrow keys, or buttons to navigate; "Skip" available on every step; the last step has a "View full guide" shortcut into Settings → Guide.
+- "Take the tour" button on the new Guide page — opens the same first-launch tour on demand, so existing users can replay the walkthrough at any time.
+
 ## [0.16.3] - 2026-05-07
 
 ### Added
