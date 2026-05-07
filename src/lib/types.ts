@@ -109,7 +109,8 @@ export type TemptationAction =
   | "episode-page-opened"
   | "rated-high"
   | "rewatchable-on"
-  | "marked-finished";
+  | "marked-finished"
+  | "movie-progress";
 
 export type TemptationEvent = {
   /** ISO timestamp of when the kick was applied. */
@@ -232,6 +233,13 @@ export type MovieEntry = {
   notes?: string;
   /** Movie length in minutes. */
   runtime?: number;
+  /** Minutes watched, clamped to [0, runtime]. Optional — only persisted once
+   *  the user uses the inline scrubber on the movie info page. Status remains
+   *  the source of truth for "completed"; `progress` is a checkpoint within
+   *  `status === "watching"` (and is preserved across plan/dropped/tuned
+   *  transitions so the user can resume). Auto-promotes to "completed" when
+   *  progress reaches runtime. */
+  progress?: number;
   genres?: { id: number; name: string }[];
   /** See TvEntry — same flag, same surfaces. */
   rewatchable?: boolean;
@@ -246,6 +254,32 @@ export type MovieEntry = {
 };
 
 export type Entry = TvEntry | MovieEntry;
+
+/** Default upper bound when a movie has no recorded runtime — matches the
+ *  fallback used by stats so partial-progress and stats math agree. */
+export const FALLBACK_MOVIE_RUNTIME = 110;
+
+/** Effective runtime for a movie — TMDB-reported when present, otherwise the
+ *  shared fallback. Used as the slider's upper bound and the stats divisor. */
+export function movieRuntime(e: MovieEntry): number {
+  return e.runtime && e.runtime > 0 ? e.runtime : FALLBACK_MOVIE_RUNTIME;
+}
+
+/** Clamped minutes watched on a movie, treating an absent field as 0. */
+export function movieProgress(e: MovieEntry): number {
+  return Math.max(0, Math.min(e.progress ?? 0, movieRuntime(e)));
+}
+
+/** Progress fraction in [0, 1]. 0 when no runtime is known. */
+export function movieProgressFraction(e: MovieEntry): number {
+  return movieProgress(e) / movieRuntime(e);
+}
+
+/** True when the movie has a non-zero checkpoint and is in the watching
+ *  bucket — the surface trigger for Continue Watching and the live scrubber. */
+export function isMovieInProgress(e: MovieEntry): boolean {
+  return e.status === "watching" && (e.progress ?? 0) > 0;
+}
 
 export type Preferences = {
   /** When true, vibration patterns are suppressed. */
@@ -287,7 +321,8 @@ export type ActionType =
   | "season-complete"
   | "season-reset"
   | "episode-toggle"
-  | "season-rating";
+  | "season-rating"
+  | "movie-progress";
 
 /** A single library mutation captured for the activity log. Capped at 200
  *  most-recent entries inside the persisted state. `prev` snapshots the entry
@@ -303,7 +338,7 @@ export type ActionEntry = {
   title: string;
   poster?: string | null;
   createdAt: string;
-  meta?: { season?: number; episode?: number };
+  meta?: { season?: number; episode?: number; minutes?: number };
   /** Pre-mutation snapshot of the entry. Absent for "add" (no prior state). */
   prev?: Entry;
   /** Reserved for the step-2 undo flow. */

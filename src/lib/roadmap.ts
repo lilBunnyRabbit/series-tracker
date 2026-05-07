@@ -76,6 +76,15 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "movie-progress",
+            title: "Movie progress tracking",
+            summary:
+              "Optional minutes-watched scrubber on movies — drag a tick ruler or tap chevrons to record where you paused. Surfaces in Continue Watching alongside TV and counts toward stats hours-watched.",
+            status: "shipped",
+            shippedIn: "0.21.0",
+            complexity: "M",
+          },
+          {
             id: "continue-watching-episode-card",
             title: "Continue Watching → landscape cards",
             summary:

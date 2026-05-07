@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
+  import MovieProgressSlider from "$lib/components/MovieProgressSlider.svelte";
   import NotesEditor from "$lib/components/NotesEditor.svelte";
   import RatingPicker from "$lib/components/RatingPicker.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
@@ -13,7 +14,7 @@
   import { tactile } from "$lib/tactile";
   import { debouncedPageOpen } from "$lib/temptation";
   import { backdropUrl, entryFromMovieDetail, movieDetail, posterUrl } from "$lib/tmdb";
-  import { STATUS_COLOR } from "$lib/types";
+  import { movieProgress, movieRuntime, STATUS_COLOR } from "$lib/types";
   import type { MovieDetail, MovieEntry, Status } from "$lib/types";
 
   const id = $derived(Number(page.params.id));
@@ -111,6 +112,16 @@
   );
 
   const onBack = smartBack();
+
+  // The progress scrubber is hidden behind a disclosure for plan-list entries
+  // with no recorded progress — most plan items are "I'll watch later", so the
+  // ruler is just noise. Once expanded (or once any non-zero progress exists,
+  // or the entry leaves the plan bucket) it stays visible.
+  let progressOpen = $state(false);
+  const showProgressSlider = $derived(
+    !!movieEntry &&
+      (movieEntry.status !== "plan" || (movieEntry.progress ?? 0) > 0 || progressOpen)
+  );
 
   // Web Share — feature-detected; share button hides on browsers without it.
   let canShare = $state(false);
@@ -277,6 +288,33 @@
       <div class="space-y-3">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Status</h2>
         <StatusSegmented value={movieEntry.status} onChange={(s) => store.setStatus("movie", id, s)} />
+      </div>
+
+      <!-- Progress: minutes-watched scrubber. Optional — collapses to a small
+           disclosure on plan-list entries so the binary "Mark watched" flow
+           stays uncluttered for users who don't want the granularity. -->
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Progress</h2>
+        {#if showProgressSlider}
+          <div class="rounded-md border border-border bg-surface px-3 py-3">
+            <MovieProgressSlider
+              value={movieProgress(movieEntry)}
+              max={movieRuntime(movieEntry)}
+              disabled={movieEntry.status === "completed"}
+              onCommit={(m) => store.setMovieProgress(id, m)}
+            />
+          </div>
+        {:else}
+          <button
+            type="button"
+            use:tactile
+            onclick={() => (progressOpen = true)}
+            class="tap-target tap-target--btn flex w-full items-center justify-between rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-muted hover-border-primary hover-text-text"
+          >
+            <span>Track progress</span>
+            <span aria-hidden="true" class="text-base leading-none">›</span>
+          </button>
+        {/if}
       </div>
 
       <!-- Extras: rating + rewatchable flag + free-text notes. Mirrors the

@@ -1,7 +1,7 @@
 import { browser } from "$app/environment";
 import { idbDelete, idbGet, idbList, idbSet } from "./idb";
 import { applyAction as applyTemptationAction } from "./temptation";
-import { effectiveSeasons } from "./types";
+import { effectiveSeasons, movieProgress, movieRuntime } from "./types";
 import type {
   ActionEntry,
   ActionType,
@@ -27,7 +27,7 @@ const IDB_BACKUP_LOAD_KEY = "state.bak.load";
 // without paying for unbounded backup storage.
 const IDB_BACKUP_PREV_KEY = "state.bak.prev";
 const LEGACY_LS_KEY = "series-tracker:v1";
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const SEARCH_HISTORY_LIMIT = 8;
 const ACTIONS_LIMIT = 200;
 const SAVE_DEBOUNCE_MS = 300;
@@ -69,6 +69,10 @@ type PersistedV8 = PersistedV7 & {
 // additive; missing fields are treated as score=0 / log=[] / pacing="balanced"
 // by the lazy decay in src/lib/temptation.ts.
 type PersistedV9 = PersistedV8;
+// V10 — added optional `progress: number` (minutes watched) to MovieEntry.
+// Purely additive; absent on movies added before the field existed, in which
+// case `movieProgress()` reads as 0. No data migration needed.
+type PersistedV10 = PersistedV9;
 
 const empty: Store = {
   apiKey: null,
@@ -81,7 +85,7 @@ const empty: Store = {
   version: SCHEMA_VERSION,
 };
 
-function migrate(parsed: PersistedV9): Store {
+function migrate(parsed: PersistedV10): Store {
   // Fold V7's single `feedSession` into V8's `feedSessions[]` so older
   // exports/imports still resume correctly.
   const sessions = parsed.feedSessions ?? (parsed.feedSession ? [parsed.feedSession] : []);
@@ -122,7 +126,7 @@ function readLegacyLocalStorage(): Store | null {
   try {
     const raw = localStorage.getItem(LEGACY_LS_KEY);
     if (!raw) return null;
-    return migrate(JSON.parse(raw) as PersistedV9);
+    return migrate(JSON.parse(raw) as PersistedV10);
   } catch {
     return null;
   }
@@ -260,7 +264,7 @@ function createStore() {
   if (browser) {
     void (async () => {
       try {
-        let data = await idbGet<PersistedV9>(IDB_KEY);
+        let data = await idbGet<PersistedV10>(IDB_KEY);
         if (!data) {
           const legacy = readLegacyLocalStorage();
           if (legacy) {
@@ -364,7 +368,7 @@ function createStore() {
     refId: number;
     title: string;
     poster?: string | null;
-    meta?: { season?: number; episode?: number };
+    meta?: { season?: number; episode?: number; minutes?: number };
     prev?: Entry;
   }): void {
     const action: ActionEntry = {
@@ -485,7 +489,7 @@ function createStore() {
         if (!sessions || sessions.length === 0) return;
         out.push({ source, sessions });
       };
-      const sessionsFromBlob = (blob: PersistedV9 | undefined): FeedSession[] => {
+      const sessionsFromBlob = (blob: PersistedV10 | undefined): FeedSession[] => {
         if (!blob) return [];
         if (Array.isArray(blob.feedSessions)) return blob.feedSessions;
         if (blob.feedSession) return [blob.feedSession];
@@ -496,7 +500,7 @@ function createStore() {
       try {
         tryAdd(
           "Load-time backup",
-          sessionsFromBlob(await idbGet<PersistedV9>(IDB_BACKUP_LOAD_KEY)),
+          sessionsFromBlob(await idbGet<PersistedV10>(IDB_BACKUP_LOAD_KEY)),
         );
       } catch (e) {
         console.warn("[store] backup(load) read failed", e);
@@ -504,7 +508,7 @@ function createStore() {
       try {
         tryAdd(
           "Previous-save backup",
-          sessionsFromBlob(await idbGet<PersistedV9>(IDB_BACKUP_PREV_KEY)),
+          sessionsFromBlob(await idbGet<PersistedV10>(IDB_BACKUP_PREV_KEY)),
         );
       } catch (e) {
         console.warn("[store] backup(prev) read failed", e);
@@ -513,7 +517,7 @@ function createStore() {
       // Raw IDB state. Same key the live load reads, but we re-read it here
       // to catch the (rare) case where the in-memory state diverged from disk.
       try {
-        const raw = await idbGet<PersistedV9>(IDB_KEY);
+        const raw = await idbGet<PersistedV10>(IDB_KEY);
         const fromRaw = sessionsFromBlob(raw);
         // Only surface if it differs from what's already in state — otherwise
         // we'd offer to "restore" what the user already has.
@@ -529,7 +533,7 @@ function createStore() {
       try {
         const raw = localStorage.getItem(LEGACY_LS_KEY);
         if (raw) {
-          tryAdd("Legacy localStorage", sessionsFromBlob(JSON.parse(raw) as PersistedV9));
+          tryAdd("Legacy localStorage", sessionsFromBlob(JSON.parse(raw) as PersistedV10));
         }
       } catch (e) {
         console.warn("[store] legacy LS read failed", e);
@@ -544,7 +548,7 @@ function createStore() {
         for (const k of keys) {
           if (known.has(k)) continue;
           try {
-            const blob = await idbGet<PersistedV9>(k);
+            const blob = await idbGet<PersistedV10>(k);
             tryAdd(`Other IDB key (${k})`, sessionsFromBlob(blob));
           } catch {
             // ignore per-key failures
@@ -895,6 +899,55 @@ function createStore() {
       return false;
     },
 
+    /** Set the minutes-watched checkpoint for a movie. The slider on the movie
+     *  info page debounces drag/chevron activity so this is called once per
+     *  scrubbing session — every call writes one ActionEntry. Status auto-syncs:
+     *  reaching runtime promotes to "completed"; advancing from a plan/completed
+     *  state with non-zero minutes flips to "watching"; explicitly resetting a
+     *  completed movie to 0 demotes it back to "watching". */
+    setMovieProgress(id: number, minutes: number) {
+      const e = state.library[entryKey("movie", id)];
+      if (!e || e.kind !== "movie") return;
+      const rt = movieRuntime(e);
+      const clamped = Math.max(0, Math.min(rt, Math.floor(minutes || 0)));
+      if (clamped === movieProgress(e)) return;
+      const prev = snapshotEntry("movie", id);
+      e.progress = clamped;
+      if (clamped >= rt) {
+        e.status = "completed";
+        e.watched = true;
+      } else if (clamped > 0 && (e.status === "plan" || e.status === "completed")) {
+        e.status = "watching";
+        e.watched = false;
+      } else if (clamped === 0 && e.status === "completed") {
+        e.status = "watching";
+        e.watched = false;
+      }
+      withTimestamp(e);
+      // Reaching runtime is "wrapping up" — match the temptation reset that
+      // setStatus does when it lands on "completed". Otherwise nudge the score
+      // up so a partially-watched movie reads as warm in the watchlist.
+      if (clamped >= rt) applyKick(e, "marked-finished");
+      else applyKick(e, "movie-progress", `${clamped}m`);
+      pushAction({
+        type: "movie-progress",
+        kind: "movie",
+        refId: id,
+        title: e.title,
+        poster: e.poster,
+        meta: { minutes: clamped },
+        prev,
+      });
+    },
+
+    /** Convenience wrapper for the slider's chevron buttons — applies a delta
+     *  to the current checkpoint. Clamping happens inside setMovieProgress. */
+    bumpMovieProgress(id: number, delta: number) {
+      const e = state.library[entryKey("movie", id)];
+      if (!e || e.kind !== "movie") return;
+      this.setMovieProgress(id, movieProgress(e) + delta);
+    },
+
     setStatus(kind: "tv" | "movie", id: number, status: Status) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;
@@ -904,6 +957,13 @@ function createStore() {
       // For movies, "watched" mirrors status === "completed". Keep them aligned
       // so any legacy export that still ships `watched` stays consistent.
       if (e.kind === "movie") e.watched = status === "completed";
+      // For movies flipped to "completed", fill the progress checkpoint to
+      // runtime so the slider and stats agree on a fully-watched read. Other
+      // transitions leave `progress` untouched so a paused-and-came-back user
+      // resumes where they left off.
+      if (e.kind === "movie" && status === "completed" && typeof e.runtime === "number" && e.runtime > 0) {
+        e.progress = e.runtime;
+      }
       // For TV, "completed" implies every counted episode watched — fill
       // progress for the seasons that count and drop any explicit per-episode
       // sets (a fully-watched season is contiguous by definition). Specials
@@ -1199,7 +1259,7 @@ function createStore() {
     },
 
     importJson(text: string, mode: "replace" | "merge" = "replace"): { added: number; merged: number; total: number } {
-      const parsed = migrate(JSON.parse(text) as PersistedV9);
+      const parsed = migrate(JSON.parse(text) as PersistedV10);
       let added = 0;
       let merged = 0;
 

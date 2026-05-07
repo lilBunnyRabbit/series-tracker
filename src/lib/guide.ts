@@ -189,14 +189,15 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "tracking",
-    version: "0.20.0",
+    version: "0.21.0",
     icon: "play",
     accent: "primary",
     title: "Tracking what you watch",
-    summary: "Per-season counters, per-episode toggles, season ratings, a Diary, and a Home dashboard that knows what's next.",
+    summary: "Per-season counters, per-episode toggles, optional movie scrubber, season ratings, a Diary, and a Home dashboard that knows what's next.",
     body: [
-      "Home reads as a dashboard. Continue Watching is a rail of landscape episode cards — the show's backdrop, the runtime in the corner, and an 'N remaining · Md' line for what's left and how long it's been. Upcoming sits right under it with cards for unaired episodes, badged 'In Nd' / 'Today' / 'Tomorrow'.",
+      "Home reads as a dashboard. Continue Watching is a rail of landscape cards — for shows, the next episode with backdrop, runtime, and 'N remaining · Md'; for movies you've started, the minutes-watched checkpoint ('45m of 155m · 3d'). Upcoming sits right under it with cards for unaired episodes, badged 'In Nd' / 'Today' / 'Tomorrow'.",
       "TV shows track per-season progress. The show page lists every season with a counter; the season tracker page shows the full episode list with air dates, runtimes, and the option to mark-watched up to a tapped episode (or toggle individual episodes for non-contiguous watches like 'E1 and E3 but not E2'). Counters flip with a small slide-and-fade whenever you tap +/- so every press registers visually.",
+      "Movies are binary by default — one tap on the ✓ marks watched. Want more? Open Track progress on a movie's page and use the tick-ruler scrubber to record where you paused. Drag the strip or tap the chevrons to bump a minute at a time; reaching the runtime auto-marks the movie watched. Partial minutes count toward your stats hours-watched and the movie joins Continue Watching alongside your shows.",
       "Catch up jumps progress to the latest aired episode in one tap. Specials live in their own section and don't block completion unless you opt in per show. Background sync demotes a Completed show back to Watching when new episodes air.",
       "Rate the whole show, individual seasons, or movies on a 0–10 scale. Add notes, mark titles as Rewatchable, and (for everything you watch) log a Diary entry — a date-stamped journal independent of episode progress, with optional rating and per-viewing notes.",
     ],

@@ -5,7 +5,7 @@
   import { store } from "$lib/store.svelte";
   import { longPress, tactile } from "$lib/tactile";
   import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
-  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
+  import { effectiveSeasons, movieProgressFraction, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
   type Props = {
@@ -36,7 +36,15 @@
       ? countedSeasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0)
       : 0
   );
-  const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
+  const tvPct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
+  const moviePct = $derived(entry.kind === "movie" ? Math.round(movieProgressFraction(entry) * 100) : 0);
+  // Bar hides at 0% / 100% — empty/full bars are noise once the status chip
+  // already conveys "not started" / "completed".
+  const showBar = $derived(
+    (entry.kind === "tv" && totalEpisodes > 0 && watchedEpisodes > 0 && watchedEpisodes < totalEpisodes) ||
+      (entry.kind === "movie" && movieProgressFraction(entry) > 0 && movieProgressFraction(entry) < 1)
+  );
+  const pct = $derived(entry.kind === "tv" ? tvPct : moviePct);
 
   let actionsOpen = $state(false);
   const openActions = (): void => {
@@ -88,7 +96,7 @@
         </div>
       </div>
 
-      {#if entry.kind === "tv" && totalEpisodes > 0}
+      {#if showBar}
         <div class="mt-auto h-1 w-full overflow-hidden rounded-full bg-surface-2">
           <div class="h-full transition-all {c.bg}" style="width: {pct}%"></div>
         </div>

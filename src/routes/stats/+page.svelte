@@ -4,7 +4,7 @@
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { movieProgress, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status, TvEntry } from "$lib/types";
 
   // Fallbacks used when TMDB didn't supply runtime — older entries in the
@@ -29,7 +29,10 @@
     if (e.status === "completed") {
       return e.runtime ?? FALLBACK_MOVIE_RUNTIME;
     }
-    return 0;
+    // Partial-progress movies count their checkpoint toward the hours-watched
+    // total. movieProgress clamps to runtime (or the shared fallback if the
+    // entry has none) so a stale checkpoint can't over-count.
+    return movieProgress(e);
   }
 
   type Tally = { id: number; name: string; count: number };

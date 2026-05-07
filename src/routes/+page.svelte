@@ -12,14 +12,19 @@
   } from "$lib/newEpisodes.svelte";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { effectiveSeasons } from "$lib/types";
-  import type { EpisodeBrief, Entry, TvEntry } from "$lib/types";
+  import { effectiveSeasons, movieProgress, movieRuntime } from "$lib/types";
+  import type { EpisodeBrief, Entry, MovieEntry, TvEntry } from "$lib/types";
 
+  // Continue Watching mixes TV (next-episode driven) and partial-progress
+  // movies (minutes-watched driven). Optional props on each side keep the
+  // ContinueWatchingCard a single shared component without a tagged union.
   type ContinueItem = {
-    entry: TvEntry;
-    season: number;
-    episode: number;
-    remaining: number;
+    entry: TvEntry | MovieEntry;
+    season?: number;
+    episode?: number;
+    remaining?: number;
+    minutesWatched?: number;
+    minutesTotal?: number;
   };
 
   type UpcomingItem = {
@@ -44,19 +49,29 @@
   }
 
   const continueWatching = $derived.by<ContinueItem[]>(() => {
-    return store.entries
-      .filter((e): e is TvEntry => e.kind === "tv" && e.status === "watching")
-      .map((e) => {
+    const items: ContinueItem[] = [];
+    for (const e of store.entries) {
+      if (e.status !== "watching") continue;
+      if (e.kind === "tv") {
         const next = nextEpisode(e);
-        if (!next) return null;
-        return {
+        if (!next) continue;
+        items.push({
           entry: e,
           season: next.season,
           episode: next.episode,
           remaining: totalRemaining(e),
-        };
-      })
-      .filter((x): x is ContinueItem => x !== null)
+        });
+      } else if ((e.progress ?? 0) > 0) {
+        // Only surface movies with a real checkpoint — a "watching" movie at
+        // 0m hasn't actually been started yet from the user's perspective.
+        items.push({
+          entry: e,
+          minutesWatched: movieProgress(e),
+          minutesTotal: movieRuntime(e),
+        });
+      }
+    }
+    return items
       .sort((a, b) => (b.entry.updatedAt ?? "").localeCompare(a.entry.updatedAt ?? ""))
       .slice(0, 12);
   });

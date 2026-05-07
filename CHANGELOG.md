@@ -4,6 +4,14 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-05-08
+
+### Added
+- Movies now support optional minutes-watched progress. On any movie in your library, drag the new ruler-style scrubber to record where you paused — minute-by-minute haptics, half-hour marks, and a soft bounce on each tick as you scroll past. The checkpoint shows up in the Continue Watching rail next to TV ("45m of 155m · 3d"), partial minutes count toward your stats hours-watched, and reaching the runtime auto-marks the movie watched.
+
+### Changed
+- Library and Watchlist cards no longer show progress bars at 0% (not started) or 100% (completed) — empty / full bars were noise once the status chip already conveys the state. Bars now appear only for in-flight progress.
+
 ## [0.20.0] - 2026-05-08
 
 ### Added

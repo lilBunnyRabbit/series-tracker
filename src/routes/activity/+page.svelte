@@ -114,6 +114,7 @@
     "season-reset": "removals",
     "episode-toggle": "additions",
     "season-rating": "metadata",
+    "movie-progress": "additions",
   };
 
   // Tailwind class fragments per bucket. Literal strings so the content
@@ -137,6 +138,7 @@
     "season-reset": "rotate-ccw",
     "episode-toggle": "check",
     "season-rating": "star",
+    "movie-progress": "play",
   } as const satisfies Record<ActionType, string>;
 
   // The verb is always the part *before* the title. The page renders
@@ -195,6 +197,20 @@
         const head = `Rated${s !== undefined ? ` S${s} of` : ""}`;
         const tail = typeof v === "number" ? ` ${v}/10` : "";
         return { verb: head, suffix: tail };
+      }
+      case "movie-progress": {
+        const m = a.meta?.minutes;
+        if (m === 0) return { verb: "Reset progress on", suffix: "" };
+        // Pull runtime off the live entry (or the snapshot) so we can show
+        // "45m of 155m" instead of a bare "45m" when context is available.
+        const rt =
+          live?.kind === "movie"
+            ? live.runtime
+            : a.prev?.kind === "movie"
+              ? a.prev.runtime
+              : undefined;
+        const tail = typeof m === "number" ? ` · ${m}m${rt ? ` of ${rt}m` : ""}` : "";
+        return { verb: "Progress:", suffix: tail };
       }
     }
   }

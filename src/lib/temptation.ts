@@ -31,6 +31,7 @@ const KICKS: Record<TemptationAction, number> = {
   "rated-high": 0.1,
   "rewatchable-on": 0.05,
   "marked-finished": 0,
+  "movie-progress": 0.05,
 };
 
 /** Per-day exponential decay coefficient. Half-lives:
@@ -233,6 +234,7 @@ const ACTION_LABEL: Record<TemptationAction, string> = {
   "rated-high": "rated highly",
   "rewatchable-on": "marked rewatchable",
   "marked-finished": "wrapped up",
+  "movie-progress": "advanced progress",
 };
 
 /** Render the last-bump label for the bar caption. Prefers the event's
@@ -242,6 +244,7 @@ export function bumpLabel(event: TemptationEvent): string {
     if (event.action === "episode-watched") return `watched ${event.meta}`;
     if (event.action === "season-completed") return `completed ${event.meta}`;
     if (event.action === "episode-page-opened") return `checked ${event.meta}`;
+    if (event.action === "movie-progress") return `at ${event.meta}`;
     return event.meta;
   }
   return ACTION_LABEL[event.action];

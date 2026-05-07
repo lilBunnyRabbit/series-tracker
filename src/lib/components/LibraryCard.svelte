@@ -5,7 +5,7 @@
   import { store } from "$lib/store.svelte";
   import { longPress, tactile } from "$lib/tactile";
   import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
-  import { effectiveSeasons, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
+  import { effectiveSeasons, movieProgressFraction, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
 
   type Props = { entry: Entry; compact?: boolean };
@@ -23,7 +23,17 @@
       ? countedSeasons.reduce((a, s) => a + Math.min(entry.progress[s.number] ?? 0, s.episodeCount), 0)
       : 0
   );
-  const pct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
+  // Bar is shared by both kinds: TV uses watched-episode fraction, movies use
+  // the minutes-watched checkpoint. Hidden at 0% (no progress) and 100% (full
+  // progress) — empty bars are noise, full bars are redundant once the status
+  // chip already says "completed".
+  const tvPct = $derived(entry.kind === "tv" && totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0);
+  const moviePct = $derived(entry.kind === "movie" ? Math.round(movieProgressFraction(entry) * 100) : 0);
+  const showBar = $derived(
+    (entry.kind === "tv" && totalEpisodes > 0 && watchedEpisodes > 0 && watchedEpisodes < totalEpisodes) ||
+      (entry.kind === "movie" && movieProgressFraction(entry) > 0 && movieProgressFraction(entry) < 1)
+  );
+  const pct = $derived(entry.kind === "tv" ? tvPct : moviePct);
 
   const c = $derived(STATUS_COLOR[entry.status]);
   // Soft status-tinted border on every in-library item; dropped fades the
@@ -75,7 +85,7 @@
             {/if}
           </div>
         </div>
-        {#if entry.kind === "tv" && totalEpisodes > 0}
+        {#if showBar}
           <div class="mt-auto h-1 w-full overflow-hidden rounded-full bg-surface-2">
             <div class="h-full transition-all {c.bg}" style="width: {pct}%"></div>
           </div>
