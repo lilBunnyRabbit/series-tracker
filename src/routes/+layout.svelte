@@ -352,7 +352,7 @@
   >
     <nav class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
       <a href="{base}/" class="flex items-center gap-2 font-semibold tracking-tight" aria-label="Home">
-        <img src="{base}/icon.svg" alt="" class="h-7 w-7" />
+        <img src="{base}/logo.svg" alt="" class="h-7 w-7" />
         <span>Series Tracker</span>
       </a>
 

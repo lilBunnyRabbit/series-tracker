@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-08
+
+### Fixed
+- Installed-PWA icon and splash now use the proper Series Tracker logo and a matching dark-teal background, instead of a near-invisible dark tile on the home screen.
+
 ## [1.3.0] - 2026-05-08
 
 ### Added

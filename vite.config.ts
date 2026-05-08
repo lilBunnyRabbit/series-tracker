@@ -36,7 +36,7 @@ export default defineConfig({
       strategies: "generateSW",
       injectRegister: "auto",
       includeManifestIcons: true,
-      includeAssets: ["favicon.ico", "icon.svg", "icon-maskable.svg", "apple-touch-icon-180x180.png"],
+      includeAssets: ["favicon.ico", "logo.svg", "apple-touch-icon-180x180.png"],
       manifest: {
         name: "Series Tracker",
         short_name: "Tracker",
@@ -46,8 +46,8 @@ export default defineConfig({
         start_url: SCOPE,
         display: "standalone",
         orientation: "portrait",
-        background_color: "#141b21",
-        theme_color: "#141b21",
+        background_color: "#17252C",
+        theme_color: "#17252C",
         icons: [
           { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
