@@ -262,20 +262,56 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "picker",
-    version: "0.25.0",
+    version: "1.2.0",
     icon: "trophy",
     accent: "accent",
     title: "Can't decide?",
-    summary: "A bracket-style picker (and a quick Surprise sheet) for indecisive nights.",
+    summary: "A family of pickers — bracket, coin flip, spin, mood, ranking — for whatever decision shape you're in.",
     body: [
-      "Filter your library by status, kind, and progress (Started / Untouched), then go head-to-head matchup by matchup until one title is left. The winner gets a 'More like this' rail powered by TMDB recommendations, and you can review the bracket round-by-round to see which titles you knocked out.",
-      "For something faster, the Surprise sheet on Discover rolls a single random pick from your plan-list mixed with what's trending. Re-roll until you commit — recent picks won't repeat back-to-back.",
+      "Open Picker and you land on a grid of modes, not a single flow. Pick the one that fits your headspace: deep deliberation, snap decision, or something in between.",
+      "Every mode shares your filters (status, kind, progress) and weights its sampling by rewatchable + Temptation, so titles you've marked rewatchable or have been engaging with come up more often. The mode you used last is highlighted on the grid so you can dive straight back in.",
       {
-        text: "Bracket cards now show your watched-episode count, your rating, and a ↻ for rewatchable picks — easier to weigh head-to-heads without leaving the bracket.",
-        addedIn: "0.25.0",
+        text: "Six new modes joined the bracket: Top 8 (a quick three-round bracket), Coin Flip (two random titles, one tap), Spin (single random with re-roll), Pick up where you left off (surfaces in-progress titles you've cooled on), Mood (Short / Long, Comfort / Challenge chips), and Either / Or (endless A-vs-B that builds your personal Top 10).",
+        addedIn: "1.2.0",
       },
     ],
     visual: "picker",
+    highlights: [
+      {
+        label: "Bracket",
+        description: "Up to 32 contenders, head-to-head until one wins. Review the round-by-round bracket on the result screen.",
+      },
+      {
+        label: "Top 8",
+        description: "Same bracket flow, capped at eight contenders. Three rounds, seven taps, one winner.",
+        addedIn: "1.2.0",
+      },
+      {
+        label: "Coin Flip",
+        description: "Two random titles, one decision. Re-roll the pair as many times as you like before committing.",
+        addedIn: "1.2.0",
+      },
+      {
+        label: "Spin",
+        description: "A single weighted random pick with a re-roll button. Recent spins won't repeat back-to-back.",
+        addedIn: "1.2.0",
+      },
+      {
+        label: "Pick up where you left off",
+        description: "Inverse-temptation pick from in-progress shows. The coldest active titles rise first.",
+        addedIn: "1.2.0",
+      },
+      {
+        label: "Mood",
+        description: "Layer Short / Long and Comfort / Challenge chips on top of your filters, then flip a coin.",
+        addedIn: "1.2.0",
+      },
+      {
+        label: "Either / Or",
+        description: "Endless A-vs-B coin flips. Each pick adjusts a running rank — play long enough and your Top 10 emerges.",
+        addedIn: "1.2.0",
+      },
+    ],
   },
   {
     id: "temptation",

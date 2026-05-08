@@ -1164,6 +1164,36 @@ function createStore() {
       applyKick(e, action, meta);
     },
 
+    /** Record an Either/Or ranking pair result. Increments per-entry win/loss
+     *  counters used by the ranking-stream Top-N. Also fires the standard
+     *  picker-win / picker-loss temptation kicks so the ranking surface stays
+     *  consistent with bracket / coin / mini outcomes. */
+    recordRank(
+      winnerKind: "tv" | "movie", winnerId: number,
+      loserKind: "tv" | "movie", loserId: number
+    ): void {
+      const w = state.library[entryKey(winnerKind, winnerId)];
+      const l = state.library[entryKey(loserKind, loserId)];
+      if (!w || !l) return;
+      w.rankWins = (w.rankWins ?? 0) + 1;
+      l.rankLosses = (l.rankLosses ?? 0) + 1;
+      applyKick(w, "picker-win");
+      applyKick(l, "picker-loss");
+    },
+
+    /** Record an Either/Or skip on a pair. Bumps a soft skip counter on both
+     *  entries so the next pair sampler can de-prioritise just-skipped pairs.
+     *  No temptation kick — skipping isn't a rejection of either title. */
+    recordRankSkip(
+      aKind: "tv" | "movie", aId: number,
+      bKind: "tv" | "movie", bId: number
+    ): void {
+      const a = state.library[entryKey(aKind, aId)];
+      const b = state.library[entryKey(bKind, bId)];
+      if (a) a.rankSkips = (a.rankSkips ?? 0) + 1;
+      if (b) b.rankSkips = (b.rankSkips ?? 0) + 1;
+    },
+
     setNotes(kind: "tv" | "movie", id: number, notes: string) {
       const e = state.library[entryKey(kind, id)];
       if (!e) return;

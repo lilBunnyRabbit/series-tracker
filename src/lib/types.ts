@@ -175,6 +175,15 @@ export type TvEntry = {
   /** Bounded log of recent temptation kicks. Powers the trend arrow and the
    *  last-bump caption on the temptation bar. Trimmed to LOG_LIMIT entries. */
   temptationLog?: TemptationEvent[];
+  /** Times this entry has won an Either/Or pair-up. Used by the picker's
+   *  ranking-stream mode to derive a personal Top-N. */
+  rankWins?: number;
+  /** Times this entry has lost an Either/Or pair-up. */
+  rankLosses?: number;
+  /** Times this entry has been skipped in Either/Or — softer than a loss,
+   *  no temptation kick, but counts against the entry's eligibility for the
+   *  next pair so skips don't immediately repeat. */
+  rankSkips?: number;
   addedAt: string;
   updatedAt: string;
 };
@@ -259,6 +268,12 @@ export type MovieEntry = {
   temptationUpdatedAt?: string;
   /** See TvEntry. */
   temptationLog?: TemptationEvent[];
+  /** See TvEntry — Either/Or pair-up wins. */
+  rankWins?: number;
+  /** See TvEntry — Either/Or pair-up losses. */
+  rankLosses?: number;
+  /** See TvEntry — Either/Or skips. */
+  rankSkips?: number;
   addedAt: string;
   updatedAt: string;
 };

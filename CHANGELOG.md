@@ -4,6 +4,18 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-08
+
+### Added
+- Picker is now a family of decision modes, not just a bracket. Open Picker and the page is a grid of mode cards — Bracket, Top 8 (the bracket but eight contenders), Coin Flip (two random titles, one tap), Spin (a prize-wheel reel you can swipe with momentum), Pick up where you left off (surfaces in-progress shows you've stopped touching), Mood (Short / Long, Comfort / Challenge chips on top of your filters), and Either / Or (endless A-vs-B that builds your personal Top 10 over time). Each mode is its own page, the floating island carries the back button + mode title, and your last-used mode is highlighted on the grid.
+- Spin is a real prize-wheel reel with haptic ratchet on every row that crosses the centerline. Tap "Spin the wheel" or swipe the reel directly — the harder you flick, the longer it coasts. The wheel is endless: scroll past the start or end and fresh content keeps surfacing, with a "Just missed" caption naming what almost won. Each landing reshuffles the non-visible slots so the next spin sees fresh material.
+- Either / Or mode keeps a running win/loss tally per title and renders a Top 10 leaderboard once enough games are played. Reset clears the tally without touching Temptation. Skip is a softer signal than a loss — no temptation hit, but skipped pairs are de-prioritised on the next roll.
+
+### Changed
+- Every picker mode respects rewatchable + Temptation when sampling pairs or single picks, so titles you mark rewatchable or have been engaging with come up more often. Pick up where you left off inverts that — coldest in-progress titles surface first.
+- Status filter on the picker no longer pre-selects last visit's choice — kind and progress filters still persist, but the status set starts empty each visit so the picker reads as a fresh decision.
+- Re-rolls on Spin and Pick up where you left off now register as Temptation losses on the rejected entries — Spin docks the previously-landed pick, and "Different ones" docks the whole shortlist that was just dismissed. Coin Flip and Mood re-rolls still don't fire kicks (you didn't pick *between* the pair, so neither was rejected).
+
 ## [1.1.1] - 2026-05-08
 
 ### Changed

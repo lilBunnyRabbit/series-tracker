@@ -1,877 +1,159 @@
 <script lang="ts">
+  // Mode-select grid. Each card links to a dedicated sub-route under
+  // /picker/<mode>/, so the floating island handles back-to-grid nav and the
+  // mode pages can reserve their own page-actions rail. Last-used mode is
+  // remembered in localStorage and surfaces as the highlighted card.
   import { base } from "$app/paths";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
-  import PosterCard from "$lib/components/PosterCard.svelte";
-  import Rail from "$lib/components/Rail.svelte";
-  import { vibrate } from "$lib/haptics";
-  import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
-  import { posterUrl, recommendations } from "$lib/tmdb";
-  import type { RecommendationItem } from "$lib/tmdb";
-  import { effectiveSeasons, hasProgress, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
-  import type { Entry, Status } from "$lib/types";
+  import { pickerPrefs, setLastMode } from "$lib/pickerPrefs.svelte";
+  import type { PickerMode } from "$lib/pickerPrefs.svelte";
+  import { POOL_CAP } from "$lib/picker";
+  import { fade, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
-  import { fade, fly, scale } from "svelte/transition";
 
-  type KindFilter = "all" | "tv" | "movie";
-  type Progress = "any" | "started" | "untouched";
-  type Phase = "setup" | "bracket" | "final";
+  type Accent = "primary" | "secondary" | "accent" | "tertiary";
+  type ModeMeta = {
+    id: PickerMode;
+    title: string;
+    summary: string;
+    icon: "trophy" | "repeat" | "sparkles" | "trending-up" | "play" | "filter" | "rotate-ccw";
+    accent: Accent;
+  };
 
-  const POOL_CAP = 32;
-  // Long enough that the win/loss CSS animation lands before we swap matches.
-  const PICK_DELAY_MS = 360;
+  // Tailwind only emits classes that appear verbatim in source — so each
+  // accent variant is hand-listed instead of composed via template strings.
+  const ACCENT_CLASSES: Record<Accent, { icon: string; chipBorder: string; chipBg: string; chipText: string; cardBorder: string; cardHover: string }> = {
+    primary: {
+      icon: "text-primary",
+      chipBorder: "border-primary/40",
+      chipBg: "bg-primary/10",
+      chipText: "text-primary",
+      cardBorder: "border-primary/60",
+      cardHover: "hover-border-primary",
+    },
+    secondary: {
+      icon: "text-secondary",
+      chipBorder: "border-secondary/40",
+      chipBg: "bg-secondary/10",
+      chipText: "text-secondary",
+      cardBorder: "border-secondary/60",
+      cardHover: "hover-border-secondary",
+    },
+    tertiary: {
+      icon: "text-tertiary",
+      chipBorder: "border-tertiary/40",
+      chipBg: "bg-tertiary/10",
+      chipText: "text-tertiary",
+      cardBorder: "border-tertiary/60",
+      cardHover: "hover-border-tertiary",
+    },
+    accent: {
+      icon: "text-accent",
+      chipBorder: "border-accent/40",
+      chipBg: "bg-accent/10",
+      chipText: "text-accent",
+      cardBorder: "border-accent/60",
+      cardHover: "hover-border-accent",
+    },
+  };
 
-  let selectedStatuses = $state<Status[]>([]);
-  let kindFilter = $state<KindFilter>("all");
-  let progressFilter = $state<Progress>("any");
-  let phase = $state<Phase>("setup");
+  const MODES: ModeMeta[] = [
+    {
+      id: "bracket",
+      title: "Bracket",
+      summary: `Tournament across up to ${POOL_CAP} contenders. The deepest pick.`,
+      icon: "trophy",
+      accent: "accent",
+    },
+    {
+      id: "mini",
+      title: "Top 8",
+      summary: "Quick bracket — eight contenders, three rounds, one winner.",
+      icon: "trophy",
+      accent: "primary",
+    },
+    {
+      id: "coin",
+      title: "Coin Flip",
+      summary: "Two random titles head-to-head. One tap, one decision.",
+      icon: "repeat",
+      accent: "primary",
+    },
+    {
+      id: "spin",
+      title: "Spin",
+      summary: "Roll a single random pick. Re-roll until you commit.",
+      icon: "sparkles",
+      accent: "secondary",
+    },
+    {
+      id: "stalled",
+      title: "Pick up where you left off",
+      summary: "Surfaces shows you've started but haven't touched in a while.",
+      icon: "play",
+      accent: "primary",
+    },
+    {
+      id: "mood",
+      title: "Mood",
+      summary: "Short / long, comfort / challenge — narrow the pool, then pick.",
+      icon: "filter",
+      accent: "tertiary",
+    },
+    {
+      id: "rank",
+      title: "Either / Or",
+      summary: "Endless A-vs-B coin flips. Builds your personal Top 10 over time.",
+      icon: "trending-up",
+      accent: "accent",
+    },
+  ];
 
-  let queue = $state<Entry[]>([]);
-  let advanced = $state<Entry[]>([]);
-  let currentMatch = $state<{ a: Entry; b: Entry } | null>(null);
-  let round = $state(1);
-  let totalRounds = $state(1);
-  let pickedSide = $state<"a" | "b" | null>(null);
-  // Track real picks (one per match) so the progress bar fills smoothly from
-  // 0 → 100 across the whole bracket — round-based progress would cap before
-  // 100% and feel stuck at the final round.
-  let picksMade = $state(0);
-  let picksTotal = $state(0);
-
-  // Match log — appended on every pick so the final screen can optionally
-  // surface "who beat whom" as a tree view. Keyed entries (rather than a flat
-  // list) so the renderer can group by round.
-  type Match = { a: Entry; b: Entry; winnerSide: "a" | "b"; round: number };
-  let bracketLog = $state<Match[]>([]);
-  let showBracket = $state(false);
-
-  let winner = $state<Entry | null>(null);
-  let recs = $state<RecommendationItem[]>([]);
-  let recsLoading = $state(false);
-
-  function toggleStatus(s: Status): void {
-    if (selectedStatuses.includes(s)) {
-      selectedStatuses = selectedStatuses.filter((x) => x !== s);
-    } else {
-      selectedStatuses = [...selectedStatuses, s];
-    }
-  }
-
-  // Don't suggest titles that haven't aired yet — `year` is the only date field
-  // we capture, so this is year-precision (a release later this year still
-  // passes). Entries without a year fall through (we don't know).
-  const currentYear = new Date().getFullYear();
-  function hasAired(e: Entry): boolean {
-    if (!e.year) return true;
-    const y = Number(e.year);
-    return !Number.isFinite(y) || y <= currentYear;
-  }
-
-  // Tap the active chip to clear back to "any"; tap the other to switch.
-  function setProgress(p: Progress): void {
-    progressFilter = progressFilter === p ? "any" : p;
-  }
-
-  function passesProgress(e: Entry): boolean {
-    if (progressFilter === "any") return true;
-    const started = hasProgress(e);
-    return progressFilter === "started" ? started : !started;
-  }
-
-  const filtered = $derived(
-    store.entries.filter((e) => {
-      if (!selectedStatuses.includes(e.status)) return false;
-      if (kindFilter !== "all" && e.kind !== kindFilter) return false;
-      if (!passesProgress(e)) return false;
-      if (!hasAired(e)) return false;
-      return true;
-    })
-  );
-
-  // Status counts narrow by kind + progress so the per-status numbers always
-  // reflect what would land in the pool if that status were toggled on.
-  const counts = $derived.by(() => {
-    const c: Record<Status, number> = { watching: 0, completed: 0, plan: 0, dropped: 0, tuned: 0 };
-    for (const e of store.entries) {
-      if (kindFilter !== "all" && e.kind !== kindFilter) continue;
-      if (!passesProgress(e)) continue;
-      if (!hasAired(e)) continue;
-      c[e.status]++;
-    }
-    return c;
-  });
-
-  // Progress chip counts narrow by the user's status + kind selection so the
-  // numbers reflect what they'd land on if they toggled that chip — and stay
-  // at zero when no statuses are selected (matches the empty-pool state).
-  const progressCounts = $derived.by(() => {
-    let started = 0;
-    let untouched = 0;
-    for (const e of store.entries) {
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status)) continue;
-      if (kindFilter !== "all" && e.kind !== kindFilter) continue;
-      if (!hasAired(e)) continue;
-      if (hasProgress(e)) started++;
-      else untouched++;
-    }
-    return { started, untouched };
-  });
-
-  const matchKey = $derived(
-    currentMatch ? `${currentMatch.a.kind}:${currentMatch.a.id}-${currentMatch.b.kind}:${currentMatch.b.id}` : "none"
-  );
-  // Alive contenders = total - eliminated. Driven off picksMade so the counter
-  // ticks down the moment the user taps, not 360 ms later when the next match
-  // loads — otherwise the "X left" number lags behind the visible elimination.
-  const aliveCount = $derived(picksTotal + 1 - picksMade);
-  const progressPct = $derived(picksTotal > 0 ? (picksMade / picksTotal) * 100 : 0);
-
-  function shuffle<T>(arr: T[]): T[] {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  function start(): void {
-    // Rewatchable boost: each `rewatchable` entry takes up two slots in the
-    // pre-shuffle lottery so it's ~2× as likely to make the capped pool when
-    // the user has more candidates than POOL_CAP. Dedupe after sampling so the
-    // bracket never pits a title against itself.
-    const weighted = filtered.flatMap((e) => (e.rewatchable ? [e, e] : [e]));
-    const shuffled = shuffle(weighted);
-    const seen = new Set<string>();
-    const pool: Entry[] = [];
-    for (const e of shuffled) {
-      const key = `${e.kind}:${e.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      pool.push(e);
-      if (pool.length >= POOL_CAP) break;
-    }
-    if (pool.length === 0) return;
-    if (pool.length === 1) {
-      winner = pool[0];
-      phase = "final";
-      vibrate("success");
-      void loadRecs();
-      return;
-    }
-    queue = pool;
-    advanced = [];
-    round = 1;
-    totalRounds = Math.ceil(Math.log2(pool.length));
-    picksTotal = pool.length - 1;
-    picksMade = 0;
-    advance();
-    phase = "bracket";
-  }
-
-  function advance(): void {
-    if (queue.length === 0) {
-      if (advanced.length === 1) {
-        winner = advanced[0];
-        currentMatch = null;
-        phase = "final";
-        vibrate("success");
-        void loadRecs();
-        return;
-      }
-      // Next round.
-      queue = advanced;
-      advanced = [];
-      round += 1;
-    }
-    if (queue.length === 1) {
-      // Bye — odd contender skips this round.
-      advanced = [...advanced, queue[0]];
-      queue = queue.slice(1);
-      advance();
-      return;
-    }
-    currentMatch = { a: queue[0], b: queue[1] };
-    queue = queue.slice(2);
-    pickedSide = null;
-  }
-
-  function pick(side: "a" | "b"): void {
-    if (!currentMatch || pickedSide) return;
-    pickedSide = side;
-    picksMade += 1;
-    bracketLog = [
-      ...bracketLog,
-      { a: currentMatch.a, b: currentMatch.b, winnerSide: side, round },
-    ];
-    const win = side === "a" ? currentMatch.a : currentMatch.b;
-    const lose = side === "a" ? currentMatch.b : currentMatch.a;
-    // Each matchup nudges both contenders' temptation: winners gain a small
-    // amount, losers lose a smaller one. The kicks land in the bracket pool's
-    // entries (rewatchable doubling notwithstanding) — duplicates don't
-    // double-fire because applyTemptation looks up by (kind, id).
-    store.applyTemptation(win.kind, win.id, "picker-win");
-    store.applyTemptation(lose.kind, lose.id, "picker-loss");
-    vibrate("tick");
-    setTimeout(() => {
-      advanced = [...advanced, win];
-      advance();
-    }, PICK_DELAY_MS);
-  }
-
-  async function loadRecs(): Promise<void> {
-    if (!winner || !store.apiKey) return;
-    recsLoading = true;
-    try {
-      const items = await recommendations(winner.kind, winner.id, store.apiKey);
-      const lib = new Set(store.entries.map((e) => `${e.kind}:${e.id}`));
-      recs = items.filter((r) => !lib.has(`${r.media_type}:${r.id}`)).slice(0, 16);
-    } catch {
-      recs = [];
-    } finally {
-      recsLoading = false;
-    }
-  }
-
-  function pickAgain(): void {
-    winner = null;
-    recs = [];
-    queue = [];
-    advanced = [];
-    currentMatch = null;
-    pickedSide = null;
-    picksMade = 0;
-    picksTotal = 0;
-    bracketLog = [];
-    showBracket = false;
-    phase = "setup";
-  }
-
-  // Group log entries by round, ordered final → first round so the winner's
-  // last match reads at the top — matches how brackets are typically narrated
-  // ("the final was X vs Y…"). Within a round we keep insertion order so
-  // pairings tell the story they were played in.
-  const bracketByRound = $derived.by<{ round: number; matches: Match[] }[]>(() => {
-    const groups = new Map<number, Match[]>();
-    for (const m of bracketLog) {
-      const list = groups.get(m.round) ?? [];
-      list.push(m);
-      groups.set(m.round, list);
-    }
-    return [...groups.entries()]
-      .sort((a, b) => b[0] - a[0])
-      .map(([r, matches]) => ({ round: r, matches }));
-  });
-  function roundLabel(r: number, total: number): string {
-    if (r === total) return "Final";
-    if (r === total - 1) return "Semifinal";
-    if (r === total - 2) return "Quarterfinal";
-    return `Round ${r}`;
-  }
-
-  function entryYear(e: Entry): string | undefined {
-    return e.year;
-  }
-
-  function entryMeta(e: Entry): string {
-    if (e.kind === "tv") {
-      const total = effectiveSeasons(e).reduce((a, s) => a + s.episodeCount, 0);
-      return total ? `${total} ep` : "TV";
-    }
-    if (e.runtime) {
-      const h = Math.floor(e.runtime / 60);
-      const m = e.runtime % 60;
-      if (h && m) return `${h}h ${m}m`;
-      if (h) return `${h}h`;
-      return `${m}m`;
-    }
-    return "Movie";
-  }
-
-  // Per-entry progress + rating hint for the bracket card. Returns null when
-  // the entry has nothing notable to surface — keeps the third meta line off
-  // the DOM in the empty case rather than showing a blank gap.
-  function entryHint(e: Entry): string | null {
-    const parts: string[] = [];
-    if (e.kind === "tv") {
-      const seasons = effectiveSeasons(e);
-      const total = seasons.reduce((a, s) => a + s.episodeCount, 0);
-      const watched = seasons.reduce((a, s) => a + (e.progress[s.number] ?? 0), 0);
-      if (total > 0 && watched >= total && e.status === "completed") {
-        parts.push("Completed");
-      } else if (watched > 0) {
-        parts.push(`${watched}/${total} watched`);
-      }
-    } else if (e.kind === "movie") {
-      if (e.watched) parts.push("Watched");
-      else if (typeof e.progress === "number" && e.progress > 0) parts.push("Started");
-    }
-    if (typeof e.rating === "number" && e.rating > 0) {
-      parts.push(`★ ${e.rating}`);
-    }
-    if (e.rewatchable) parts.push("↻");
-    return parts.length > 0 ? parts.join(" · ") : null;
-  }
-
-  function entryHref(e: Entry): string {
-    return e.kind === "tv" ? `${base}/show/${e.id}/` : `${base}/movie/${e.id}/`;
-  }
+  const recommendedId = $derived<PickerMode>(pickerPrefs.lastMode ?? "bracket");
 </script>
 
-{#if phase === "setup"}
-  <PageHeader title="Picker" subtitle="Pair things head-to-head until one's left standing." />
-{:else if phase === "final"}
-  <PageHeader title="Picker" srOnly />
-{/if}
+<PageHeader title="Picker" subtitle="Different ways to decide what to watch tonight." />
 
-<section class="space-y-4">
-  {#if phase === "setup"}
-    <div in:fade={{ duration: 200 }} class="space-y-4">
-
-      <div class="space-y-2">
-        <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Status</h2>
-        <div class="flex flex-wrap gap-1.5 text-xs">
-          {#each STATUSES as s (s)}
-            {@const active = selectedStatuses.includes(s)}
-            {@const c = STATUS_COLOR[s]}
-            <button
-              type="button"
-              use:tactile
-              onclick={() => toggleStatus(s)}
-              aria-pressed={active}
-              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-md border px-3 py-1.5 transition-colors duration-150 {active
-                ? `${c.border} ${c.bg} text-bg`
-                : 'border-border text-muted hover-text-text'}"
-            >
-              <span class="flex min-w-0 items-center gap-1.5">
-                <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}"></span>
-                <span class="truncate">{STATUS_LABEL[s]}</span>
-              </span>
-              <span class="shrink-0 tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{counts[s]}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Type</h2>
-        <div class="flex flex-wrap gap-1.5 text-xs">
-          {#each [["all", "All"], ["tv", "TV"], ["movie", "Movies"]] as const as [k, label] (k)}
-            <button
-              type="button"
-              use:tactile
-              onclick={() => (kindFilter = k)}
-              aria-pressed={kindFilter === k}
-              class="tap-target tap-target--chip max-w-56 grow rounded-md border px-3 py-1.5 text-center transition-colors duration-150 {kindFilter === k
-                ? 'border-secondary bg-secondary text-bg'
-                : 'border-border text-muted hover-text-text'}"
-            >
-              {label}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Progress axis: paired Started / Untouched chips, mutually exclusive,
-           both off = "any" (default). Most useful when "Plan to watch" is in
-           the status selection and the user wants to split parked shows from
-           fresh ones; harmless for other status mixes. -->
-      <div class="space-y-2">
-        <h2 class="text-xs font-medium uppercase tracking-wider text-muted">Progress</h2>
-        <div class="flex flex-wrap gap-1.5 text-xs">
-          {#each [["started", "Started", progressCounts.started], ["untouched", "Untouched", progressCounts.untouched]] as const as [p, label, count] (p)}
-            {@const active = progressFilter === p}
-            <button
-              type="button"
-              use:tactile
-              onclick={() => setProgress(p)}
-              aria-pressed={active}
-              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-md border px-3 py-1.5 transition-colors duration-150 {active
-                ? 'border-secondary bg-secondary text-bg'
-                : 'border-border text-muted hover-text-text'}"
-            >
-              <span class="truncate">{label}</span>
-              <span class="shrink-0 tabular-nums {active ? 'opacity-80' : 'opacity-60'}">{count}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-border bg-surface p-4 text-sm">
-        {#if filtered.length === 0}
-          <p class="text-muted">No items match. Pick a different status or type.</p>
-        {:else if filtered.length === 1}
-          <p class="text-muted">Only one match — that one wins by default.</p>
-        {:else}
-          {@const cap = Math.min(filtered.length, POOL_CAP)}
-          <p>
-            <span class="font-medium tabular-nums">{cap}</span>
-            {#if filtered.length > POOL_CAP}<span class="text-muted">of {filtered.length}</span>{/if}
-            contenders
-            <span class="text-muted">·</span>
-            <span class="tabular-nums">{Math.ceil(Math.log2(cap))}</span>
-            <span class="text-muted">rounds</span>
-            <span class="text-muted">·</span>
-            <span class="tabular-nums">{cap - 1}</span>
-            <span class="text-muted">taps</span>
-          </p>
-        {/if}
-      </div>
-
-      <button
-        type="button"
-        use:tactile
-        onclick={start}
-        disabled={filtered.length === 0}
-        class="tap-target tap-target--btn flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 font-medium text-bg disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Icon name="trophy" size={16} />
-        <span>{filtered.length === 1 ? "Reveal pick" : "Start bracket"}</span>
-      </button>
-    </div>
-  {:else if phase === "bracket" && currentMatch}
-    <div
-      in:fade={{ duration: 160 }}
-      class="bracket-phase flex min-h-[calc(100dvh-10rem)] flex-col sm:min-h-[68vh]"
-    >
-      <!-- 1fr_auto_2fr grid takes all the available space and distributes
-           the cards within it. Top row (1fr) holds meta + progress, middle
-           (auto) holds the cards at their natural height, bottom (2fr) is an
-           open spacer that puts the cards in the upper-middle reach zone. -->
-      <div class="grid flex-1 grid-rows-[1fr_auto_2fr] gap-4">
-        <!-- Row 1 (1fr): meta + progress pinned to the top of their row. -->
-        <div class="self-start space-y-2">
-          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span class="text-muted">
-              Round
-              {#key round}
-                <span
-                  in:fly={{ y: 6, duration: 240, easing: backOut }}
-                  class="inline-block tabular-nums font-medium text-text"
-                >
-                  {round}
-                </span>
-              {/key}
-              of <span class="tabular-nums">{totalRounds}</span>
-            </span>
-            <span class="tabular-nums text-muted">
-              {#key aliveCount}
-                <span in:fly={{ y: -4, duration: 200, easing: backOut }} class="inline-block">
-                  {aliveCount}
-                </span>
-              {/key}
-              left
-            </span>
-          </div>
-
-          <div class="round-progress" aria-hidden="true">
-            <span style="width: {progressPct}%"></span>
-          </div>
-        </div>
-
-        <!-- Row 2 (auto): cards at their natural size. -->
-        <div>
-          {#key matchKey}
-            {@const a = currentMatch.a}
-            {@const b = currentMatch.b}
-            <div
-              class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4"
-              in:fade={{ duration: 220, delay: 40 }}
-            >
-              {@render matchCard(a, "a")}
-              <span
-                class="vs select-none text-center text-base font-bold tracking-widest text-muted"
-                in:scale={{ start: 0.6, duration: 320, easing: backOut, delay: 60 }}
-              >
-                VS
-              </span>
-              {@render matchCard(b, "b")}
-            </div>
-          {/key}
-        </div>
-
-        <!-- Row 3 (2fr): empty bottom spacer. The hint below sits as a
-             page-level footer, not part of this distribution. -->
-        <div aria-hidden="true"></div>
-      </div>
-
-      <!-- Footer hint — sticks to the bottom of the bracket area below the
-           grid, so it reads like a fixed status line under the action. -->
-      <p class="pt-4 text-center text-xs text-muted">
-        {pickedSide ? "Locking in…" : "Tap one — winner advances"}
-      </p>
-    </div>
-  {:else if phase === "final" && winner}
-    {@const w = winner}
-    <div in:fade={{ duration: 220 }} class="space-y-5">
-      <header class="space-y-1 text-center">
-        <div
-          class="flex items-center justify-center gap-1.5 text-xs font-medium uppercase tracking-[0.2em] text-accent"
-          in:fly={{ y: -8, duration: 320, easing: backOut, delay: 80 }}
-        >
-          <Icon name="trophy" size={14} />
-          <span>Tonight's pick</span>
-        </div>
-        <h1
-          class="text-2xl font-semibold leading-tight"
-          in:fly={{ y: 12, duration: 360, easing: backOut, delay: 160 }}
-        >
-          {w.title}
-        </h1>
-        {#if entryYear(w)}
-          <p
-            class="text-sm text-muted"
-            in:fly={{ y: 8, duration: 320, easing: backOut, delay: 240 }}
-          >
-            <span class="tabular-nums">{entryYear(w)}</span>
-            <span aria-hidden="true">·</span>
-            <span>{entryMeta(w)}</span>
-          </p>
-        {/if}
-        {#if entryHint(w)}
-          <p
-            class="text-xs tabular-nums text-text/70"
-            in:fly={{ y: 8, duration: 320, easing: backOut, delay: 280 }}
-          >
-            {entryHint(w)}
-          </p>
-        {/if}
-        {#if w.notes && w.notes.trim()}
-          <p
-            class="mx-auto max-w-prose text-sm italic text-muted/90"
-            in:fly={{ y: 8, duration: 320, easing: backOut, delay: 320 }}
-          >
-            "{w.notes.trim()}"
-          </p>
-        {/if}
-      </header>
-
-      <a
-        href={entryHref(w)}
-        use:tactile={{ haptic: false }}
-        class="tap-target tap-target--card mx-auto block w-[220px] sm:w-[260px]"
-        aria-label="Open {w.title}"
-        in:scale={{ start: 0.7, duration: 480, easing: backOut, delay: 80 }}
-      >
-        <div class="winner-poster relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-accent/40 bg-surface-2 shadow-2xl">
-          {#if w.poster}
-            <img src={w.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
-          {/if}
-          {#if typeof w.voteAverage === "number" && w.voteAverage > 0}
-            <div class="absolute right-2 top-2 rounded-md bg-black/65 px-1.5 py-0.5 text-xs font-medium tabular-nums text-text backdrop-blur-sm">
-              ★ {w.voteAverage.toFixed(1)}
-            </div>
-          {/if}
-        </div>
-      </a>
-
-      <div
-        class="flex flex-wrap items-center justify-center gap-2"
-        in:fly={{ y: 12, duration: 320, easing: backOut, delay: 320 }}
-      >
+<section class="space-y-4" in:fade={{ duration: 200 }}>
+  <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    {#each MODES as m, i (m.id)}
+      {@const recommended = m.id === recommendedId}
+      {@const ac = ACCENT_CLASSES[m.accent]}
+      <li in:fly={{ y: 12, duration: 320, easing: backOut, delay: 40 + i * 30 }}>
         <a
-          href={entryHref(w)}
+          href="{base}/picker/{m.id}/"
           use:tactile
-          class="tap-target tap-target--btn rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
+          onclick={() => setLastMode(m.id)}
+          aria-label="Use {m.title} mode"
+          class="mode-card group relative flex w-full items-start gap-3 rounded-lg border bg-surface p-4 text-left transition-colors duration-150 {recommended
+            ? `${ac.cardBorder} ${ac.cardHover}`
+            : 'border-border hover-border-accent'}"
         >
-          Open
-        </a>
-        <button
-          type="button"
-          use:tactile
-          onclick={pickAgain}
-          class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-primary"
-        >
-          Pick again
-        </button>
-        {#if bracketLog.length > 0}
-          <button
-            type="button"
-            use:tactile={{ haptic: false }}
-            onclick={() => (showBracket = !showBracket)}
-            aria-expanded={showBracket}
-            class="tap-target tap-target--btn rounded-md border border-border px-4 py-2 text-sm hover-border-accent"
+          <span
+            class="mode-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-surface-2 {ac.icon}"
           >
-            {showBracket ? "Hide bracket" : "Show bracket"}
-          </button>
-        {/if}
-      </div>
-
-      {#if showBracket && bracketLog.length > 0}
-        <section
-          in:fade={{ duration: 220 }}
-          class="space-y-4 rounded-lg border border-border bg-surface p-4"
-        >
-          <header class="space-y-0.5 text-center">
-            <h2 class="text-xs font-medium uppercase tracking-[0.2em] text-muted">Bracket</h2>
-            <p class="text-[11px] text-muted/80">
-              {bracketLog.length} match{bracketLog.length === 1 ? "" : "es"} · winner highlighted
-            </p>
-          </header>
-
-          <div class="space-y-4">
-            {#each bracketByRound as group (group.round)}
-              <div class="space-y-2">
-                <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted">
-                  {roundLabel(group.round, totalRounds)}
-                </h3>
-                <div class="space-y-1.5">
-                  {#each group.matches as m, i (group.round + ":" + i)}
-                    {@const aWins = m.winnerSide === "a"}
-                    <div
-                      class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border border-border/60 bg-surface-2 p-2"
-                    >
-                      {@render bracketSide(m.a, aWins)}
-                      <span class="text-[10px] font-bold tracking-widest text-muted">VS</span>
-                      {@render bracketSide(m.b, !aWins)}
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/each}
-          </div>
-        </section>
-      {/if}
-
-      {#if recsLoading}
-        <p class="text-center text-xs text-muted">Finding more like this…</p>
-      {:else if recs.length > 0}
-        <div in:fade={{ duration: 240, delay: 200 }}>
-          <Rail title="More like {w.title}" subtitle="From TMDB recommendations">
-            {#each recs as r (r.media_type + ":" + r.id)}
-              {#if r.media_type === "tv"}
-                <PosterCard
-                  kind="tv"
-                  id={r.id}
-                  title={r.name}
-                  poster={posterUrl(r.poster_path, "w342")}
-                  year={r.first_air_date ? r.first_air_date.slice(0, 4) : undefined}
-                  voteAverage={r.vote_average}
-                />
-              {:else if r.media_type === "movie"}
-                <PosterCard
-                  kind="movie"
-                  id={r.id}
-                  title={r.title}
-                  poster={posterUrl(r.poster_path, "w342")}
-                  year={r.release_date ? r.release_date.slice(0, 4) : undefined}
-                  voteAverage={r.vote_average}
-                />
+            <Icon name={m.icon} size={20} />
+          </span>
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="font-medium leading-tight">{m.title}</span>
+              {#if recommended}
+                <span class="rounded-full border {ac.chipBorder} {ac.chipBg} px-1.5 py-0.5 text-[10px] uppercase tracking-wider {ac.chipText}">
+                  Last used
+                </span>
               {/if}
-            {/each}
-          </Rail>
-        </div>
-      {/if}
-    </div>
-  {/if}
+            </div>
+            <p class="text-xs text-muted">{m.summary}</p>
+          </div>
+          <Icon name="chevron-right" size={16} class="mt-1 shrink-0 text-muted opacity-60 transition-opacity group-hover:opacity-100" />
+        </a>
+      </li>
+    {/each}
+  </ul>
+
+  <p class="pt-2 text-center text-[11px] text-muted/70">
+    Filters, rewatchable boost, and Temptation weighting carry across every mode.
+  </p>
 </section>
-
-{#snippet bracketSide(e: Entry, won: boolean)}
-  <a
-    href={entryHref(e)}
-    use:tactile={{ haptic: false }}
-    class="tap-target group flex min-w-0 items-center gap-2 rounded p-1 {won
-      ? 'opacity-100'
-      : 'opacity-50'}"
-    aria-label="{won ? 'Winner: ' : 'Eliminated: '}{e.title}"
-  >
-    <div class="h-10 w-7 shrink-0 overflow-hidden rounded-sm border border-border/60 bg-surface">
-      {#if e.poster}
-        <img src={e.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
-      {/if}
-    </div>
-    <div class="min-w-0 flex-1">
-      <div class="truncate text-[11px] font-medium {won ? 'text-text' : 'text-muted line-through decoration-muted/40'}">
-        {e.title}
-      </div>
-      <div class="text-[9px] uppercase tracking-wider text-muted/70">
-        {won ? "Advanced" : "Eliminated"}
-      </div>
-    </div>
-  </a>
-{/snippet}
-
-{#snippet matchCard(e: Entry, side: "a" | "b")}
-  {@const c = STATUS_COLOR[e.status]}
-  {@const isWinner = pickedSide === side}
-  {@const isLoser = pickedSide !== null && pickedSide !== side}
-  <button
-    type="button"
-    use:tactile={{ haptic: false }}
-    onclick={() => pick(side)}
-    disabled={pickedSide !== null}
-    class="match-card group flex flex-col gap-2 rounded-lg border border-border/60 bg-surface p-2 text-left disabled:cursor-default {isWinner ? 'is-winner' : ''} {isLoser ? `is-loser is-loser-${side}` : ''}"
-    aria-label="Pick {e.title}"
-  >
-    <div class="poster relative aspect-[2/3] w-full overflow-hidden rounded-md border border-border/60 bg-surface-2">
-      {#if e.poster}
-        <img src={e.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
-      {/if}
-      {#if typeof e.voteAverage === "number" && e.voteAverage > 0}
-        <div class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm">
-          ★ {e.voteAverage.toFixed(1)}
-        </div>
-      {/if}
-      <span
-        class="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] backdrop-blur-sm"
-        aria-hidden="true"
-      >
-        <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
-      </span>
-      <span class="winner-glow" aria-hidden="true"></span>
-    </div>
-    <div class="min-w-0 px-1">
-      <div class="line-clamp-2 text-sm font-medium leading-snug">{e.title}</div>
-      <div class="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
-        {#if entryYear(e)}<span class="tabular-nums">{entryYear(e)}</span>{/if}
-        {#if entryYear(e)}<span aria-hidden="true">·</span>{/if}
-        <span>{entryMeta(e)}</span>
-      </div>
-      {#if entryHint(e)}
-        <!-- Progress + rating + rewatchable hint. Helps the user weigh "have
-             I started this? did I love it?" mid-bracket without opening the
-             title's tracking page. -->
-        <div class="mt-0.5 truncate text-[11px] tabular-nums text-text/70">{entryHint(e)}</div>
-      {/if}
-      {#if e.notes && e.notes.trim()}
-        <!-- Surface the user's note here so the bracket pick has the context
-             they wrote when adding the title (e.g. who recommended it, why
-             they were saving it). Italic + line-clamp keeps it visually
-             secondary to the metadata above. -->
-        <p class="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-muted/90">"{e.notes.trim()}"</p>
-      {/if}
-    </div>
-  </button>
-{/snippet}
-
-<style>
-  .match-card {
-    transition:
-      transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
-      opacity 280ms ease-out,
-      border-color 180ms,
-      box-shadow 280ms;
-    will-change: transform, opacity;
-    transform-origin: center bottom;
-  }
-  .match-card:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-  .match-card.is-winner {
-    transform: scale(1.06);
-    border-color: var(--color-primary);
-    box-shadow:
-      0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent),
-      0 18px 40px -12px color-mix(in oklab, var(--color-primary) 35%, transparent),
-      0 4px 12px -4px rgb(0 0 0 / 0.5);
-  }
-  .match-card.is-winner .winner-glow {
-    opacity: 1;
-  }
-  .match-card.is-loser {
-    opacity: 0.18;
-    transform: scale(0.86);
-  }
-  /* Loser slides slightly toward its winner partner — a's loser nudges right
-     (toward b on the right), b's loser nudges left. Subtle "swept aside". */
-  .match-card.is-loser-a {
-    transform: scale(0.86) translateX(14px);
-  }
-  .match-card.is-loser-b {
-    transform: scale(0.86) translateX(-14px);
-  }
-
-  /* Soft glow that blooms when a card wins. Sits inside the poster frame. */
-  .winner-glow {
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    background: radial-gradient(
-      ellipse at center,
-      color-mix(in oklab, var(--color-primary) 35%, transparent) 0%,
-      transparent 70%
-    );
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 260ms ease-out;
-    mix-blend-mode: screen;
-  }
-
-  .vs {
-    /* Slight chromatic feel — reads as a divider, not a label. */
-    text-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
-  }
-
-  /* Slim track that fills as rounds advance — gives the bracket a sense of
-     forward motion without taking real estate. */
-  .round-progress {
-    position: relative;
-    height: 3px;
-    border-radius: 9999px;
-    background: color-mix(in oklab, var(--color-border) 60%, transparent);
-    overflow: hidden;
-  }
-  .round-progress > span {
-    display: block;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      var(--color-primary),
-      color-mix(in oklab, var(--color-primary) 60%, var(--color-accent))
-    );
-    transition: width 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  /* Winner poster on the final screen — gentle floating glow loop. */
-  .winner-poster::after {
-    content: "";
-    position: absolute;
-    inset: -4px;
-    border-radius: inherit;
-    background: radial-gradient(
-      ellipse at center,
-      color-mix(in oklab, var(--color-accent) 28%, transparent) 0%,
-      transparent 70%
-    );
-    pointer-events: none;
-    z-index: -1;
-    animation: trophy-pulse 2400ms ease-in-out infinite;
-  }
-  @keyframes trophy-pulse {
-    0%,
-    100% {
-      opacity: 0.6;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.04);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .match-card,
-    .match-card:hover:not(:disabled),
-    .match-card.is-winner,
-    .match-card.is-loser,
-    .match-card.is-loser-a,
-    .match-card.is-loser-b {
-      transition: opacity 120ms;
-      transform: none;
-      box-shadow: none;
-    }
-    .match-card.is-loser,
-    .match-card.is-loser-a,
-    .match-card.is-loser-b {
-      opacity: 0.25;
-    }
-    .winner-poster::after {
-      animation: none;
-      opacity: 0.7;
-    }
-    .round-progress > span {
-      transition: none;
-    }
-  }
-</style>

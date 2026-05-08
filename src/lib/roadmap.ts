@@ -284,13 +284,22 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
     title: "v1.x — Post-1.0 polish",
     summary:
       "Small features and rough-edge fixes that didn't need to hold the v1.0 milestone. Each line gets stamped with the version that landed it.",
-    targetVersion: "1.1.1",
+    targetVersion: "1.2.0",
     groups: [
       {
         id: "just-shipped",
         title: "Just shipped",
         description: "Recent post-1.0 work that's already in the build you're running.",
         items: [
+          {
+            id: "picker-modes",
+            title: "Picker — multi-mode pickers",
+            summary:
+              "Picker is a grid of decision modes now: Bracket, Top 8, Coin Flip, Spin (a swipeable prize-wheel reel with momentum-based fling), Pick up where you left off, Mood (Short/Long, Comfort/Challenge chips), and Either/Or (endless A-vs-B with a personal Top 10 leaderboard). Every mode respects rewatchable + Temptation when sampling, and re-rolls on Spin / 'Different ones' register as losses so Temptation tracks rejection too.",
+            status: "shipped",
+            shippedIn: "1.2.0",
+            complexity: "L",
+          },
           {
             id: "rail-edge-fade",
             title: "Smarter edge fade on action rails",
@@ -616,14 +625,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
             title: "Genre tag on watchlist rows",
             summary:
               "Schema change to capture genre IDs per entry (backfilled on detail-page visit). Pairs with the Stats genre breakdown.",
-            status: "considering",
-            complexity: "L",
-          },
-          {
-            id: "picker-mechanics",
-            title: "Picker — more decision modes",
-            summary:
-              "Mood-based ('short / long', 'comfort / challenge'), spin-again with weighted re-roll, two-show coin flip, genre-locked roll, decay-weighted picker.",
             status: "considering",
             complexity: "L",
           },

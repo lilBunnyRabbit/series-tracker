@@ -263,6 +263,13 @@
   const pageTitle = $derived.by(() => {
     if (relPath === "/" || relPath === "") return "Home";
     if (relPath.startsWith("/watchlist")) return "Watchlist";
+    if (relPath.startsWith("/picker/bracket")) return "Bracket";
+    if (relPath.startsWith("/picker/mini")) return "Top 8";
+    if (relPath.startsWith("/picker/coin")) return "Coin Flip";
+    if (relPath.startsWith("/picker/spin")) return "Spin";
+    if (relPath.startsWith("/picker/stalled")) return "Pick up where you left off";
+    if (relPath.startsWith("/picker/mood")) return "Mood";
+    if (relPath.startsWith("/picker/rank")) return "Either / Or";
     if (relPath.startsWith("/picker")) return "Picker";
     if (relPath.startsWith("/upcoming")) return "Upcoming";
     if (relPath.startsWith("/search/bulk")) return "Bulk search";
@@ -314,6 +321,9 @@
     if (relPath.startsWith("/activity")) return `${base}/settings/`;
     if (relPath.startsWith("/style-guide")) return `${base}/settings/`;
     if (relPath.startsWith("/upcoming")) return `${base}/watchlist/?status=watching`;
+    // Picker sub-modes (bracket / coin / spin / mini / stalled / mood / rank)
+    // back to the mode grid; the grid itself heads home to Watchlist.
+    if (/^\/picker\/[^/]+\/?$/.test(relPath)) return `${base}/picker/`;
     if (relPath.startsWith("/picker")) return `${base}/watchlist/`;
     if (relPath.startsWith("/person/")) return `${base}/`;
     if (relPath.startsWith("/share")) return `${base}/`;
