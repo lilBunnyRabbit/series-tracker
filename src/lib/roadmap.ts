@@ -24,8 +24,11 @@ export type RoadmapStatus =
   /** Decided against. Kept here so the call doesn't get re-litigated. */
   | "wont-ship";
 
-/** Rough effort budget — mirrors the QA.md scale. Optional, surfaced subtly. */
-export type RoadmapComplexity = "XS" | "S" | "M" | "L";
+import type { Complexity } from "./complexity";
+
+/** Rough effort budget. Surfaced as filled-of-four dots in the page render
+ *  via `COMPLEXITY_DOTS` — see `complexity.ts`. */
+export type RoadmapComplexity = Complexity;
 
 export type RoadmapItem = {
   id: string;
@@ -271,6 +274,40 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
             shippedIn: "1.0.0",
             complexity: "S",
             internal: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "v1.x",
+    title: "v1.x — Post-1.0 polish",
+    summary:
+      "Small features and rough-edge fixes that didn't need to hold the v1.0 milestone. Each line gets stamped with the version that landed it.",
+    targetVersion: "1.1.0",
+    groups: [
+      {
+        id: "just-shipped",
+        title: "Just shipped",
+        description: "Recent post-1.0 work that's already in the build you're running.",
+        items: [
+          {
+            id: "known-issues-page",
+            title: "Known issues page",
+            summary:
+              "Settings → Known issues lists every bug currently being tracked — open, won't-fix, and recently shipped — with severity and a rough-fix estimate. Same vocabulary as the Roadmap page, pointed at what's broken instead of what's planned.",
+            status: "shipped",
+            shippedIn: "1.1.0",
+            complexity: "M",
+          },
+          {
+            id: "complexity-dots",
+            title: "Effort tags now read as dots",
+            summary:
+              "Roadmap and Known issues complexity chips switched from XS / S / M / L letter codes to filled-of-four dots (●●○○) so the relative effort reads at a glance without a legend.",
+            status: "shipped",
+            shippedIn: "1.1.0",
+            complexity: "XS",
           },
         ],
       },

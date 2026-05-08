@@ -2,6 +2,7 @@
   import { base } from "$app/paths";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
+  import { COMPLEXITY_DOTS, COMPLEXITY_LABEL } from "$lib/complexity";
   import {
     ROADMAP_MILESTONES,
     type RoadmapItem,
@@ -67,6 +68,14 @@
 </script>
 
 {#snippet headerActions()}
+  <a
+    href="{base}/settings/bugs/"
+    use:tactile={{ haptic: false }}
+    class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-warning/40 bg-warning/10 px-3 py-1.5 text-sm text-warning hover-border-warning"
+  >
+    <Icon name="bug" size={14} />
+    <span>Known issues</span>
+  </a>
   <a
     href="{base}/settings/"
     use:tactile={{ haptic: false }}
@@ -157,20 +166,23 @@
                       aria-hidden="true"
                     ></span>
                     <div class="min-w-0 flex-1">
-                      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <h4 class="text-sm font-medium">{item.title}</h4>
-                        <span class="text-[11px] uppercase tracking-wider {s.text}">
-                          {s.label}
-                        </span>
-                        {#if item.shippedIn}
-                          <span class="text-[11px] text-muted">· v{item.shippedIn}</span>
-                        {/if}
+                      <div class="flex items-start gap-2">
+                        <div class="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <h4 class="text-sm font-medium">{item.title}</h4>
+                          <span class="text-[11px] uppercase tracking-wider {s.text}">
+                            {s.label}
+                          </span>
+                          {#if item.shippedIn}
+                            <span class="text-[11px] text-muted">· v{item.shippedIn}</span>
+                          {/if}
+                        </div>
                         {#if item.complexity}
                           <span
-                            class="ml-auto rounded-md border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted"
-                            title="Rough effort estimate"
+                            class="mt-0.5 shrink-0 rounded-md border border-border px-1.5 py-0.5 text-[11px] tracking-widest text-muted"
+                            title="Rough effort: {COMPLEXITY_LABEL[item.complexity]}"
+                            aria-label="Rough effort: {COMPLEXITY_LABEL[item.complexity]}"
                           >
-                            {item.complexity}
+                            {COMPLEXITY_DOTS[item.complexity]}
                           </span>
                         {/if}
                       </div>

@@ -4,6 +4,15 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-08
+
+### Added
+- Settings → Known issues — a live list of bugs we know about, organised into Open, Won't fix (platform constraints or fixes worse than the symptom), and Recently fixed. Each row carries a severity (critical / major / minor / polish) and a rough-fix estimate. Same severity-and-effort vocabulary as the Roadmap, just pointed at what's broken instead of what's planned.
+- Two known issues seeded: the card status-change pulse not firing on watchlist rows (open), and the browser's native scroll-to-top affordance overlapping the floating island on mobile (won't fix — the only mitigation we tried, hiding the island while scrolling, felt worse than the overlap).
+
+### Changed
+- Roadmap & Known issues: rough-effort tags now render as filled-of-four dots (●●○○) instead of XS / S / M / L letter codes. Same scale, just legible at a glance without a legend.
+
 ## [1.0.0] - 2026-05-08
 
 First stable release. The v1.0 punch list is empty — Home reads as a real dashboard, the tactile pass has landed, and the in-app feature set feels complete. See Settings → Roadmap for what's next.

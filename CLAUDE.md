@@ -1,6 +1,6 @@
 # Claude instructions
 
-Project-specific guidance for working in this repo. See also: existing TODOs in `TODO.md` / `DESIGN_TODO.md` / `QA.md`, and the user-facing roadmap in `src/lib/roadmap.ts`.
+Project-specific guidance for working in this repo. The backlog and known-issues lists are now both in-app and typed: see `src/lib/roadmap.ts` (rendered at `/settings/roadmap/`) and `src/lib/bugs.ts` (rendered at `/settings/bugs/`). The legacy `TODO.md` / `DESIGN_TODO.md` / `QA.md` files were retired in favor of these — every open item from them lives on the roadmap or bugs page now.
 
 ## Version & update detection system
 
@@ -104,14 +104,43 @@ In the same commit that bumps `package.json` and promotes `[Unreleased]` in `CHA
 
 - Default to `"planned"` if committed to a milestone, `"considering"` if not yet.
 - Pick the right group: `must-ship` (core gap), `polish` (completing design intent), `tactile` (movement / feedback), `considering` (post-1.0). Don't invent a new group unless several items want it.
-- Put a complexity tag (`XS` / `S` / `M` / `L`) on anything you can scope. Same scale as `QA.md`.
+- Put a complexity tag (`XS` / `S` / `M` / `L`) on anything you can scope. `XS` < 15 min, `S` < 1 h, `M` half-day, `L` full day+.
 - One-line summary, user-facing language. No file paths, no implementation details — same rule as `CHANGELOG.md` and `guide.ts`.
 
 ### Don't
 
 - Don't render internal items (`internal: true`) on the in-app surface — the page filters them out, but the typed config keeps them so things like the README rewrite stay tracked.
-- Don't duplicate every TODO.md item onto the roadmap. The roadmap is a curated user-facing summary; TODO.md is the granular dev backlog.
+- The roadmap is the only backlog. Add items here directly — there is no granular `TODO.md` to defer them to anymore.
 - Don't flip an item to `"shipped"` without setting `shippedIn`. The page surfaces the version inline, and an empty value reads as "shipped in nothing".
+
+## Known issues
+
+`/settings/bugs/` renders `src/lib/bugs.ts` — the in-app companion to the roadmap. Roadmap is "what's planned"; bugs is "what's broken right now (and what just got fixed)".
+
+### When you find a bug
+
+Add an entry to `KNOWN_BUGS` in `src/lib/bugs.ts`:
+
+- `status`: `"open"` (reproducible), `"investigating"` (cause unclear or fix in flight), `"wont-fix"` (documented but not going to be addressed — platform constraint, third-party bug, or a fix worse than the symptom; mirrors roadmap's `"wont-ship"`), or `"fixed"` (set `fixedIn` to the version that resolved it).
+- `severity`: `"critical"` / `"major"` / `"minor"` / `"polish"`. Critical blocks core use; polish is cosmetic.
+- `complexity`: optional, same XS/S/M/L scale as the roadmap.
+- `summary`: one line, user-facing. Describe the symptom, not the suspected cause. Same copy rule as `CHANGELOG.md` and `roadmap.ts`.
+- `note`: optional second line for a workaround or dependency.
+
+### When you ship a fix
+
+In the same commit that lands the fix:
+
+- Flip the bug's `status` to `"fixed"` and set `fixedIn` to the new release version.
+- Add a bullet to `[Unreleased]` in `CHANGELOG.md` under `Fixed`.
+
+After a release or two, prune `"fixed"` entries — the changelog is the long-term record, the bugs page should always feel fresh.
+
+### Don't
+
+- Don't add cosmetic preferences or roadmap-style "we should also..." here. Bugs are *broken*; ideas go on the roadmap.
+- Don't leave a fixed entry without `fixedIn` — same rule as the roadmap.
+- Don't keep fixed entries forever. They're a confirmation surface, not a history.
 
 ## Stack reminders
 

@@ -288,6 +288,14 @@
       <span>Activity</span>
     </a>
     <a
+      href="{base}/settings/bugs/"
+      use:tactile={{ haptic: false }}
+      class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-warning/40 bg-warning/10 px-3 py-1.5 text-sm text-warning hover-border-warning"
+    >
+      <Icon name="bug" size={14} />
+      <span>Known issues</span>
+    </a>
+    <a
       href="{base}/style-guide/"
       use:tactile={{ haptic: false }}
       class="tap-target tap-target--btn flex items-center gap-1.5 whitespace-nowrap rounded-md border border-tertiary/40 bg-tertiary/10 px-3 py-1.5 text-sm text-tertiary hover-border-tertiary"

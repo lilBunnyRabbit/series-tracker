@@ -46,7 +46,8 @@ type IconName =
   | "pencil"
   | "repeat"
   | "play"
-  | "rotate-ccw";
+  | "rotate-ccw"
+  | "bug";
 
 export type GuideAccent = "primary" | "secondary" | "tertiary" | "accent";
 
@@ -369,6 +370,19 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     body: [
       "Settings → Roadmap renders the public plan: every milestone, the items inside it, and their status. Each shipped item is stamped with the version that landed it, so you can trace anything you remember seeing back to its release notes.",
       "The 'After v1.0' and 'Won't ship' sections are intentionally honest about what's deferred or off the table — so you don't end up waiting for something that isn't coming.",
+    ],
+  },
+  {
+    id: "known-issues",
+    version: "1.1.0",
+    icon: "bug",
+    accent: "tertiary",
+    inTour: false,
+    title: "Known issues",
+    summary: "Live list of bugs we know about — what's open, what's been ruled won't-fix, and what just got fixed.",
+    body: [
+      "Settings → Known issues mirrors the Roadmap surface, but for what's broken instead of what's planned. Every entry carries a severity (critical / major / minor / polish) and a rough-fix estimate; open and investigating items sit at the top, won't-fix items below (platform constraints or fixes worse than the symptom), and recently shipped fixes hang around for a release or two so you can confirm the version that resolved them.",
+      "Hit something that isn't on the list? Open an issue on GitHub — repro steps and the build version (Settings → About) make the fix faster.",
     ],
   },
   {

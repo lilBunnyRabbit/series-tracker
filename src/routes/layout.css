@@ -165,6 +165,9 @@
     .hover-border-muted:hover {
       border-color: var(--color-muted);
     }
+    .hover-border-warning:hover {
+      border-color: var(--color-warning);
+    }
     .hover-bg-surface:hover {
       background-color: var(--color-surface);
     }
