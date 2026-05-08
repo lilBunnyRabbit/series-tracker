@@ -25,9 +25,13 @@
   // motion instead of "snapping" at the end (browsers tend to skip
   // recomputing backdrop-filter mid-transform). Opacity stays at 1 the
   // whole way so the dark fill stays solid against the page bg.
-  function railRise(_node: HTMLElement, { duration = 240, distance = 120 } = {}) {
+  function railRise(
+    _node: HTMLElement,
+    { duration = 240, delay = 0, distance = 120 } = {}
+  ) {
     return {
       duration,
+      delay,
       easing: cubicOut,
       css: (t: number) => `
         transform: translateY(${(1 - t) * distance}px);
@@ -381,7 +385,7 @@
     <nav
       class="page-actions-rail sm:hidden"
       aria-label="Page actions"
-      in:railRise={{ duration: 260 }}
+      in:railRise={{ duration: 260, delay: 280 }}
       out:railRise={{ duration: 180 }}
     >
       <div class="page-actions-pill">
