@@ -3,7 +3,7 @@
   import CardActionsSheet from "$lib/components/CardActionsSheet.svelte";
   import TypeBadge from "$lib/components/TypeBadge.svelte";
   import { store } from "$lib/store.svelte";
-  import { longPress, tactile } from "$lib/tactile";
+  import { longPress, statusPulse, tactile } from "$lib/tactile";
   import { currentTemptation, glowIntensity, TEMPTATION_GLOW_COLOR } from "$lib/temptation";
   import { effectiveSeasons, movieProgressFraction, STATUS_COLOR, STATUS_LABEL } from "$lib/types";
   import type { Entry } from "$lib/types";
@@ -60,6 +60,7 @@
     {href}
     use:tactile
     use:longPress={{ onLongPress: openActions }}
+    use:statusPulse={entry.status}
     style={glowStyle}
     class="tap-target tap-target--card tt-glow relative flex items-stretch gap-3 overflow-hidden rounded-lg border bg-surface p-2 {cardClass}"
   >
@@ -115,7 +116,7 @@
       use:tactile
       onclick={openActions}
       aria-label="Quick actions for {entry.title}"
-      class="tap-target tap-target--icon pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-muted hover-text-text"
+      class="tap-target tap-target--icon pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full text-base leading-none text-muted hover-text-text"
     >
       ⋯
     </button>

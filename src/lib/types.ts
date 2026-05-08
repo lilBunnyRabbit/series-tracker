@@ -317,6 +317,13 @@ export type Preferences = {
   /** Pacing for the temptation score's time decay. Maps to a per-day decay
    *  constant in temptation.ts. Defaults to "balanced" when unset. */
   temptationPacing?: TemptationPacing;
+  /** Number of distinct app sessions the user has logged. Bumped once per
+   *  session in `+layout.svelte` (sessionStorage-deduped so a tab refresh
+   *  doesn't double-count). Drives the long-press hint timing. */
+  sessionCount?: number;
+  /** Has the user seen and dismissed the "long-press a card for quick actions"
+   *  hint? Set on dismiss / auto-dismiss so the toast doesn't reappear. */
+  seenLongPressHint?: boolean;
 };
 
 export type ActionType =

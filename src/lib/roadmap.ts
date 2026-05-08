@@ -76,6 +76,42 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "rail-stagger",
+            title: "Page-load stagger on rails",
+            summary:
+              "Home rails and discover sections fade-and-rise on page load with a small per-row stagger so the page reads as content flowing in. Respects prefers-reduced-motion.",
+            status: "shipped",
+            shippedIn: "0.23.0",
+            complexity: "S",
+          },
+          {
+            id: "card-pulse-status",
+            title: "Card border pulse on status change",
+            summary:
+              "Watchlist cards briefly halo in the new status colour whenever you flip between Watching / Plan / Completed / Dropped / Tuned in, so the change registers visually alongside the haptic.",
+            status: "shipped",
+            shippedIn: "0.23.0",
+            complexity: "S",
+          },
+          {
+            id: "long-press-hint",
+            title: "Long-press hint",
+            summary:
+              "After a few app sessions, a one-time toast on Watchlist surfaces the long-press gesture for quick actions. Auto-dismisses after a few seconds and never reappears once seen.",
+            status: "shipped",
+            shippedIn: "0.23.0",
+            complexity: "S",
+          },
+          {
+            id: "tap-target-audit",
+            title: "44×44 hit-target audit",
+            summary:
+              "Bumped the small icon and chip buttons that were stragglers (watchlist ⋯ menus, diary edit/delete, IMDb chips, recent-searches pills, diary +/− steppers, watchlist title-search clear) up to a consistent 36px floor.",
+            status: "shipped",
+            shippedIn: "0.23.0",
+            complexity: "S",
+          },
+          {
             id: "started-untouched-filter",
             title: "Started / Untouched filter",
             summary:
@@ -177,21 +213,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         ],
       },
       {
-        id: "polish",
-        title: "Design polish",
-        description: "Smaller items completing design intent that's already half-wired.",
-        items: [
-          {
-            id: "list-card-status-chip",
-            title: "Watchlist status chip under poster",
-            summary:
-              "Move the status indicator out of the metadata row and into the poster column for a cleaner row layout.",
-            status: "planned",
-            complexity: "S",
-          },
-        ],
-      },
-      {
         id: "tactile",
         title: "Tactile feel",
         description:
@@ -204,46 +225,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
               "Detail pages slide in from the right; back-navigation slides out. Shared-element transitions for posters opening into detail pages.",
             status: "considering",
             complexity: "M",
-          },
-          {
-            id: "pull-to-refresh",
-            title: "Pull-to-refresh",
-            summary:
-              "Overdrag at the top of Home, Watchlist, and Upcoming triggers a re-fetch with a haptic on threshold cross.",
-            status: "considering",
-            complexity: "M",
-          },
-          {
-            id: "rail-stagger",
-            title: "Page-load stagger on rails",
-            summary:
-              "Rails fade-and-rise with a 30–50ms stagger on home and discover. Skipped when prefers-reduced-motion is set.",
-            status: "considering",
-            complexity: "S",
-          },
-          {
-            id: "long-press-hint",
-            title: "Long-press hint toast",
-            summary:
-              "First-time users won't discover long-press. Surface a one-time tip after a few sessions: 'Tip: long-press a card for quick actions.'",
-            status: "considering",
-            complexity: "S",
-          },
-          {
-            id: "card-pulse-status",
-            title: "Card border pulse on status change",
-            summary:
-              "When status changes via long-press, briefly highlight the card border in the new status colour so the change registers visually.",
-            status: "considering",
-            complexity: "S",
-          },
-          {
-            id: "tap-target-audit",
-            title: "44×44 hit-target audit",
-            summary:
-              "Sweep with the Chrome DevTools 'Tap target' audit and bump any stragglers (e.g. inline IMDb chips, the small ⌕ icon in search history).",
-            status: "considering",
-            complexity: "S",
           },
         ],
       },
@@ -634,6 +615,20 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
             id: "no-vip",
             title: "Paywall / VIP surface",
             summary: "Series Tracker is free. Nothing to sell.",
+            status: "wont-ship",
+          },
+          {
+            id: "no-pull-to-refresh",
+            title: "Pull-to-refresh",
+            summary:
+              "Would collide with the browser's native pull-to-refresh on mobile. Better to leave that gesture to the platform.",
+            status: "wont-ship",
+          },
+          {
+            id: "no-list-card-status-chip",
+            title: "Watchlist status chip under poster",
+            summary:
+              "The status indicator already reads cleanly in the metadata row alongside the colour-tinted card border. Moving it under the poster wouldn't add clarity.",
             status: "wont-ship",
           },
         ],

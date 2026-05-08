@@ -244,7 +244,7 @@
                   type="button"
                   use:tactile
                   onclick={() => adjustEpisode("from", -1)}
-                  class="tap-target tap-target--icon flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted"
+                  class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted"
                   aria-label="Decrease from-episode"
                 >
                   −
@@ -254,7 +254,7 @@
                   type="button"
                   use:tactile
                   onclick={() => adjustEpisode("from", 1)}
-                  class="tap-target tap-target--icon flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted"
+                  class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted"
                   aria-label="Increase from-episode"
                 >
                   +
@@ -268,7 +268,7 @@
                   type="button"
                   use:tactile
                   onclick={() => adjustEpisode("to", -1)}
-                  class="tap-target tap-target--icon flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted"
+                  class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted"
                   aria-label="Decrease to-episode"
                 >
                   −
@@ -278,7 +278,7 @@
                   type="button"
                   use:tactile
                   onclick={() => adjustEpisode("to", 1)}
-                  class="tap-target tap-target--icon flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted"
+                  class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted"
                   aria-label="Increase to-episode"
                 >
                   +

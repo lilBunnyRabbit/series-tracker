@@ -263,7 +263,7 @@
             type="button"
             use:tactile
             onclick={() => (query = q)}
-            class="tap-target tap-target--chip shrink-0 whitespace-nowrap rounded-full bg-surface-2/60 px-3 py-1.5 text-muted/80 hover-text-text"
+            class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-surface-2/60 px-3.5 py-1.5 text-muted/80 hover-text-text"
           >
             {q}
           </button>
@@ -273,7 +273,7 @@
           use:tactile={{ haptic: "warn" }}
           onclick={() => store.clearSearchHistory()}
           aria-label="Clear recent searches"
-          class="tap-target tap-target--chip shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-muted/60 hover-text-error"
+          class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted/60 hover-text-error"
         >
           Clear
         </button>

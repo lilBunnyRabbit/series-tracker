@@ -38,7 +38,7 @@ Deep-dive backlog for series-tracker. Ordered by `simple × useful`.
 The press / haptic / sheet pass shipped in 0.2.0. These were scoped out and are worth their own commits.
 
 - [ ] **View Transitions API for navigation** — wrap SvelteKit nav in `document.startViewTransition`. Detail pages slide in from the right; back-navigation slides out. Pair with `view-transition-name: card-{kind}-{id}` on poster wrappers in `LibraryCard` / `PosterCard` / `EpisodeCard` and on the hero poster in detail pages → shared-element animation when a Continue Watching card opens its detail page. ~30 lines of glue + per-card style attribute. Ship as `0.3.0` since it's user-visible.
-- [ ] **Pull-to-refresh** on `/`, `/watchlist`, `/upcoming` — wraps `<main>`'s direct children with a touch-handler that translateY's on overdrag and fires a refresh on threshold cross. Spec: ~50 line action; haptic on threshold crossed; respects `prefers-reduced-motion`. Each route passes its own `onRefresh` (re-fetch upcoming buckets, re-warm new-episode signal, etc.).
+- [~] ~~**Pull-to-refresh** on `/`, `/watchlist`, `/upcoming`~~ — **killed.** Would collide with the browser's native pull-to-refresh on mobile; better to leave that gesture to the platform. See `src/lib/roadmap.ts` → "Won't ship".
 - [ ] **Counter flip animation in `SeasonCounter`** — when `current` changes, the displayed number pops from old to new with a quick translateY + fade. Requires keying the number span on `current` so Svelte re-mounts it; CSS `@starting-style` does the rest. Pure cosmetic but completes the "press feedback fires for every action" loop.
 - [ ] **Page-load stagger on rails** — when home / discover renders multiple rails at once, fade-and-rise each rail with a 30–50ms stagger. Single `@keyframes` + `animation-delay: calc(var(--i) * 40ms)` on each Rail wrapper. Skip when `prefers-reduced-motion`.
 - [ ] **44×44 hit-target audit** — most icon buttons were bumped from h-7/h-8 to h-9/h-10 in 0.2.0, but a sweep with the Chrome DevTools "Tap target" audit would catch the stragglers (e.g. inline IMDb chips on info pages, the tiny ⌕ icon in search history items).
@@ -84,7 +84,7 @@ One-touch fixes on infrastructure that already exists.
 Group these because they share the "movement / feedback" vocabulary and are user-visible enough to warrant a `CHANGELOG` entry.
 
 - [ ] **View Transitions API for navigation** — `document.startViewTransition` wrap; `view-transition-name: card-{kind}-{id}` on poster wrappers and detail hero.
-- [ ] **Pull-to-refresh** on `/`, `/watchlist`, `/upcoming` — Svelte action with touch handler + threshold + haptic; per-route `onRefresh`.
+- [~] ~~**Pull-to-refresh** on `/`, `/watchlist`, `/upcoming`~~ — **killed.** Collides with native browser pull-to-refresh; leave to platform.
 - [ ] **Page-load stagger on rails** — `--i: {index}` on each Rail wrapper, single `@keyframes` with `animation-delay: calc(var(--i) * 40ms)`.
 - [ ] **Long-press hint toast** — add `seenLongPressHint` to `preferences`; show on home after ~3 sessions.
 - [ ] **Card border pulse on status change** — `$effect` in `LibraryCard` watches `entry.status`, sets transient class, removes after animation.
@@ -99,7 +99,7 @@ Group these because they share the "movement / feedback" vocabulary and are user
 
 - [ ] **Keyword/theme browsing** — `/keyword/{id}/movies` route; surface keyword chips on info pages from `detail.keywords`; integrate with discover/browse.
 - [ ] **Genre tag on watchlist rows** — schema change: store `genreIds: number[]` on `Entry`, backfill via TMDB on next visit. Surface as small tag under title in `ListCard`. Pairs with Stats genre breakdown.
-- [ ] **ListCard "status under poster" layout** — move status chip out of metadata row into the poster column.
+- [~] ~~**ListCard "status under poster" layout**~~ — **killed.** Status reads fine in the metadata row alongside the tinted card border. See `src/lib/roadmap.ts` → "Won't ship".
 - [ ] **Activity log step 2 — undo + clear-all** — surfaces on top of the step-1 read-only feed at `/activity/`. Adds:
   - per-row `Undo` button when (a) the action is `< 24h` old, (b) `undoneAt` is unset, (c) no newer action exists for the same `(kind, refId)` — prevents the "rolling back through someone else's later edit" footgun.
   - `store.undoAction(id)`: replaces `state.library[key]` with `action.prev` for all types except `add` (→ `removeFromLibrary`) and `remove` (→ re-add `prev`). Mark the action `undoneAt` rather than deleting it; do not push a new "undo" action (avoids redo loops).

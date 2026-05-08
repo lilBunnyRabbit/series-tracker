@@ -157,7 +157,7 @@
       <!-- Multi-source rating row -->
       <div class="flex items-center gap-3 text-xs">
         {#if typeof detail.vote_average === "number" && detail.vote_average > 0}
-          <span class="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
+          <span class="flex min-h-9 items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-medium text-text">
             <span class="text-accent">★</span>
             <span class="tabular-nums">{Math.round(detail.vote_average * 10)}%</span>
             <span class="text-muted">TMDB</span>
@@ -168,7 +168,8 @@
             href="https://www.imdb.com/title/{detail.external_ids.imdb_id}/"
             target="_blank"
             rel="noopener"
-            class="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 font-medium text-muted transition hover:border-accent hover:text-text"
+            use:tactile={{ haptic: false }}
+            class="tap-target tap-target--chip flex min-h-9 items-center gap-1 rounded-full border border-border px-2.5 py-1 font-medium text-muted transition hover:border-accent hover:text-text"
           >
             <span class="font-bold">IMDb</span>
             <span class="text-[10px]">↗</span>

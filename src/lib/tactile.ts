@@ -1,4 +1,5 @@
 import { vibrate } from "$lib/haptics";
+import type { Status } from "$lib/types";
 
 type HapticPattern = "tap" | "tick" | "success" | "warn";
 
@@ -210,6 +211,46 @@ export function swipeToDismiss(node: HTMLElement, options: SwipeToDismissOptions
       node.removeEventListener("pointermove", move);
       node.removeEventListener("pointerup", up);
       node.removeEventListener("pointercancel", up);
+    },
+  };
+}
+
+const STATUS_PULSE_DURATION_MS = 700;
+
+/**
+ * Briefly applies `.is-status-pulse` to the host element when `status` changes
+ * — visual confirmation of a long-press status flip alongside the haptic that
+ * fired in `CardActionsSheet`. The pulse colour is read from the same
+ * `--tt-c` custom property the cards already set for the temptation glow, so
+ * no extra plumbing per card.
+ *
+ * Skips the initial mount (no pulse on first render). Re-pulses correctly if
+ * status changes again before the first pulse completes — the class is
+ * removed-then-reapplied with a forced reflow so the keyframes restart.
+ */
+export function statusPulse(node: HTMLElement, status: Status) {
+  let prev: Status = status;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  function fire(): void {
+    if (timer) clearTimeout(timer);
+    node.classList.remove("is-status-pulse");
+    void node.offsetWidth;
+    node.classList.add("is-status-pulse");
+    timer = setTimeout(() => {
+      node.classList.remove("is-status-pulse");
+      timer = null;
+    }, STATUS_PULSE_DURATION_MS);
+  }
+
+  return {
+    update(next: Status) {
+      if (next === prev) return;
+      prev = next;
+      fire();
+    },
+    destroy() {
+      if (timer) clearTimeout(timer);
     },
   };
 }

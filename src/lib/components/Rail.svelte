@@ -11,6 +11,9 @@
     actionLabel?: string;
     /** Hide entirely if true (so callers don't have to wrap in {#if}). */
     hidden?: boolean;
+    /** Page-load stagger slot. When set, the rail fades-and-rises with
+     *  delay = index × 40ms. Omit to skip the animation. */
+    index?: number;
     /** Optional empty-state hint snippet — rendered inline when no children. */
     empty?: Snippet;
     children: Snippet;
@@ -24,13 +27,18 @@
     actionIcon,
     actionLabel,
     hidden = false,
+    index,
     empty,
     children,
   }: Props = $props();
 </script>
 
 {#if !hidden}
-  <section class="space-y-2.5">
+  <section
+    class="space-y-2.5"
+    class:stagger-rise={index !== undefined}
+    style:--i={index ?? 0}
+  >
     <SectionHeader {title} {subtitle} {seeAllHref} {onAction} {actionIcon} {actionLabel} />
     <!-- Negative inline margin so cards bleed to the screen edge on mobile,
          but keep their padding inside the scroll track. Snap-x makes flicks

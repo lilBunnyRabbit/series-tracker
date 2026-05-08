@@ -222,7 +222,7 @@
   {/if}
 
   <!-- TRENDING -->
-  <div class="space-y-3">
+  <div class="space-y-3 stagger-rise" style:--i={0}>
     <div class="flex flex-wrap items-center gap-3">
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="flame" size={14} />
@@ -258,7 +258,7 @@
 
   {#if visibleRecs.length > 0}
     <!-- RECOMMENDED -->
-    <div class="space-y-3">
+    <div class="space-y-3 stagger-rise" style:--i={1}>
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="sparkles" size={14} />
         Recommended
@@ -271,14 +271,14 @@
       </div>
     </div>
   {:else if recItems.length === 0 && store.entries.length === 0 && !loading}
-    <div class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+    <div class="stagger-rise rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted" style:--i={1}>
       Add a few things to your library and we'll generate recommendations here.
     </div>
   {/if}
 
   {#if visiblePopularTv.length > 0 || visiblePopularMovies.length > 0}
     <!-- POPULAR -->
-    <div class="space-y-4">
+    <div class="space-y-4 stagger-rise" style:--i={2}>
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="trending-up" size={14} />
         Popular right now
@@ -314,7 +314,7 @@
 
   {#if visibleTopRatedTv.length > 0 || visibleTopRatedMovies.length > 0}
     <!-- TOP RATED -->
-    <div class="space-y-4">
+    <div class="space-y-4 stagger-rise" style:--i={3}>
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="trophy" size={14} />
         Top rated

@@ -6,10 +6,12 @@
   import KindFilter from "$lib/components/KindFilter.svelte";
   import LibraryCard from "$lib/components/LibraryCard.svelte";
   import ListCard from "$lib/components/ListCard.svelte";
+  import LongPressHint from "$lib/components/LongPressHint.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import Pagination from "$lib/components/Pagination.svelte";
   import { store } from "$lib/store.svelte";
   import { swipeToDismiss, tactile } from "$lib/tactile";
+  import { onMount } from "svelte";
   import { currentTemptation } from "$lib/temptation";
   import { effectiveSeasons, hasProgress, STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
   import type { Entry, Status } from "$lib/types";
@@ -324,6 +326,22 @@
     setView(v);
     closeSheet();
   }
+
+  // First-time long-press hint. Conditions evaluated once on mount so a flip
+  // mid-visit (e.g. user adds a card while the page is open) doesn't summon
+  // the toast unexpectedly. Once shown, dismissal — or auto-dismiss in the
+  // component — flips `seenLongPressHint` so it never appears again.
+  let hintOpen = $state(false);
+  onMount(() => {
+    const seen = store.preferences.seenLongPressHint === true;
+    const enough = (store.preferences.sessionCount ?? 0) >= 3;
+    const hasEntries = store.entries.length > 0;
+    if (!seen && enough && hasEntries) hintOpen = true;
+  });
+  function dismissHint(): void {
+    hintOpen = false;
+    store.setPreference("seenLongPressHint", true);
+  }
 </script>
 
 {#snippet headerActions()}
@@ -468,7 +486,7 @@
               use:tactile={{ haptic: false }}
               onclick={() => (queryDraft = "")}
               aria-label="Clear filter"
-              class="tap-target tap-target--icon absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted hover-text-text"
+              class="tap-target tap-target--icon absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted hover-text-text"
             >
               ✕
             </button>
@@ -640,6 +658,8 @@
     </button>
   </div>
 </dialog>
+
+<LongPressHint open={hintOpen} onDismiss={dismissHint} />
 
 <style>
   .cv-card {

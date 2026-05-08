@@ -318,7 +318,7 @@
                         use:tactile
                         onclick={() => startEdit(d)}
                         aria-label="Edit entry"
-                        class="tap-target tap-target--icon flex h-7 w-7 items-center justify-center rounded-md border border-border text-[11px] text-muted hover-border-accent"
+                        class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-xs text-muted hover-border-accent"
                       >
                         ✎
                       </button>
@@ -327,7 +327,7 @@
                         use:tactile={{ haptic: "warn" }}
                         onclick={() => deleteEntry(d)}
                         aria-label="Delete entry"
-                        class="tap-target tap-target--icon flex h-7 w-7 items-center justify-center rounded-md border border-border text-[11px] text-muted hover:border-error hover:text-error"
+                        class="tap-target tap-target--icon flex h-9 w-9 items-center justify-center rounded-md border border-border text-xs text-muted hover:border-error hover:text-error"
                       >
                         ×
                       </button>

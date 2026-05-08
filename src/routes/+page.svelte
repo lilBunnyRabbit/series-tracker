@@ -184,6 +184,7 @@
       <Rail
         title="Continue Watching"
         seeAllHref="{base}/watchlist/?status=watching"
+        index={0}
       >
         {#each continueWatching as item (item.entry.kind + ":" + item.entry.id)}
           <ContinueWatchingCard
@@ -197,7 +198,7 @@
     {/if}
 
     {#if upcoming.length > 0}
-      <Rail title="Upcoming" subtitle="New episodes airing soon" seeAllHref="{base}/upcoming/">
+      <Rail title="Upcoming" subtitle="New episodes airing soon" seeAllHref="{base}/upcoming/" index={1}>
         {#each upcoming as item (item.entry.id + ":" + item.season + ":" + item.episode.id)}
           <UpcomingCard
             entry={item.entry}
@@ -214,6 +215,7 @@
         title="Start Watching"
         subtitle="Plan to watch"
         seeAllHref="{base}/watchlist/?status=plan"
+        index={2}
       >
         {#each startWatching as e (e.kind + ":" + e.id)}
           <PosterCard
@@ -236,6 +238,7 @@
         title="History"
         subtitle="Recently watched, dropped, or tuned in"
         seeAllHref="{base}/watchlist/?status=completed"
+        index={3}
       >
         {#each history as e (e.kind + ":" + e.id)}
           <PosterCard

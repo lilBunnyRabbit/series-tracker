@@ -62,8 +62,7 @@ We end up with ~four distinct card formats. Worth componentizing properly:
 When the dashboard becomes home, the existing filterable grid lives at `/watchlist/` (or `/library/`). Keep filters/sort/views, but apply the row treatment from screenshot 4:
 
 - [x] **Background-image bleed** — the show's backdrop fades in from the right behind the metadata text. Subtle, not loud.
-- [ ] **Bookmark/status icon under poster** — small chip showing status without taking metadata-row space.
-  - **Status:** `ListCard` shows status inline in the metadata row, not as a separate chip under the poster column.
+- [~] ~~**Bookmark/status icon under poster**~~ — **killed.** The current inline metadata-row status indicator + status-tinted card border already reads cleanly; relocating the chip under the poster wouldn't add clarity. See `src/lib/roadmap.ts` → "Won't ship".
 - [x] **Personal rating right-aligned**, prominent (★ %).
 - [ ] **Genre as a visible tag** under title (we don't store genre on entries today; would need to capture at add time).
 

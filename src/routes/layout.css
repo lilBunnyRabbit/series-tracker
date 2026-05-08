@@ -226,6 +226,51 @@
   }
 }
 
+/* Page-load stagger for stacked content blocks (home rails, discover sections).
+   Each instance sets `--i: {N}` inline; the animation-delay comes out to
+   N × 40ms. Gated to `no-preference` so reduced-motion users skip it
+   entirely (the static end-state is the resting style anyway). */
+@layer utilities {
+  @media (prefers-reduced-motion: no-preference) {
+    .stagger-rise {
+      animation: stagger-rise 420ms var(--ease-spring) both;
+      animation-delay: calc(var(--i, 0) * 40ms);
+    }
+
+    /* Card border pulse on status change. The `statusPulse` action toggles
+       this class for ~700ms whenever `entry.status` changes (typically via
+       the long-press → CardActionsSheet flow). Reads the entry's status
+       hue from `--tt-c`, the same variable the temptation glow already sets
+       on each card, so no per-component plumbing needed. */
+    .is-status-pulse {
+      animation: status-pulse 700ms var(--ease-spring) both;
+    }
+  }
+}
+
+@keyframes stagger-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  25% {
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 /* Sheet & dialog enter animations. Kept outside @layer so component @keyframes
    imports stay simple. */
 @keyframes sheet-in {

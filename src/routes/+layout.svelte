@@ -1,5 +1,6 @@
 <script lang="ts">
   import "./layout.css";
+  import { browser } from "$app/environment";
   import { afterNavigate, beforeNavigate } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
@@ -8,6 +9,7 @@
   import GuideTour from "$lib/components/GuideTour.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import UpdateProgressOverlay from "$lib/components/UpdateProgressOverlay.svelte";
+  import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { tour } from "$lib/tour.svelte";
 
@@ -73,6 +75,22 @@
 
   onMount(async () => {
     versionModule.init();
+    // Bump the session counter once per browser session — sessionStorage
+    // scopes the dedupe to the current tab so a tab refresh doesn't
+    // double-count, but a new tab/window starts fresh. Drives the
+    // long-press hint timing.
+    if (browser) {
+      try {
+        if (!sessionStorage.getItem("series-tracker:session-counted")) {
+          sessionStorage.setItem("series-tracker:session-counted", "1");
+          const next = (store.preferences.sessionCount ?? 0) + 1;
+          store.setPreference("sessionCount", next);
+        }
+      } catch {
+        // sessionStorage can throw in private mode or quota-exhausted browsers
+        // — the hint timing degrades to "show on next normal session" instead.
+      }
+    }
     try {
       const { registerSW } = await import("virtual:pwa-register");
       const updateSW = registerSW({
