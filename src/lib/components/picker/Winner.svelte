@@ -116,7 +116,7 @@
         <img src={winner.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
       {/if}
       {#if typeof winner.voteAverage === "number" && winner.voteAverage > 0}
-        <div class="absolute right-2 top-2 rounded-md bg-black/65 px-1.5 py-0.5 text-xs font-medium tabular-nums text-text backdrop-blur-sm">
+        <div class="absolute right-2 top-2 rounded-md bg-overlay px-1.5 py-0.5 text-xs font-medium tabular-nums text-on-overlay backdrop-blur-sm">
           ★ {winner.voteAverage.toFixed(1)}
         </div>
       {/if}

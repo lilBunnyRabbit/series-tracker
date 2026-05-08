@@ -28,7 +28,7 @@
       <img src={profile} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
     {#if typeof episodeCount === "number" && episodeCount > 0}
-      <span class="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm">
+      <span class="absolute bottom-1 right-1 rounded bg-overlay px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-on-overlay backdrop-blur-sm">
         {episodeCount} ep.
       </span>
     {/if}

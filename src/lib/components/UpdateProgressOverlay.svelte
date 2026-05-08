@@ -137,7 +137,7 @@
     color: var(--color-text);
   }
   .update-dialog::backdrop {
-    background: rgb(0 0 0 / 0.7);
+    background: var(--color-backdrop);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -155,8 +155,8 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     box-shadow:
-      0 24px 48px -12px rgb(0 0 0 / 0.6),
-      0 4px 12px -4px rgb(0 0 0 / 0.4);
+      0 24px 48px -12px rgb(var(--shadow-color) / var(--shadow-alpha-2)),
+      0 4px 12px -4px rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
 
   .header {

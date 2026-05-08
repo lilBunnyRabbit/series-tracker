@@ -12,6 +12,7 @@
   import { store } from "$lib/store.svelte";
   import { edgeFade } from "$lib/edge-fade";
   import { tactile } from "$lib/tactile";
+  import { theme } from "$lib/theme.svelte";
   import { tour } from "$lib/tour.svelte";
 
   type IconName = "home" | "compass" | "bookmark" | "search" | "user";
@@ -173,6 +174,7 @@
 
   onMount(async () => {
     versionModule.init();
+    theme.init();
     // Bump the session counter once per browser session — sessionStorage
     // scopes the dedupe to the current tab so a tab refresh doesn't
     // double-count, but a new tab/window starts fresh. Drives the
@@ -533,7 +535,6 @@
        keyword but different rendered radii. Hard-coding 1.75rem (= 28px)
        keeps the curvature consistent. */
     border-radius: 1.75rem 1.75rem 0 0;
-    background: rgba(26, 31, 38, 0.85);
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
     /* No bottom border — the seam vanishes behind the island anyway, and a
        bottom border would draw a faint line right where the two pills meet. */
@@ -543,8 +544,8 @@
     backdrop-filter: blur(var(--rail-blur, 14px));
     /* Shadow only above the rail — the bottom would just hit the island. */
     box-shadow:
-      0 -12px 24px -12px rgb(0 0 0 / 0.5),
-      0 -4px 8px -4px rgb(0 0 0 / 0.3);
+      0 -12px 24px -12px rgb(var(--shadow-color) / var(--shadow-alpha-2)),
+      0 -4px 8px -4px rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
   /* Inner scroll track — only the chips scroll horizontally. The pill's
      fill, border, padding, and shape stay put underneath. The track itself
@@ -603,7 +604,7 @@
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .page-actions-pill {
-      background: rgba(26, 31, 38, 0.96);
+      background: color-mix(in oklab, var(--color-bg) 96%, transparent);
     }
   }
 
@@ -637,20 +638,18 @@
     padding: 0.25rem;
     border-radius: 9999px;
     position: relative;
-    /* Layered fallbacks so older Samsung Internet (no color-mix / no oklch)
-       still gets a visible translucent fill. Newer engines pick the
-       color-mix line; older engines fall back to the rgba above. Uses the
-       page bg (darker) rather than surface so it reads as a recessed,
-       background-tinted chrome — same fill style as the old search dock. */
-    background: rgba(26, 31, 38, 0.85);
+    /* Translucent bg layered over the page so the island reads as recessed
+       chrome rather than a solid block. Uses the page bg (darker) rather
+       than surface so it reads as a recessed, background-tinted chrome —
+       same fill style as the old search dock. */
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
     border: 1px solid var(--color-border);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     box-shadow:
-      0 24px 48px -12px rgb(0 0 0 / 0.7),
-      0 12px 20px -6px rgb(0 0 0 / 0.5),
-      0 4px 8px -2px rgb(0 0 0 / 0.35);
+      0 24px 48px -12px rgb(var(--shadow-color) / var(--shadow-alpha-1)),
+      0 12px 20px -6px rgb(var(--shadow-color) / var(--shadow-alpha-2)),
+      0 4px 8px -2px rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
   /* When no page-actions rail is rendered behind the top of the island
      (its bottom strip is buried inside the island), the island has only
@@ -660,7 +659,6 @@
      actions go away. Bump the standalone island to ~96% so the surface
      feels consistent in either state. */
   :global(body:not(:has(.page-actions-rail))) .floating-nav-pill {
-    background: rgba(26, 31, 38, 0.96);
     background: color-mix(in oklab, var(--color-bg) 96%, transparent);
   }
 
@@ -682,7 +680,7 @@
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .floating-nav-pill {
-      background: rgba(26, 31, 38, 0.96);
+      background: color-mix(in oklab, var(--color-bg) 96%, transparent);
     }
   }
 

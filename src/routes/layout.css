@@ -20,6 +20,20 @@
   --color-error: oklch(0.745 0.1398 30);
   --color-info: oklch(0.745 0.1398 240);
 
+  /* Image-overlay scrim — black with theme-tuned alpha. Used for chips
+     painted over poster artwork (rating badges, status dots, quick-action
+     buttons). Stays near-black in both themes because it sits over photos,
+     not over the page bg; only the alpha shifts. */
+  --color-overlay: rgb(0 0 0 / 0.65);
+  /* Text colour for content sitting on the overlay scrim. Always white-ish
+     so chip text stays legible regardless of theme — `text-text` would
+     flip to dark in light mode and vanish against the scrim. */
+  --color-on-overlay: rgb(255 255 255);
+  /* Modal backdrop — full-viewport scrim behind sheets/dialogs. Heavier
+     in dark to sink the page; lighter in light so cream chrome doesn't
+     read as dimmed. */
+  --color-backdrop: rgb(0 0 0 / 0.6);
+
   --font-sans:
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
@@ -31,6 +45,52 @@
   --dur-release: 200ms;
   --dur-fast: 120ms;
   --dur-base: 180ms;
+}
+
+/* Shadow alpha tiers — referenced from box-shadow rules across the codebase
+   as `rgb(var(--shadow-color) / var(--shadow-alpha-N))`. Two-token form
+   (rgb triple + alpha) lets us swap just the alpha per theme without
+   restating the whole box-shadow stack. Dark needs heavy black to sink
+   floating chrome into the page; light needs almost nothing because the
+   cream bg gives the same depth perception with way less ink. */
+:root {
+  color-scheme: dark;
+  --shadow-color: 0 0 0;
+  --shadow-alpha-1: 0.7;  /* deepest — for the floating island stack */
+  --shadow-alpha-2: 0.5;  /* medium — drop shadows on sheets, modals */
+  --shadow-alpha-3: 0.35; /* shallow — micro-elevation on chips */
+}
+
+/* Light theme — warm cream bg with cool slate text. Status hues track the
+   user-provided palette, not the dark scheme: primary=orange (h60),
+   secondary=sky-blue (h240), accent=pink (h330). Tertiary keeps the cyan
+   role via split-a (h210). Surface ladder uses the bg-{light,lighter}-flat
+   tier from the proposed scheme so layering stays at the same lightness
+   delta the dark theme uses. */
+:root.theme-light {
+  color-scheme: light;
+  --color-bg: oklch(0.96 0.018 85);
+  --color-surface: oklch(0.97167 0.018 85);
+  --color-surface-2: oklch(0.98333 0.018 85);
+  --color-border: oklch(0.88 0.012 85);
+  --color-text: oklch(0.48 0.018 240);
+  --color-muted: oklch(0.62 0.018 240);
+  --color-primary: oklch(0.72 0.09 60);
+  --color-secondary: oklch(0.72 0.09 240);
+  --color-accent: oklch(0.72 0.09 330);
+  --color-tertiary: oklch(0.72 0.09 210);
+  --color-success: oklch(0.72 0.18 145);
+  --color-warning: oklch(0.72 0.18 75);
+  --color-error: oklch(0.72 0.18 25);
+  --color-info: oklch(0.72 0.18 230);
+
+  --color-overlay: rgb(0 0 0 / 0.55);
+  --color-on-overlay: rgb(255 255 255);
+  --color-backdrop: rgb(0 0 0 / 0.35);
+
+  --shadow-alpha-1: 0.18;
+  --shadow-alpha-2: 0.12;
+  --shadow-alpha-3: 0.08;
 }
 
 @layer base {

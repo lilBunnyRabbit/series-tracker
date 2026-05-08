@@ -220,6 +220,6 @@
 
 <style>
   .vs {
-    text-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
+    text-shadow: 0 1px 0 rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
 </style>

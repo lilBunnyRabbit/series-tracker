@@ -11,7 +11,7 @@
 </script>
 
 {#if variant === "overlay"}
-  <span class="inline-flex items-center rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-text backdrop-blur-sm">
+  <span class="inline-flex items-center rounded bg-overlay px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-on-overlay backdrop-blur-sm">
     {label}
   </span>
 {:else}

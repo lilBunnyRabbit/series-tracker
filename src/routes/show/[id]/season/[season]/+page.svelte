@@ -508,19 +508,18 @@
      blur, and shadow stack so the season island reads as the same family
      of UI as the global tab bar. */
   .season-island {
-    background: rgba(26, 31, 38, 0.85);
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
     border: 1px solid var(--color-border);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     box-shadow:
-      0 24px 48px -12px rgb(0 0 0 / 0.7),
-      0 12px 20px -6px rgb(0 0 0 / 0.5),
-      0 4px 8px -2px rgb(0 0 0 / 0.35);
+      0 24px 48px -12px rgb(var(--shadow-color) / var(--shadow-alpha-1)),
+      0 12px 20px -6px rgb(var(--shadow-color) / var(--shadow-alpha-2)),
+      0 4px 8px -2px rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .season-island {
-      background: rgba(26, 31, 38, 0.96);
+      background: color-mix(in oklab, var(--color-bg) 96%, transparent);
     }
   }
 </style>

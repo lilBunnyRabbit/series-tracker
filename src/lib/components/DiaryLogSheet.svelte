@@ -384,7 +384,7 @@
     animation: sheet-in 280ms var(--ease-spring);
   }
   .diary-sheet::backdrop {
-    background: rgb(0 0 0 / 0.6);
+    background: var(--color-backdrop);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }

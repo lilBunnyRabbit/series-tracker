@@ -284,13 +284,22 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
     title: "v1.x — Post-1.0 polish",
     summary:
       "Small features and rough-edge fixes that didn't need to hold the v1.0 milestone. Each line gets stamped with the version that landed it.",
-    targetVersion: "1.2.0",
+    targetVersion: "1.3.0",
     groups: [
       {
         id: "just-shipped",
         title: "Just shipped",
         description: "Recent post-1.0 work that's already in the build you're running.",
         items: [
+          {
+            id: "light-theme",
+            title: "Light theme (experimental)",
+            summary:
+              "Warm-cream palette as an alternative to the dark default. Settings → Preferences → Theme picks Auto / Light / Dark — Dark is still the default; Auto follows your system. Light is still being calibrated.",
+            status: "shipped",
+            shippedIn: "1.3.0",
+            complexity: "M",
+          },
           {
             id: "picker-modes",
             title: "Picker — multi-mode pickers",
@@ -665,12 +674,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         title: "Won't ship",
         description: "Decisions made — kept here so they don't get re-litigated.",
         items: [
-          {
-            id: "no-light-theme",
-            title: "Light theme",
-            summary: "Always deferred. The dark palette IS the design.",
-            status: "wont-ship",
-          },
           {
             id: "no-ai-sentiment",
             title: "AI sentiment summary",

@@ -34,12 +34,12 @@
       <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}
     {#if typeof entry.voteAverage === "number" && entry.voteAverage > 0}
-      <div class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm">
+      <div class="absolute right-1.5 top-1.5 rounded-md bg-overlay px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-on-overlay backdrop-blur-sm">
         ★ {entry.voteAverage.toFixed(1)}
       </div>
     {/if}
     <span
-      class="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] backdrop-blur-sm"
+      class="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-overlay px-1.5 py-0.5 text-[10px] backdrop-blur-sm"
       aria-hidden="true"
     >
       <span class="h-1.5 w-1.5 rounded-full {c.dot}"></span>
@@ -83,7 +83,7 @@
     box-shadow:
       0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent),
       0 18px 40px -12px color-mix(in oklab, var(--color-primary) 35%, transparent),
-      0 4px 12px -4px rgb(0 0 0 / 0.5);
+      0 4px 12px -4px rgb(var(--shadow-color) / var(--shadow-alpha-2));
   }
   .match-card.is-winner .winner-glow {
     opacity: 1;

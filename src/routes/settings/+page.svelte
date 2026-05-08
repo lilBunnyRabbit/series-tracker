@@ -6,8 +6,9 @@
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { PACING_PRESETS } from "$lib/temptation";
+  import { theme } from "$lib/theme.svelte";
   import { clearCache, defaultLanguage, LANGUAGE_OPTIONS, ping } from "$lib/tmdb";
-  import { STATUS_LABEL } from "$lib/types";
+  import { STATUS_LABEL, THEMES } from "$lib/types";
   import type { Status, TemptationPacing } from "$lib/types";
   import {
     applyUpdate,
@@ -502,6 +503,33 @@
   <!-- Preferences -->
   <div class="space-y-4 rounded-lg border border-border bg-surface p-5">
     <h2 class="text-sm font-medium uppercase tracking-wider text-muted">Preferences</h2>
+
+    <div class="space-y-2">
+      <div>
+        <h3 class="text-sm font-medium">Theme</h3>
+        <p class="mt-0.5 block text-xs text-muted">
+          Dark is the default. Light is experimental and still being calibrated. "Auto" follows your system's light/dark setting.
+        </p>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        {#each THEMES as t (t)}
+          {@const active = theme.pref === t}
+          <button
+            type="button"
+            use:tactile
+            onclick={() => theme.set(t)}
+            aria-pressed={active}
+            class="tap-target tap-target--btn flex flex-col items-center gap-0.5 rounded-md border px-3 py-2 text-center transition-colors duration-150 {active
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border text-muted hover-text-text'}"
+          >
+            <span class="text-sm font-semibold capitalize">{t}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    <hr class="border-border" />
 
     <label class="flex items-start justify-between gap-4">
       <span class="min-w-0">

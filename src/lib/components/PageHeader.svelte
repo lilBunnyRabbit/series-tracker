@@ -77,7 +77,6 @@
     -ms-overflow-style: none;
     border-radius: 0.75rem;
     border: 1px solid var(--color-border);
-    background: rgba(26, 31, 38, 0.85);
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
   }
   /* Edge-fade mask — only painted on the side(s) that have actually
@@ -117,7 +116,7 @@
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .page-actions-desktop {
-      background: rgba(26, 31, 38, 0.96);
+      background: color-mix(in oklab, var(--color-bg) 96%, transparent);
     }
   }
 </style>

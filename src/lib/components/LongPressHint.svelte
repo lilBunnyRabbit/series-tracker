@@ -83,14 +83,13 @@
     max-width: 26rem;
     padding: 0.625rem 0.75rem;
     border-radius: 0.875rem;
-    background: rgba(26, 31, 38, 0.9);
     background: color-mix(in oklab, var(--color-bg) 92%, transparent);
     border: 1px solid var(--color-border);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     box-shadow:
-      0 12px 32px -8px rgb(0 0 0 / 0.55),
-      0 6px 14px -4px rgb(0 0 0 / 0.4);
+      0 12px 32px -8px rgb(var(--shadow-color) / var(--shadow-alpha-2)),
+      0 6px 14px -4px rgb(var(--shadow-color) / var(--shadow-alpha-3));
   }
   /* Slim left accent in primary so the toast reads as in-app chrome rather
      than a generic notification. */

@@ -61,7 +61,7 @@
     <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
 
     {#if topLeft}
-      <span class="absolute left-1.5 top-1.5 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-text backdrop-blur-sm">
+      <span class="absolute left-1.5 top-1.5 rounded bg-overlay px-1.5 py-0.5 text-[10px] font-medium text-on-overlay backdrop-blur-sm">
         {topLeft}
       </span>
     {/if}

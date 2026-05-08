@@ -377,8 +377,8 @@
     overflow: hidden;
     background: var(--color-surface-2);
     box-shadow:
-      0 24px 48px -16px rgb(0 0 0 / 0.7),
-      0 8px 16px -6px rgb(0 0 0 / 0.45);
+      0 24px 48px -16px rgb(var(--shadow-color) / var(--shadow-alpha-1)),
+      0 8px 16px -6px rgb(var(--shadow-color) / var(--shadow-alpha-2));
     transition: transform 220ms var(--ease-spring);
     display: block;
     flex-shrink: 0;
@@ -433,7 +433,7 @@
     overflow: hidden;
     /* Soft drop shadow keeps the headline legible on the backdrop fade behind
        the upper third of the title on short viewports. */
-    text-shadow: 0 2px 10px rgb(0 0 0 / 0.55);
+    text-shadow: 0 2px 10px rgb(var(--shadow-color) / var(--shadow-alpha-2));
   }
 
   /* "Where you left off" stripe — sits between the poster and the headline
@@ -581,8 +581,8 @@
     align-items: center;
     justify-content: center;
     box-shadow:
-      0 12px 24px -10px rgb(0 0 0 / 0.7),
-      0 3px 8px -2px rgb(0 0 0 / 0.45);
+      0 12px 24px -10px rgb(var(--shadow-color) / var(--shadow-alpha-1)),
+      0 3px 8px -2px rgb(var(--shadow-color) / var(--shadow-alpha-2));
   }
 
   .feed-action-label {
@@ -598,7 +598,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+    text-shadow: 0 1px 2px rgb(var(--shadow-color) / var(--shadow-alpha-2));
   }
 
   /* Short / landscape viewports: shrink everything so the absolute poster

@@ -4,6 +4,11 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-08
+
+### Added
+- Light theme (experimental). Settings → Preferences → Theme picks Auto / Light / Dark — Dark stays the default for everyone, Light pins a warm-cream palette, Auto follows your OS. The choice persists across visits and the in-app browser chrome updates with it. Light is still being calibrated, so a few surfaces may look off; report anything weird via Settings → Known issues.
+
 ## [1.2.0] - 2026-05-08
 
 ### Added

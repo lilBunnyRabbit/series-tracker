@@ -128,7 +128,7 @@
           use:tactile={{ haptic: "tick" }}
           onclick={() => step(-1)}
           aria-label="Previous image"
-          class="tap-target tap-target--icon absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl text-text backdrop-blur-sm"
+          class="tap-target tap-target--icon absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl text-on-overlay backdrop-blur-sm"
         >
           ‹
         </button>
@@ -137,11 +137,11 @@
           use:tactile={{ haptic: "tick" }}
           onclick={() => step(1)}
           aria-label="Next image"
-          class="tap-target tap-target--icon absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl text-text backdrop-blur-sm"
+          class="tap-target tap-target--icon absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl text-on-overlay backdrop-blur-sm"
         >
           ›
         </button>
-        <span class="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs tabular-nums text-text backdrop-blur-sm">
+        <span class="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs tabular-nums text-on-overlay backdrop-blur-sm">
           {zoomIndex + 1} / {images.length}
         </span>
       {/if}

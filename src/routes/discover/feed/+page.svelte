@@ -1722,7 +1722,7 @@
     animation: pop-in 180ms var(--ease-out);
   }
   .jump-dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
+    background: var(--color-backdrop);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }

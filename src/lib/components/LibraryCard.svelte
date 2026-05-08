@@ -127,7 +127,7 @@
         {/if}
         {#if typeof entry.voteAverage === "number" && entry.voteAverage > 0}
           <div
-            class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm"
+            class="absolute right-1.5 top-1.5 rounded-md bg-overlay px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-on-overlay backdrop-blur-sm"
           >
             ★ {entry.voteAverage.toFixed(1)}
           </div>
@@ -164,7 +164,7 @@
       use:tactile
       onclick={openActions}
       aria-label="Quick actions for {entry.title}"
-      class="tap-target tap-target--icon absolute right-1 top-8 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-base leading-none text-text backdrop-blur-sm"
+      class="tap-target tap-target--icon absolute right-1 top-8 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-overlay text-base leading-none text-on-overlay backdrop-blur-sm"
     >
       ⋯
     </button>

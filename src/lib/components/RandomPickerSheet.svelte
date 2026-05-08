@@ -236,11 +236,11 @@
                 <img src={pick.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
               {/if}
               {#if typeof pick.voteAverage === "number" && pick.voteAverage > 0}
-                <div class="absolute right-2 top-2 rounded-md bg-black/65 px-1.5 py-0.5 text-xs font-medium tabular-nums text-text backdrop-blur-sm">
+                <div class="absolute right-2 top-2 rounded-md bg-overlay px-1.5 py-0.5 text-xs font-medium tabular-nums text-on-overlay backdrop-blur-sm">
                   ★ {pick.voteAverage.toFixed(1)}
                 </div>
               {/if}
-              <div class="absolute bottom-2 left-2 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text backdrop-blur-sm">
+              <div class="absolute bottom-2 left-2 rounded-md bg-overlay px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-on-overlay backdrop-blur-sm">
                 {pick.source === "library" ? "From your plan" : "Trending"}
               </div>
             </div>
@@ -309,7 +309,7 @@
     animation: sheet-in 280ms var(--ease-spring);
   }
   .picker-sheet::backdrop {
-    background: rgb(0 0 0 / 0.6);
+    background: var(--color-backdrop);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }

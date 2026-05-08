@@ -339,7 +339,21 @@ export type Preferences = {
   /** Has the user seen and dismissed the "long-press a card for quick actions"
    *  hint? Set on dismiss / auto-dismiss so the toast doesn't reappear. */
   seenLongPressHint?: boolean;
+  /** Theme override. "auto" follows the OS via prefers-color-scheme; "light"
+   *  / "dark" pin the theme regardless. Defaults to "dark" when unset —
+   *  light mode is still experimental, so new users don't get flipped to
+   *  it just because their OS is on light. They opt in explicitly via the
+   *  Settings → Preferences → Theme picker. The resolved value is mirrored
+   *  to localStorage by `$lib/theme.svelte.ts` so the inline boot script
+   *  in app.html can stamp the html class before first paint without
+   *  waiting on IDB. */
+  theme?: "auto" | "light" | "dark";
 };
+
+/** All valid values for `Preferences.theme`. Source-of-truth list for the
+ *  Settings segmented control and any future theme migration logic. */
+export const THEMES = ["auto", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];
 
 export type ActionType =
   | "add"

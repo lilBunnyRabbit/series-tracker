@@ -87,7 +87,7 @@
     {/if}
 
     {#if typeof voteAverage === "number" && voteAverage > 0}
-      <div class="absolute right-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text backdrop-blur-sm">
+      <div class="absolute right-1.5 top-1.5 rounded-md bg-overlay px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-on-overlay backdrop-blur-sm">
         ★ {voteAverage.toFixed(1)}
       </div>
     {/if}
@@ -112,7 +112,7 @@
              the title pushed the year onto a second row and read as a
              duplicate badge, so the dot does all the work here. -->
         <span
-          class="inline-flex items-center rounded bg-black/65 px-1.5 py-1 backdrop-blur-sm"
+          class="inline-flex items-center rounded bg-overlay px-1.5 py-1 backdrop-blur-sm"
           title={status ? STATUS_LABEL[status] : undefined}
           aria-label={status ? STATUS_LABEL[status] : undefined}
         >

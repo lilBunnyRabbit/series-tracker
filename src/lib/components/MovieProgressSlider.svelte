@@ -139,7 +139,7 @@
     <!-- Fixed center indicator — the strip slides under it. Taller than every
          tick + slightly wider so it reads as the focal point at a glance. -->
     <div class="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
-      <div class="h-16 w-0.5 rounded-full bg-text shadow-[0_0_10px_rgba(0,0,0,0.45)]"></div>
+      <div class="h-16 w-0.5 rounded-full bg-text shadow-[0_0_10px_rgb(var(--shadow-color)/var(--shadow-alpha-2))]"></div>
     </div>
   </div>
 </div>
