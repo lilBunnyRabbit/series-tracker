@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { edgeFade } from "$lib/edge-fade";
   import { pageActions } from "$lib/page-actions.svelte";
   import type { Snippet } from "svelte";
 
@@ -62,7 +63,7 @@
 {#if actions}
   <!-- Desktop only: actions rail at top. Mobile picks them up from the
        layout's bottom rail (extension of the floating island) instead. -->
-  <nav class="page-actions-desktop mb-4 hidden sm:block" aria-label="Page actions">
+  <nav class="page-actions-desktop mb-4 hidden sm:block" aria-label="Page actions" use:edgeFade>
     <div class="page-actions-desktop-track">
       {@render actions()}
     </div>
@@ -78,6 +79,30 @@
     border: 1px solid var(--color-border);
     background: rgba(26, 31, 38, 0.85);
     background: color-mix(in oklab, var(--color-bg) 88%, transparent);
+  }
+  /* Edge-fade mask — only painted on the side(s) that have actually
+     scrollable content, driven by the `data-overflow-*` attributes the
+     `edgeFade` action stamps on the element. Radial gradient (rather than
+     a horizontal linear one) curves the alpha boundary so the mask reads
+     as part of the rounded shape instead of cutting a vertical strip. */
+  /* `:global` — see the matching block in +layout.svelte for context. */
+  :global(.page-actions-desktop[data-overflow-left="true"]:not([data-overflow-right="true"])) {
+    -webkit-mask-image: radial-gradient(circle 1.5rem at left center, transparent 0%, transparent 25%, black 100%);
+    mask-image: radial-gradient(circle 1.5rem at left center, transparent 0%, transparent 25%, black 100%);
+  }
+  :global(.page-actions-desktop[data-overflow-right="true"]:not([data-overflow-left="true"])) {
+    -webkit-mask-image: radial-gradient(circle 1.5rem at right center, transparent 0%, transparent 25%, black 100%);
+    mask-image: radial-gradient(circle 1.5rem at right center, transparent 0%, transparent 25%, black 100%);
+  }
+  :global(.page-actions-desktop[data-overflow-left="true"][data-overflow-right="true"]) {
+    -webkit-mask-image:
+      radial-gradient(circle 1.5rem at left center, transparent 0%, transparent 25%, black 100%),
+      radial-gradient(circle 1.5rem at right center, transparent 0%, transparent 25%, black 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      radial-gradient(circle 1.5rem at left center, transparent 0%, transparent 25%, black 100%),
+      radial-gradient(circle 1.5rem at right center, transparent 0%, transparent 25%, black 100%);
+    mask-composite: intersect;
   }
   .page-actions-desktop::-webkit-scrollbar {
     display: none;

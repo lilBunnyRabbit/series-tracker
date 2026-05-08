@@ -10,6 +10,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import UpdateProgressOverlay from "$lib/components/UpdateProgressOverlay.svelte";
   import { store } from "$lib/store.svelte";
+  import { edgeFade } from "$lib/edge-fade";
   import { tactile } from "$lib/tactile";
   import { tour } from "$lib/tour.svelte";
 
@@ -389,7 +390,7 @@
       out:railRise={{ duration: 180 }}
     >
       <div class="page-actions-pill">
-        <div class="page-actions-track">
+        <div class="page-actions-track" use:edgeFade>
           {@render pageActions.current()}
         </div>
       </div>
@@ -409,7 +410,7 @@
     {#if islandMode}
       <nav
         class="floating-nav sm:hidden"
-        style="padding-bottom: max(env(safe-area-inset-bottom), 0.5rem)"
+        style="padding-bottom: max(env(safe-area-inset-bottom), 1.5rem)"
         aria-label="Primary"
       >
         <div class="floating-nav-pill" data-mode={islandMode}>
@@ -490,9 +491,11 @@
     position: fixed;
     left: 0;
     right: 0;
-    /* Island middle from viewport bottom = max(safe-area, 0.5rem) + 1.75rem
-       (= island padding + half of 3.5rem pill). */
-    bottom: calc(max(env(safe-area-inset-bottom, 0px), 0.5rem) + 1.75rem);
+    /* Island middle from viewport bottom = max(safe-area, 1.5rem) + 1.75rem
+       (= island padding + half of 3.5rem pill). Must mirror the floating-nav
+       padding-bottom floor so the rail stays buried half-deep in the
+       island regardless of safe-area presence. */
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), 1.5rem) + 1.75rem);
     z-index: 39;
     display: flex;
     justify-content: center;
@@ -537,7 +540,14 @@
      fill, border, padding, and shape stay put underneath. The track itself
      is fully rounded so when chips overflow the visible width, they get
      clipped along the curved edges instead of a hard vertical line at the
-     track's leading/trailing boundary. */
+     track's leading/trailing boundary.
+     The edge-fade action stamps `data-overflow-left` / `data-overflow-right`
+     on this element when there's actually content to scroll into in that
+     direction, and the mask rules below paint a radial alpha fade only
+     on the corresponding sides. The radial gradient (rather than a
+     horizontal linear one) makes the fade boundary curve along the track's
+     pill edge, so the mask reads as part of the rounded shape instead of
+     a vertical strip cutting across it. */
   .page-actions-track {
     display: flex;
     align-items: center;
@@ -546,6 +556,28 @@
     border-radius: 9999px;
     scrollbar-width: none;
     -ms-overflow-style: none;
+  }
+  /* `:global` because the `data-overflow-*` attributes are stamped by the
+     `edgeFade` action at runtime — Svelte's static analyzer can't see
+     them in the markup, so it'd flag the selectors as unused. The class
+     is unique to this component so leaking the rule globally is fine. */
+  :global(.page-actions-track[data-overflow-left="true"]:not([data-overflow-right="true"])) {
+    -webkit-mask-image: radial-gradient(circle 1.75rem at left center, transparent 0%, transparent 25%, black 100%);
+    mask-image: radial-gradient(circle 1.75rem at left center, transparent 0%, transparent 25%, black 100%);
+  }
+  :global(.page-actions-track[data-overflow-right="true"]:not([data-overflow-left="true"])) {
+    -webkit-mask-image: radial-gradient(circle 1.75rem at right center, transparent 0%, transparent 25%, black 100%);
+    mask-image: radial-gradient(circle 1.75rem at right center, transparent 0%, transparent 25%, black 100%);
+  }
+  :global(.page-actions-track[data-overflow-left="true"][data-overflow-right="true"]) {
+    -webkit-mask-image:
+      radial-gradient(circle 1.75rem at left center, transparent 0%, transparent 25%, black 100%),
+      radial-gradient(circle 1.75rem at right center, transparent 0%, transparent 25%, black 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      radial-gradient(circle 1.75rem at left center, transparent 0%, transparent 25%, black 100%),
+      radial-gradient(circle 1.75rem at right center, transparent 0%, transparent 25%, black 100%);
+    mask-composite: intersect;
   }
   .page-actions-track::-webkit-scrollbar {
     display: none;

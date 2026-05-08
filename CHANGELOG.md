@@ -4,6 +4,12 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-08
+
+### Changed
+- Floating island sits a notch higher off the bottom edge in PWA / standalone mode — the previous offset was tight against devices without a home indicator.
+- Page-action rails (the row above the island, and the desktop top rail) now show an edge fade only on the side that's actually scrollable. Scrolled to the start? Only the right edge fades. Scrolled to the end? Only the left. No overflow at all? Both edges read clean. The fade itself is a radial gradient now so it follows the rail's rounded shape instead of cutting a vertical strip across it.
+
 ## [1.1.0] - 2026-05-08
 
 ### Added

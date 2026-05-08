@@ -284,13 +284,31 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
     title: "v1.x — Post-1.0 polish",
     summary:
       "Small features and rough-edge fixes that didn't need to hold the v1.0 milestone. Each line gets stamped with the version that landed it.",
-    targetVersion: "1.1.0",
+    targetVersion: "1.1.1",
     groups: [
       {
         id: "just-shipped",
         title: "Just shipped",
         description: "Recent post-1.0 work that's already in the build you're running.",
         items: [
+          {
+            id: "rail-edge-fade",
+            title: "Smarter edge fade on action rails",
+            summary:
+              "The page-action rail (above the island on mobile, at the top on desktop) now fades only on the side that's actually scrollable — left when you've scrolled past the start, right when there's more to the end, neither when content fits. The fade is radial so it hugs the rail's rounded shape instead of cutting a vertical band across it.",
+            status: "shipped",
+            shippedIn: "1.1.1",
+            complexity: "S",
+          },
+          {
+            id: "island-bottom-offset",
+            title: "Floating island sits higher in PWA",
+            summary:
+              "On installed / standalone devices that don't have a home-indicator safe-area inset, the bottom island used to sit tight against the screen edge. It now keeps a comfortable gap below it.",
+            status: "shipped",
+            shippedIn: "1.1.1",
+            complexity: "XS",
+          },
           {
             id: "known-issues-page",
             title: "Known issues page",
