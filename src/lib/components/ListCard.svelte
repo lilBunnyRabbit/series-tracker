@@ -73,7 +73,7 @@
       ></div>
     {/if}
 
-    <div class="relative h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-surface-2">
+    <div class="tx-card-poster relative h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-surface-2">
       {#if entry.poster}
         <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
       {/if}

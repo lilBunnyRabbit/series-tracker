@@ -181,7 +181,7 @@
         style="background-image: url('{backdrop}')"
       ></div>
     {/if}
-    <div class="relative h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
+    <div class="tx-card-poster relative h-32 w-[88px] flex-shrink-0 overflow-hidden rounded bg-surface-2">
       {#if poster}
         <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
       {/if}

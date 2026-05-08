@@ -192,7 +192,7 @@
           aria-label="More info about {headerInfo.title}"
           class="tap-target tap-target--card block w-36 sm:w-44 md:w-52"
         >
-          <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border-2 bg-surface-2 shadow-2xl {posterBorder}">
+          <div class="tx-hero-poster aspect-[2/3] w-full overflow-hidden rounded-xl border-2 bg-surface-2 shadow-2xl {posterBorder}">
             {#if headerInfo.poster}
               <img src={headerInfo.poster} alt="" class="h-full w-full object-cover" />
             {/if}

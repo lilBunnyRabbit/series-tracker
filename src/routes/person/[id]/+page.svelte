@@ -126,7 +126,7 @@
     <!-- HERO -->
     <section class="flex flex-col items-center gap-4 pt-2 text-center">
       <div class="w-40 sm:w-48">
-        <div class="aspect-[2/3] w-full overflow-hidden rounded-xl border border-border/60 bg-surface-2 shadow-2xl">
+        <div class="tx-hero-poster aspect-[2/3] w-full overflow-hidden rounded-xl border border-border/60 bg-surface-2 shadow-2xl">
           {#if detail.profile_path}
             <img src={posterUrl(detail.profile_path, "w500")} alt="" class="h-full w-full object-cover" />
           {/if}

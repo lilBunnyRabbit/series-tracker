@@ -285,6 +285,125 @@
   }
 }
 
+/* View Transitions for navigation — see the `onNavigate` hook in
+   `+layout.svelte`. Behaviour summary:
+     - hub ↔ hub navigation gets `html.nav-forward` / `html.nav-back`,
+       which picks an explicit slide animation below.
+     - everything else (hub → detail, detail → hub via back, info
+       subroutes) leaves the root unclassed, falling back to the user
+       agent's default cross-fade (with our shorter custom duration).
+   Browsers without View Transitions skip this entirely (no fallback
+   needed — pages just appear instantly, same as before). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: var(--ease-spring);
+}
+
+html.nav-forward::view-transition-old(root) {
+  animation-name: page-slide-out-left;
+  animation-fill-mode: both;
+}
+html.nav-forward::view-transition-new(root) {
+  animation-name: page-slide-in-right;
+  animation-fill-mode: both;
+}
+html.nav-back::view-transition-old(root) {
+  animation-name: page-slide-out-right;
+  animation-fill-mode: both;
+}
+html.nav-back::view-transition-new(root) {
+  animation-name: page-slide-in-left;
+  animation-fill-mode: both;
+}
+
+/* Pull the floating island out of the root snapshot so it doesn't slide
+   with the rest of the page. The default cross-fade on a named element
+   creates a "ghosted" double-image at the midpoint when both old and
+   new are simultaneously translucent — and the snapshot raster also
+   loses the live `backdrop-filter` blur. So we override to no animation
+   on either side and force the new snapshot fully opaque from t=0:
+   the user sees the new island state instantly with its blur intact,
+   and the old one snaps out of view rather than fading through.
+
+   Page-actions rail and desktop header are intentionally NOT named —
+   the rail relies on a Svelte enter/exit transition for its slide-up
+   reveal, which conflicts with View Transitions snapshotting it. The
+   desktop header has its own sticky positioning that already handles
+   most of the visual stability we'd want there. */
+.floating-nav {
+  view-transition-name: floating-nav;
+}
+::view-transition-old(floating-nav),
+::view-transition-new(floating-nav) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(floating-nav) {
+  opacity: 0;
+}
+::view-transition-new(floating-nav) {
+  opacity: 1;
+}
+
+/* Shared-element transition: poster on a card → hero poster on the
+   destination detail page. The destination always has the name; the
+   source side gets the same name set inline by the onNavigate hook,
+   only on the matching card. The browser then tweens position + size
+   between the two snapshots. */
+.tx-hero-poster {
+  view-transition-name: page-hero-poster;
+}
+::view-transition-old(page-hero-poster),
+::view-transition-new(page-hero-poster) {
+  /* A touch longer than the page fade so the poster keeps moving while
+     the rest of the page settles — sells the "this poster grew into
+     that one" effect. */
+  animation-duration: 360ms;
+  animation-timing-function: var(--ease-spring);
+}
+
+@keyframes page-slide-in-right {
+  from {
+    transform: translateX(24%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes page-slide-out-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-12%);
+    opacity: 0;
+  }
+}
+@keyframes page-slide-in-left {
+  from {
+    transform: translateX(-24%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes page-slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(12%);
+    opacity: 0;
+  }
+}
+
 /* Sheet & dialog enter animations. Kept outside @layer so component @keyframes
    imports stay simple. */
 @keyframes sheet-in {

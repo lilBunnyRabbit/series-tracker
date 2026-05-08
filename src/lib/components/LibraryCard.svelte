@@ -69,7 +69,7 @@
       style={glowStyle}
       class="tap-target tap-target--card tt-glow flex items-stretch gap-3 rounded-md border bg-surface p-2 {borderClass}"
     >
-      <div class="relative h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
+      <div class="tx-card-poster relative h-16 w-12 shrink-0 overflow-hidden rounded bg-surface-2">
         {#if entry.poster}
           <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
         {/if}
@@ -121,7 +121,7 @@
       style={glowStyle}
       class="tap-target tap-target--card tt-glow flex h-full flex-col overflow-hidden rounded-lg border bg-surface {borderClass}"
     >
-      <div class="relative aspect-[2/3] w-full bg-surface-2">
+      <div class="tx-card-poster relative aspect-[2/3] w-full bg-surface-2">
         {#if entry.poster}
           <img src={entry.poster} alt="" class="h-full w-full object-cover" loading="lazy" />
         {/if}

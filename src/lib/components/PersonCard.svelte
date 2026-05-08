@@ -23,7 +23,7 @@
   class="tap-target tap-target--card hover-zoom group flex w-[100px] flex-col gap-1.5 sm:w-[112px]"
   aria-label={name}
 >
-  <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm">
+  <div class="tx-card-poster relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 bg-surface-2 shadow-sm">
     {#if profile}
       <img src={profile} alt="" class="h-full w-full object-cover" loading="lazy" />
     {/if}

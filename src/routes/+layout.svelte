@@ -1,7 +1,7 @@
 <script lang="ts">
   import "./layout.css";
   import { browser } from "$app/environment";
-  import { afterNavigate, beforeNavigate } from "$app/navigation";
+  import { afterNavigate, beforeNavigate, onNavigate } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import { initBackTracker, smartBack } from "$lib/back.svelte";
@@ -72,6 +72,94 @@
     };
     requestAnimationFrame(tick);
   });
+
+  // View Transitions for navigation. Wraps SvelteKit's nav in
+  // `document.startViewTransition` so the browser snapshots the page,
+  // updates the DOM, and animates between snapshots.
+  //
+  // Direction:
+  //   - Hub → Hub navigation (Home / Discover / Watchlist / Search /
+  //     Profile): direction follows the tab order. Going right in the
+  //     bar = `nav-forward` (slide left → right); going left =
+  //     `nav-back` (slide right → left). Mirrors how iOS tab bars feel.
+  //   - Everything else (hub → detail, detail → hub via back, detail →
+  //     detail, info subroute, etc.): no direction class is added and
+  //     the browser falls back to its default cross-fade for the root,
+  //     which feels right for "diving into / out of" a card rather than
+  //     "moving across".
+  //
+  // Shared element:
+  //   When the destination is a `/show/N/`, `/movie/N/`, or `/person/N/`
+  //   detail page, we look for a card on the current page that links to
+  //   the same href. Its `.tx-card-poster` element is given an inline
+  //   `view-transition-name: page-hero-poster`, which matches the same
+  //   name set in CSS on the destination's `.tx-hero-poster`. The
+  //   browser tweens between the two snapshots, so the poster appears
+  //   to grow into the hero. We clear the inline name after
+  //   `transition.finished` so the source element returns to normal.
+  //
+  // Skips:
+  //   - Browsers without startViewTransition (older Safari)
+  //   - Same-path navigations (query / hash only — sliding on a filter
+  //     change feels wrong)
+  //   - prefers-reduced-motion: reduce
+  if (browser) {
+    const HUB_PATHS = ["/", "/discover/", "/watchlist/", "/search/", "/stats/"];
+    function hubIndexFor(pathname: string | undefined): number {
+      if (!pathname) return -1;
+      const rel = pathname.replace(base, "");
+      const normalized = rel === "" ? "/" : rel.endsWith("/") ? rel : rel + "/";
+      return HUB_PATHS.indexOf(normalized);
+    }
+
+    onNavigate((navigation) => {
+      if (typeof document === "undefined" || !document.startViewTransition) return;
+      const fromPath = navigation.from?.url.pathname;
+      const toPath = navigation.to?.url.pathname;
+      if (!toPath || fromPath === toPath) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      const fromIdx = hubIndexFor(fromPath);
+      const toIdx = hubIndexFor(toPath);
+      const root = document.documentElement;
+      root.classList.remove("nav-back", "nav-forward");
+      if (fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx) {
+        root.classList.add(toIdx > fromIdx ? "nav-forward" : "nav-back");
+      }
+
+      // Find the source poster for shared-element animation. Detail URLs
+      // match `/(show|movie|person)/N/`; sub-routes like `/info` and
+      // `/season/N/` are excluded so a deep link from one detail page
+      // to a related-show poster doesn't try to share with something
+      // that isn't actually on screen.
+      let sourcePoster: HTMLElement | null = null;
+      const detailMatch = toPath.match(/^(?:.+)?\/(show|movie|person)\/(\d+)\/?$/);
+      if (detailMatch) {
+        const href = `${base}/${detailMatch[1]}/${detailMatch[2]}/`;
+        // querySelector returns the first match in DOM order — close
+        // enough for the common case where the user clicked the
+        // visually-first instance. View Transitions errors hard if two
+        // elements share a name, so we deliberately mark only one.
+        const link = document.querySelector(`a[href="${href}"]`) as HTMLAnchorElement | null;
+        sourcePoster = link?.querySelector(".tx-card-poster") as HTMLElement | null;
+        if (sourcePoster) sourcePoster.style.viewTransitionName = "page-hero-poster";
+      }
+
+      return new Promise((resolve) => {
+        const transition = document.startViewTransition!(async () => {
+          resolve();
+          await navigation.complete;
+        });
+        // Always clean up the inline name and direction class — a
+        // `.finished` rejection (e.g. user navigated again mid-flight)
+        // still needs the cleanup to run.
+        transition.finished.finally(() => {
+          if (sourcePoster) sourcePoster.style.viewTransitionName = "";
+          root.classList.remove("nav-back", "nav-forward");
+        });
+      });
+    });
+  }
 
   onMount(async () => {
     versionModule.init();

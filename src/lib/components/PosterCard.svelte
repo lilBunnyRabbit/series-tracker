@@ -80,7 +80,7 @@
 >
   <div
     style={glowStyle}
-    class="tt-glow relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-surface-2 shadow-sm {posterBorder}"
+    class="tx-card-poster tt-glow relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-surface-2 shadow-sm {posterBorder}"
   >
     {#if poster}
       <img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
