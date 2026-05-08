@@ -610,6 +610,17 @@
       0 12px 20px -6px rgb(0 0 0 / 0.5),
       0 4px 8px -2px rgb(0 0 0 / 0.35);
   }
+  /* When no page-actions rail is rendered behind the top of the island
+     (its bottom strip is buried inside the island), the island has only
+     its own 88% bg between the user and the page. With the rail, that
+     overlap zone stacks rail-bg + island-bg ≈ 99% effective opacity —
+     the difference reads as "the island gets more see-through" when
+     actions go away. Bump the standalone island to ~96% so the surface
+     feels consistent in either state. */
+  :global(body:not(:has(.page-actions-rail))) .floating-nav-pill {
+    background: rgba(26, 31, 38, 0.96);
+    background: color-mix(in oklab, var(--color-bg) 96%, transparent);
+  }
 
   /* Stacked panes — both occupy the same grid cell so the cross-fade overlap
      during morph doesn't shift layout. */
