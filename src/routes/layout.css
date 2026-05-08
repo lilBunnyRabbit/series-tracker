@@ -238,12 +238,15 @@
     }
 
     /* Card border pulse on status change. The `statusPulse` action toggles
-       this class for ~700ms whenever `entry.status` changes (typically via
+       this class for ~850ms whenever `entry.status` changes (typically via
        the long-press → CardActionsSheet flow). Reads the entry's status
        hue from `--tt-c`, the same variable the temptation glow already sets
-       on each card, so no per-component plumbing needed. */
+       on each card, so no per-component plumbing needed.
+       Two-layer box-shadow: a hard ring + a softer outer wash. The hard ring
+       is what reads as "the change just happened"; the wash gives it a
+       moment to breathe instead of feeling like a hard click. */
     .is-status-pulse {
-      animation: status-pulse 700ms var(--ease-spring) both;
+      animation: status-pulse 850ms var(--ease-spring) both;
     }
   }
 }
@@ -261,13 +264,24 @@
 
 @keyframes status-pulse {
   0% {
-    box-shadow: 0 0 0 0 transparent;
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
   }
-  25% {
-    box-shadow: 0 0 0 5px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent);
+  30% {
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--tt-c, var(--color-primary)) 90%, transparent),
+      0 0 18px 6px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent);
+  }
+  60% {
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent),
+      0 0 22px 4px color-mix(in oklab, var(--tt-c, var(--color-primary)) 30%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 transparent;
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
   }
 }
 

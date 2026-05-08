@@ -58,10 +58,13 @@
     display: flex;
     justify-content: center;
     padding: 0 0.75rem;
-    /* Float above the bottom island. The island sits at
-       max(safe-area, 0.5rem) from the viewport bottom and is ~3.5rem tall;
-       0.75rem of breathing room keeps the hint from touching it. */
-    padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), 0.5rem) + 4.5rem);
+    /* Float above the floating island AND any page-actions rail attached to
+       it. On the watchlist (and other pages that register actions), the rail
+       sits ~0.5rem + 1.75rem from the bottom and is ~3.5rem tall — its top
+       edge is around 92px from the viewport bottom. 7.5rem of bottom padding
+       keeps the toast clearly above it; pages without a rail just get a bit
+       more clearance over the island, which still looks fine. */
+    padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), 0.5rem) + 7.5rem);
     pointer-events: none;
   }
   @media (min-width: 640px) {

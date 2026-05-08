@@ -215,7 +215,7 @@ export function swipeToDismiss(node: HTMLElement, options: SwipeToDismissOptions
   };
 }
 
-const STATUS_PULSE_DURATION_MS = 700;
+const STATUS_PULSE_DURATION_MS = 850;
 
 /**
  * Briefly applies `.is-status-pulse` to the host element when `status` changes
