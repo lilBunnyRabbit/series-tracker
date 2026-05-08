@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-05-08
+
+### Added
+- Hub-tab navigation now slides between pages — moving right in the bottom tab bar (e.g. Home → Discover) slides the new page in from the right; moving left slides it in from the left. Hub → detail (clicking a card) and detail → hub (back arrow) cross-fade instead, since "diving in / out" doesn't have a tab-bar direction. Skipped automatically when the OS prefers-reduced-motion is set.
+- Opening a show, movie, or person from any portrait card now animates the card's poster expanding into the destination page's hero poster — a shared-element transition that visually links the two views.
+- The floating bottom island stays anchored during page slides instead of sliding with the page. The page-actions rail (Upcoming, Pick, Surprise, etc.) also waits for the new page to land before rising into view.
+
 ## [0.23.0] - 2026-05-08
 
 ### Added

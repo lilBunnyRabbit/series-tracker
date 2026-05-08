@@ -76,6 +76,15 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "view-transitions",
+            title: "View Transitions for navigation",
+            summary:
+              "Hub-tab navigation slides between pages in the direction of the tab bar; opening a show, movie, or person from any portrait card animates the card's poster into the destination's hero. The floating island stays anchored throughout. Falls back to a cross-fade for hub→detail and detail→hub.",
+            status: "shipped",
+            shippedIn: "0.24.0",
+            complexity: "M",
+          },
+          {
             id: "rail-stagger",
             title: "Page-load stagger on rails",
             summary:
@@ -209,14 +218,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description:
           "Movement and feedback for the v1.0 'feels alive' bar. Some items will fold into a single tactile-pass release.",
         items: [
-          {
-            id: "view-transitions",
-            title: "View Transitions for navigation",
-            summary:
-              "Detail pages slide in from the right; back-navigation slides out. Shared-element transitions for posters opening into detail pages.",
-            status: "considering",
-            complexity: "M",
-          },
           {
             id: "card-pulse-status",
             title: "Card border pulse on status change",

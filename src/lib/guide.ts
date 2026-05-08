@@ -272,15 +272,16 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "mobile",
-    version: "0.17.0",
+    version: "0.24.0",
     icon: "grid",
     accent: "tertiary",
     inTour: false,
     title: "Mobile-first interaction",
-    summary: "Floating bottom island, page-actions rail, swipes, long-press, haptics.",
+    summary: "Floating bottom island, page-actions rail, swipes, long-press, haptics, page transitions.",
     body: [
       "On mobile, the bottom floating island carries either the five primary tabs (Home / Discover / Watchlist / Search / Profile on hub pages) or a back arrow + page title (on detail pages). A page-actions rail rises above it on hub pages with shortcuts like Upcoming, Pick, Surprise, Feed, Browse, and Settings.",
       "Swipe right on any discover, browse, or search-result card to open the status picker. Long-press any library card for quick actions. Drag any bottom sheet down to dismiss it. Buttons press down with a quick scale-and-spring; haptics fire on press-down (toggleable in Settings → Preferences).",
+      "Page navigation flows: jumping between hub tabs slides the new page in from the direction of the tab in the bar (Home → Discover from the right, Watchlist → Discover from the left). Tapping a card to open a show, movie, or person animates the card's poster expanding into the destination page's hero. The floating island stays anchored throughout. All of it respects prefers-reduced-motion.",
     ],
     visual: "mobile-ui",
   },
