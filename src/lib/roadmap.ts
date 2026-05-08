@@ -85,15 +85,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
             complexity: "S",
           },
           {
-            id: "card-pulse-status",
-            title: "Card border pulse on status change",
-            summary:
-              "Watchlist cards briefly halo in the new status colour whenever you flip between Watching / Plan / Completed / Dropped / Tuned in, so the change registers visually alongside the haptic.",
-            status: "shipped",
-            shippedIn: "0.23.0",
-            complexity: "S",
-          },
-          {
             id: "long-press-hint",
             title: "Long-press hint",
             summary:
@@ -225,6 +216,15 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
               "Detail pages slide in from the right; back-navigation slides out. Shared-element transitions for posters opening into detail pages.",
             status: "considering",
             complexity: "M",
+          },
+          {
+            id: "card-pulse-status",
+            title: "Card border pulse on status change",
+            summary:
+              "Brief halo in the new status colour when a card flips between Watching / Plan / Completed / Dropped / Tuned in. The 0.23.0 implementation shipped silent — outset halos are clipped by `content-visibility: auto` paint containment on the watchlist row wrapper. Needs an inset / pseudo-element redesign that lives inside the card's box.",
+            status: "in-progress",
+            complexity: "S",
+            note: "Wired but invisible in 0.23.0; clipped by paint containment.",
           },
         ],
       },

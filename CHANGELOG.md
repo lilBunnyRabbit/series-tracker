@@ -7,7 +7,6 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 ## [0.23.0] - 2026-05-08
 
 ### Added
-- Card border pulse on status change: when a card flips between Watching / Plan / Completed / Dropped / Tuned in (via long-press, the show / movie page, or anywhere else), the card briefly haloes in the new status colour so the change registers visually alongside the haptic.
 - First-time long-press hint: after a few app sessions, a one-time toast appears on Watchlist — "Tip: long-press a card for quick actions" — with a Got it button and an auto-dismiss after a few seconds. Won't reappear once seen.
 
 ### Changed
