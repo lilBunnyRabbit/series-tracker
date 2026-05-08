@@ -67,7 +67,7 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
     id: "v1.0",
     title: "v1.0 — First stable release",
     summary:
-      "A polished, recommendable build. Home reads as a real dashboard, tactile polish lands, and the in-app feature set feels complete enough to link a friend without caveats.",
+      "Shipped. Home reads as a real dashboard, the tactile pass has landed, and the in-app feature set feels complete enough to link a friend without caveats. The post-1.0 plan lives below.",
     targetVersion: "1.0.0",
     groups: [
       {
@@ -75,6 +75,15 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         title: "Just shipped",
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
+          {
+            id: "card-pulse-status",
+            title: "Card border pulse on status change",
+            summary:
+              "Brief halo in the new status colour when a card flips between Watching / Plan / Completed / Dropped / Tuned in. Renders inside the card's box so it survives paint containment on watchlist rows.",
+            status: "shipped",
+            shippedIn: "1.0.0",
+            complexity: "S",
+          },
           {
             id: "feed-jump-to",
             title: "Feed: jump to position",
@@ -249,23 +258,6 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         ],
       },
       {
-        id: "tactile",
-        title: "Tactile feel",
-        description:
-          "Movement and feedback for the v1.0 'feels alive' bar. Some items will fold into a single tactile-pass release.",
-        items: [
-          {
-            id: "card-pulse-status",
-            title: "Card border pulse on status change",
-            summary:
-              "Brief halo in the new status colour when a card flips between Watching / Plan / Completed / Dropped / Tuned in. The 0.23.0 implementation shipped silent — outset halos are clipped by `content-visibility: auto` paint containment on the watchlist row wrapper. Needs an inset / pseudo-element redesign that lives inside the card's box.",
-            status: "in-progress",
-            complexity: "S",
-            note: "Wired but invisible in 0.23.0; clipped by paint containment.",
-          },
-        ],
-      },
-      {
         id: "v1-internal",
         title: "Internal",
         description: "Tracked here for completeness — not surfaced in the in-app roadmap.",
@@ -274,8 +266,9 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
             id: "readme-rewrite",
             title: "README rewrite",
             summary:
-              "Current README still claims state lives in localStorage and predates Diary, Picker, Discover, Stats, Leaderboard, Activity, Upcoming, Person pages, Where to Watch, Share + share_target, Tour, Guide, and Temptation. Lead with a screenshot or short demo gif.",
-            status: "planned",
+              "Repo README rewritten — leads with the live URL and the actual feature inventory (Diary, Picker, Discover, Feed, Stats, Leaderboard, Activity, Upcoming, Person pages, Where to Watch, Share, Tour, Guide, Temptation). State correctly described as IDB.",
+            status: "shipped",
+            shippedIn: "1.0.0",
             complexity: "S",
             internal: true,
           },

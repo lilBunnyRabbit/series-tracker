@@ -4,6 +4,13 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-08
+
+First stable release. The v1.0 punch list is empty — Home reads as a real dashboard, the tactile pass has landed, and the in-app feature set feels complete. See Settings → Roadmap for what's next.
+
+### Fixed
+- Card border pulse on status change is now visible. The 0.23.0 implementation shipped silent — outset halos were getting clipped by paint containment on the watchlist row wrapper. The pulse now lives inside the card's box, so flipping a title between Watching / Plan / Completed / Dropped / Tuned in lands a brief halo in the new status colour.
+
 ## [0.25.0] - 2026-05-08
 
 ### Added

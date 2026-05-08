@@ -242,10 +242,23 @@
        the long-press → CardActionsSheet flow). Reads the entry's status
        hue from `--tt-c`, the same variable the temptation glow already sets
        on each card, so no per-component plumbing needed.
-       Two-layer box-shadow: a hard ring + a softer outer wash. The hard ring
-       is what reads as "the change just happened"; the wash gives it a
-       moment to breathe instead of feeling like a hard click. */
+
+       Renders on a `::before` pseudo with `position: absolute; inset: 0`
+       so the halo lives *inside* the card's box — outset shadows on the
+       host get clipped by `content-visibility: auto` paint containment on
+       watchlist row/grid wrappers (every card sits inside one). z-index 2
+       puts it above the `tt-glow::after` overlay so the pulse reads even
+       when a card is also temptation-glowing. */
     .is-status-pulse {
+      position: relative;
+    }
+    .is-status-pulse::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 2;
       animation: status-pulse 850ms var(--ease-spring) both;
     }
   }
@@ -265,23 +278,27 @@
 @keyframes status-pulse {
   0% {
     box-shadow:
-      0 0 0 0 transparent,
-      0 0 0 0 transparent;
+      inset 0 0 0 0 transparent,
+      inset 0 0 0 0 transparent;
+    background-color: transparent;
   }
   30% {
     box-shadow:
-      0 0 0 4px color-mix(in oklab, var(--tt-c, var(--color-primary)) 90%, transparent),
-      0 0 18px 6px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent);
+      inset 0 0 0 3px color-mix(in oklab, var(--tt-c, var(--color-primary)) 95%, transparent),
+      inset 0 0 28px 4px color-mix(in oklab, var(--tt-c, var(--color-primary)) 40%, transparent);
+    background-color: color-mix(in oklab, var(--tt-c, var(--color-primary)) 12%, transparent);
   }
   60% {
     box-shadow:
-      0 0 0 2px color-mix(in oklab, var(--tt-c, var(--color-primary)) 55%, transparent),
-      0 0 22px 4px color-mix(in oklab, var(--tt-c, var(--color-primary)) 30%, transparent);
+      inset 0 0 0 2px color-mix(in oklab, var(--tt-c, var(--color-primary)) 60%, transparent),
+      inset 0 0 22px 2px color-mix(in oklab, var(--tt-c, var(--color-primary)) 25%, transparent);
+    background-color: color-mix(in oklab, var(--tt-c, var(--color-primary)) 6%, transparent);
   }
   100% {
     box-shadow:
-      0 0 0 0 transparent,
-      0 0 0 0 transparent;
+      inset 0 0 0 0 transparent,
+      inset 0 0 0 0 transparent;
+    background-color: transparent;
   }
 }
 
