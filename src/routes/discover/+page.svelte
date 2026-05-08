@@ -194,25 +194,26 @@
 <PageHeader title="Discover" actions={headerActions} srOnly />
 
 <!-- Page-level filter: hides items already in the user's library across
-     every rail below. Wrapped in a labelled "Filters" group so it reads as
-     intentional page-level chrome instead of a lone chip floating between
-     the header and the trending rail — mirrors /discover/browse. -->
-<div class="mb-4 space-y-1.5">
-  <div class="text-[10px] uppercase tracking-wider text-muted">Filters</div>
-  <div class="flex flex-wrap items-center gap-2">
-    <button
-      type="button"
-      use:tactile
-      onclick={toggleHideAdded}
-      aria-pressed={hideAdded}
-      class="tap-target tap-target--chip rounded-full border px-3 py-1.5 text-xs transition-colors duration-150 {hideAdded
-        ? 'border-primary bg-primary text-bg'
-        : 'border-border text-muted hover-border-primary'}"
-    >
-      {hideAdded ? "✓ Hiding added" : "Hide added"}
-    </button>
-  </div>
-</div>
+     every rail below. Wide rounded-md button with library count on the
+     right matches the watchlist sort-sheet "Rewatchable only" filter so
+     it reads as a deliberate page-level toggle, not a lone chip. -->
+<button
+  type="button"
+  use:tactile
+  onclick={toggleHideAdded}
+  aria-pressed={hideAdded}
+  class="tap-target tap-target--btn mb-4 flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors duration-150 {hideAdded
+    ? 'border-primary bg-primary text-bg'
+    : 'border-border text-muted hover-text-text'}"
+>
+  <span class="flex items-center gap-2">
+    <Icon name="filter" size={14} />
+    <span>Hide already added</span>
+  </span>
+  <span class="text-xs tabular-nums {hideAdded ? 'opacity-80' : 'opacity-60'}">
+    {store.entries.length}
+  </span>
+</button>
 
 <section class="space-y-7">
   {#if error}
@@ -234,7 +235,7 @@
             type="button"
             use:tactile
             onclick={() => setTrendingWindow(w)}
-            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {trendingWindow === w
+            class="tap-target tap-target--chip rounded-md border px-3 py-1.5 transition-colors duration-150 {trendingWindow === w
               ? 'border-primary bg-primary text-bg'
               : 'border-border text-muted'}"
           >

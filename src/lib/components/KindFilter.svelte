@@ -6,14 +6,18 @@
   interface Props {
     value: KindKey;
     onChange: (k: KindKey) => void;
-    counts?: Record<KindKey, number>;
+    counts?: Partial<Record<KindKey, number>>;
     labels?: Partial<Record<KindKey, string>>;
+    /** Optional restricted set — e.g. the feed's TV-or-Movies-only setup
+     *  (no "All" because TMDB's discover endpoints are kind-scoped). */
+    kinds?: KindKey[];
     ariaLabel?: string;
   }
 
-  const { value, onChange, counts, labels, ariaLabel = "Media kind filter" }: Props = $props();
+  const { value, onChange, counts, labels, kinds, ariaLabel = "Media kind filter" }: Props = $props();
 
-  const KINDS: KindKey[] = ["all", "tv", "movie"];
+  const DEFAULT_KINDS: KindKey[] = ["all", "tv", "movie"];
+  const KINDS = $derived(kinds ?? DEFAULT_KINDS);
   const DEFAULT_LABELS: Record<KindKey, string> = { all: "All", tv: "TV", movie: "Movies" };
   const KIND_COLOR: Record<KindKey, { bg: string; border: string; borderSoft: string; dot: string; text: string }> = {
     all: { bg: "bg-primary", border: "border-primary", borderSoft: "border-border/60", dot: "bg-primary", text: "text-muted" },
@@ -41,7 +45,7 @@
         <span class="h-1.5 w-1.5 shrink-0 rounded-full {active ? 'bg-bg' : c.dot}" aria-hidden="true"></span>
       {/if}
       <span class="hero-tab-label">{label}</span>
-      {#if counts}
+      {#if counts && counts[k] !== undefined}
         <span
           class="tabular-nums {active
             ? 'ml-auto text-sm font-semibold text-bg/85'

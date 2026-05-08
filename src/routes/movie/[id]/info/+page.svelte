@@ -1,7 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { page } from "$app/state";
-  import DiaryLogSheet from "$lib/components/DiaryLogSheet.svelte";
   import Gallery from "$lib/components/Gallery.svelte";
   import PersonCard from "$lib/components/PersonCard.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
@@ -103,12 +102,6 @@
     store.setStatus("movie", id, s);
   }
 
-  function toggleWatched(): void {
-    if (!entry) return;
-    store.setStatus("movie", id, entry.status === "completed" ? "plan" : "completed");
-  }
-
-  let logOpen = $state(false);
   const titleHistory = $derived(detail ? store.diaryFor("movie", id) : []);
 
   const posterBorder = $derived(
@@ -211,27 +204,13 @@
 
       <!-- Action bar: icon pill row -->
       <div class="flex items-center gap-2">
-        <button
-          type="button"
-          use:tactile={{ haptic: "success" }}
-          onclick={inLibrary ? toggleWatched : () => addAs("completed")}
-          aria-pressed={status === "completed"}
-          aria-label={status === "completed" ? "Mark unwatched" : "Mark watched"}
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-xl transition-colors duration-150 {status ===
-          'completed'
-            ? 'border-primary bg-primary text-bg'
-            : 'border-border bg-surface text-text hover-border-primary hover-text-primary'}"
-        >
-          ✓
-        </button>
-
         {#if inLibrary && status}
           <button
             type="button"
             use:tactile
             onclick={() => setExistingStatus(status === "plan" ? "watching" : "plan")}
             aria-label={status === "plan" ? "Move to watching" : "Save for later"}
-            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {status ===
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border text-lg transition-colors duration-150 {status ===
             'plan'
               ? 'border-accent bg-accent text-bg'
               : 'border-border bg-surface text-text hover-border-accent'}"
@@ -239,19 +218,8 @@
             🔖
           </button>
         {:else}
-          <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.title}" as...`} variant="outline" size="md" />
+          <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.title}" as...`} variant="outline" size="icon" />
         {/if}
-
-        <button
-          type="button"
-          use:tactile
-          onclick={() => (logOpen = true)}
-          aria-label="Log a viewing"
-          title="Log a viewing"
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-secondary"
-        >
-          📓
-        </button>
 
         {#if hasTrailer}
           <button
@@ -260,7 +228,7 @@
             onclick={() => (trailerOpen = !trailerOpen)}
             aria-pressed={trailerOpen}
             aria-label="Trailer"
-            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {trailerOpen
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border text-lg transition-colors duration-150 {trailerOpen
               ? 'border-accent bg-accent text-bg'
               : 'border-border bg-surface text-text hover-border-accent'}"
           >
@@ -272,7 +240,7 @@
           href="{base}/movie/{id}/"
           use:tactile={{ haptic: false }}
           aria-label="More tracking options"
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-accent"
+          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border border-border bg-surface text-lg text-text hover-border-accent"
         >
           ⋯
         </a>
@@ -443,13 +411,4 @@
     {/if}
   </div>
 
-  <DiaryLogSheet
-    open={logOpen}
-    onClose={() => (logOpen = false)}
-    kind="movie"
-    refId={id}
-    title={detail.title}
-    poster={posterUrl(detail.poster_path, "w342")}
-    entry={entry}
-  />
 {/if}

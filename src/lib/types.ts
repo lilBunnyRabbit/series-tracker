@@ -407,8 +407,12 @@ export type DiscoverSort =
 export type FeedSession = {
   kind: "tv" | "movie";
   sort: DiscoverSort;
-  /** TMDB genre IDs (kind-specific space). */
+  /** TMDB genre IDs to AND-include. Kind-specific ID space. */
   genres: number[];
+  /** TMDB genre IDs to exclude. Maps to TMDB's `without_genres` param.
+   *  Optional for back-compat with sessions saved before this field existed —
+   *  legacy sessions read it as the empty array. */
+  excludedGenres?: number[];
   hideAdded: boolean;
   /** "tv:123" / "movie:456" — deepest item the user has reached. The save is
    *  monotonic: once recorded, only an item at a STRICTLY greater index is

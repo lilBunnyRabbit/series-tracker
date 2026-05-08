@@ -112,6 +112,20 @@ export const tour = {
     return newSinceLastSeen().length > 0;
   },
 
+  /** True iff a body paragraph or highlight tagged with `addedIn` should
+   *  be flagged as new in the current open. Only fires in update mode —
+   *  during a manual replay or first-launch tour every item is "new" to
+   *  the user, so the per-item pill would just be noise. */
+  isItemNew(addedIn: string | undefined): boolean {
+    if (!addedIn) return false;
+    if (manualOpen) return false;
+    if (!store.loaded) return false;
+    if (!store.preferences.tourSeen) return false;
+    const last = effectiveLastSeen();
+    if (!last) return false;
+    return compareSemver(addedIn, last) > 0;
+  },
+
   /** Open the full tour explicitly — used by the Replay button. Bypasses
    *  tourSeen so the user can re-view the tour any number of times. */
   show(): void {

@@ -5,8 +5,10 @@
   import { smartBack } from "$lib/back.svelte";
   import FeedCard from "$lib/components/FeedCard.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import KindFilter from "$lib/components/KindFilter.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import { portal } from "$lib/portal";
   import { store } from "$lib/store.svelte";
   import { tactile } from "$lib/tactile";
   import { discover, genreList, entryFromSearchResult } from "$lib/tmdb";
@@ -54,6 +56,20 @@
   });
   const selectedGenresSet = $derived(new Set(genres));
 
+  // Excluded genres mirror `g` but use `xg` so the URL stays back-compatible
+  // with old shared links (which never had this param). Same kind-specific
+  // ID space — clearing on `setKind` covers both.
+  const excludedGenres = $derived.by<number[]>(() => {
+    const raw = page.url.searchParams.get("xg");
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+  });
+  const excludedGenresSet = $derived(new Set(excludedGenres));
+
   const hideAdded = $derived(page.url.searchParams.get("hidden") === "1");
 
   // ---- Setup screen ----
@@ -99,24 +115,43 @@
 
   function setKind(k: Kind): void {
     if (k === kind) return;
-    // Genre IDs are kind-specific — clear when flipping so we don't carry
-    // bogus IDs across (TV id 18 ≠ Movie id 18, etc.).
-    updateParams({ kind: k, g: null });
+    // Genre IDs are kind-specific — clear both directions when flipping so we
+    // don't carry bogus IDs across (TV id 18 ≠ Movie id 18, etc.).
+    updateParams({ kind: k, g: null, xg: null });
   }
 
   function setSort(s: DiscoverSort): void {
     updateParams({ sort: s });
   }
 
-  function toggleGenre(id: number): void {
-    const next = new Set(genres);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    updateParams({ g: next.size ? [...next].sort((a, b) => a - b).join(",") : null });
+  // Tap-cycle on genre chips: neutral → include → exclude → neutral. Three
+  // taps to walk through every state. Cheaper than two gestures (tap +
+  // long-press) and more discoverable since each tap shows a visible state
+  // change. The exclude state maps to TMDB's `without_genres` param.
+  function cycleGenre(id: number): void {
+    const inIncluded = selectedGenresSet.has(id);
+    const inExcluded = excludedGenresSet.has(id);
+    const inc = new Set(genres);
+    const exc = new Set(excludedGenres);
+    if (inIncluded) {
+      // include → exclude
+      inc.delete(id);
+      exc.add(id);
+    } else if (inExcluded) {
+      // exclude → neutral
+      exc.delete(id);
+    } else {
+      // neutral → include
+      inc.add(id);
+    }
+    updateParams({
+      g: inc.size ? [...inc].sort((a, b) => a - b).join(",") : null,
+      xg: exc.size ? [...exc].sort((a, b) => a - b).join(",") : null,
+    });
   }
 
   function clearGenres(): void {
-    updateParams({ g: null });
+    updateParams({ g: null, xg: null });
   }
 
   function toggleHideAdded(): void {
@@ -128,7 +163,7 @@
     // session matches the current filters — wipe THIS filter set's saved
     // session so the auto-resume on mount doesn't snap them back. Other
     // filter sets (e.g. their Movies/Newest session) are left untouched.
-    store.removeFeedSession({ kind, sort, genres, hideAdded });
+    store.removeFeedSession({ kind, sort, genres, excludedGenres, hideAdded });
     // Push not replace — back button should bring the user back to setup
     // rather than to /discover/.
     const url = new URL(page.url);
@@ -147,6 +182,11 @@
     url.searchParams.set("sort", s.sort);
     if (s.genres.length > 0) url.searchParams.set("g", s.genres.join(","));
     else url.searchParams.delete("g");
+    if (s.excludedGenres && s.excludedGenres.length > 0) {
+      url.searchParams.set("xg", s.excludedGenres.join(","));
+    } else {
+      url.searchParams.delete("xg");
+    }
     if (s.hideAdded) url.searchParams.set("hidden", "1");
     else url.searchParams.delete("hidden");
     url.searchParams.set("start", "1");
@@ -163,6 +203,7 @@
       kind: s.kind,
       sort: s.sort,
       genres: s.genres,
+      excludedGenres: s.excludedGenres,
       hideAdded: s.hideAdded,
     });
   }
@@ -175,9 +216,13 @@
     const parts: string[] = [];
     parts.push(s.kind === "tv" ? "TV shows" : "Movies");
     parts.push(SORT_LABELS[s.sort] ?? s.sort);
-    const names = genreNamesFor(s);
+    const names = genreNamesFor(s, "include");
     if (names.length > 0) parts.push(names.join(", "));
     else if (s.genres.length > 0) parts.push(`${s.genres.length} genre${s.genres.length === 1 ? "" : "s"}`);
+    const xnames = genreNamesFor(s, "exclude");
+    const xCount = s.excludedGenres?.length ?? 0;
+    if (xnames.length > 0) parts.push(`without ${xnames.join(", ")}`);
+    else if (xCount > 0) parts.push(`without ${xCount} genre${xCount === 1 ? "" : "s"}`);
     if (s.hideAdded) parts.push("hide added");
     return parts.join(" · ");
   }
@@ -185,12 +230,14 @@
   // Resolve genre IDs → names for the kind the session belongs to. Falls
   // back to an empty array when that kind's list hasn't loaded yet — the
   // caller switches to a "N genres" fallback in that case.
-  function genreNamesFor(s: FeedSession): string[] {
+  function genreNamesFor(s: FeedSession, dir: "include" | "exclude" = "include"): string[] {
+    const ids = dir === "include" ? s.genres : (s.excludedGenres ?? []);
+    if (ids.length === 0) return [];
     const list = s.kind === "tv" ? tvGenres : movieGenres;
     if (list.length === 0) return [];
     const map = new Map(list.map((g) => [g.id, g.name]));
     const out: string[] = [];
-    for (const id of s.genres) {
+    for (const id of ids) {
       const n = map.get(id);
       if (n) out.push(n);
     }
@@ -206,11 +253,17 @@
   function describeMeta(s: FeedSession): string {
     const parts: string[] = [];
     if (s.genres.length > 0) {
-      const names = genreNamesFor(s);
+      const names = genreNamesFor(s, "include");
       if (names.length > 0) parts.push(names.join(", "));
       else parts.push(`${s.genres.length} genre${s.genres.length === 1 ? "" : "s"}`);
     } else {
       parts.push("All genres");
+    }
+    const xCount = s.excludedGenres?.length ?? 0;
+    if (xCount > 0) {
+      const xnames = genreNamesFor(s, "exclude");
+      if (xnames.length > 0) parts.push(`No ${xnames.join(", ")}`);
+      else parts.push(`No ${xCount} genre${xCount === 1 ? "" : "s"}`);
     }
     if (s.hideAdded) parts.push("Hide added");
     return parts.join(" · ");
@@ -250,6 +303,7 @@
   let feedKind = $state<Kind>("tv");
   let feedSort = $state<DiscoverSort>("popularity.desc");
   let feedGenres = $state<number[]>([]);
+  let feedExcludedGenres = $state<number[]>([]);
   let feedHideAdded = $state(false);
 
   // Captured snapshot of the resume target — read once when we enter feed
@@ -312,8 +366,11 @@
   // building 600+ heavy components for a deep session.
   const RENDER_WINDOW = 2;
 
-  // Flash-on-scroll position counter. Toggles to true when currentIndex
-  // changes, then back to false ~1.5s later. CSS does the fade.
+  // Counter fade. The pill is the tap target for the jump dialog, so it
+  // can't disappear permanently — but a constantly-visible chip distracts
+  // from the cards below. ~1.2s feels like the right floor: long enough to
+  // glance at the position, short enough that it doesn't camp on the screen
+  // during steady scrolling. Re-fires on every index change.
   let counterVisible = $state(false);
   let counterHideTimer: ReturnType<typeof setTimeout> | null = null;
   function flashCounter(): void {
@@ -322,8 +379,21 @@
     counterHideTimer = setTimeout(() => {
       counterVisible = false;
       counterHideTimer = null;
-    }, 1500);
+    }, 1200);
   }
+
+  // Quick-jump dialog state. Tapping the counter opens this; the user types
+  // an absolute item number and we re-anchor the feed onto the matching TMDB
+  // page. Useful when a session was wiped (e.g. the 0.18.0 incident) and the
+  // user knows roughly where they were — saves swiping through 1000+ cards.
+  // `jumpInput` is a string because <input bind:value> on a number-typed
+  // input would coerce to `number | null` and break the empty/clear path —
+  // we parse it ourselves in performJump().
+  let jumpOpen = $state(false);
+  let jumpInput = $state("");
+  let jumpDialog = $state<HTMLDialogElement>();
+  let jumpLoading = $state(false);
+  let jumpError = $state<string | null>(null);
 
   // Single AC for the whole feed session — aborted whenever filters change so
   // any in-flight TMDB request bails before its results race in late.
@@ -352,7 +422,13 @@
       const r = await discover(
         feedKind,
         store.apiKey,
-        { sort: feedSort, genres: feedGenres, page: pageNum, withPeople: [] },
+        {
+          sort: feedSort,
+          genres: feedGenres,
+          excludeGenres: feedExcludedGenres,
+          page: pageNum,
+          withPeople: [],
+        },
         ctrl.signal
       );
       if (ctrl.signal.aborted) return 0;
@@ -540,6 +616,7 @@
       mountFloorIdx = idx;
     });
     s.scrollTo({ top: idx * h, behavior: "instant" as ScrollBehavior });
+    flashCounter();
   }
 
   // Reset and reload whenever we enter feed phase. Filters are snapshotted
@@ -561,7 +638,9 @@
     void hideAdded;
     // Use the joined string as the dep so we re-run on any change to the
     // selected genre set without iterating the array reactively elsewhere.
+    // Same for excluded genres.
     void genres.join(",");
+    void excludedGenres.join(",");
 
     untrack(() => {
       if (ph !== "feed") {
@@ -595,6 +674,7 @@
       feedKind = kind;
       feedSort = sort;
       feedGenres = [...genres];
+      feedExcludedGenres = [...excludedGenres];
       feedHideAdded = hideAdded;
 
       // Resolve the resume target from feedSessions — sessions are keyed
@@ -604,6 +684,7 @@
         kind: feedKind,
         sort: feedSort,
         genres: feedGenres,
+        excludedGenres: feedExcludedGenres,
         hideAdded: feedHideAdded,
       });
       if (s) {
@@ -739,6 +820,7 @@
       kind: feedKind,
       sort: feedSort,
       genres: [...feedGenres],
+      excludedGenres: feedExcludedGenres.length > 0 ? [...feedExcludedGenres] : undefined,
       hideAdded: feedHideAdded,
       lastSeenKey: `${item.media_type}:${item.id}`,
       lastSeenIndex: idx,
@@ -883,6 +965,17 @@
     s.scrollTop = (currentIndex + 1) * h;
   });
 
+  // Flash the counter when the feed first paints any items — gives the user
+  // an immediate "you're at 1 / N" orientation before they've scrolled. The
+  // 0 → >0 transition only fires once per session entry, so this doesn't
+  // re-trigger when items just grow via loadNext.
+  let lastSeenLen = $state(0);
+  $effect(() => {
+    const len = items.length;
+    if (len > 0 && lastSeenLen === 0) flashCounter();
+    lastSeenLen = len;
+  });
+
   async function handleAdd(item: RecommendationItem, status: Status): Promise<void> {
     if (!store.apiKey) throw new Error("API key not set");
     const entry = await entryFromSearchResult(item, store.apiKey, status);
@@ -902,6 +995,7 @@
       kind: feedKind,
       sort: feedSort,
       genres: feedGenres,
+      excludedGenres: feedExcludedGenres,
       hideAdded: feedHideAdded,
     });
     const idx = currentIndex;
@@ -916,6 +1010,7 @@
       kind: feedKind,
       sort: feedSort,
       genres: [...feedGenres],
+      excludedGenres: feedExcludedGenres.length > 0 ? [...feedExcludedGenres] : undefined,
       hideAdded: feedHideAdded,
       lastSeenKey: cur?.lastSeenKey ?? anchorKey,
       lastSeenIndex: cur?.lastSeenIndex ?? idx,
@@ -994,24 +1089,173 @@
   // ~10000 items — but we display the full universe size since that's
   // what the user expects (they don't think about API quirks).
   const TMDB_PAGE_SIZE = 20;
-  const counterText = $derived.by(() => {
-    if (items.length === 0) return "";
-    const page = itemPages[currentIndex];
+  // TMDB caps `discover` pagination at page 500 regardless of how big
+  // `total_results` is — past that the API 422s. So the user can only ever
+  // reach 10000 items, even if the universe is larger. The jump dialog
+  // clamps to this so we never try to load page 600.
+  const MAX_FEED_ITEMS = 500 * TMDB_PAGE_SIZE;
+
+  const currentAbsolute = $derived.by(() => {
+    if (items.length === 0) return 0;
+    const p = itemPages[currentIndex];
     // No page tag (shouldn't happen post-load) or out-of-bounds: fall back
-    // to the relative counter so we still show *something* truthy.
-    if (!page || currentIndex < 0 || currentIndex >= items.length) {
-      return `${currentIndex + 1} / ${items.length}`;
+    // to the relative index so we still show *something* truthy.
+    if (!p || currentIndex < 0 || currentIndex >= items.length) {
+      return currentIndex + 1;
     }
     // Walk back through itemPages to find where this page started in the
     // loaded list — gives us the user's index within their current TMDB
     // page (0..19), which combines with page number for the absolute idx.
     let pageStart = currentIndex;
-    while (pageStart > 0 && itemPages[pageStart - 1] === page) pageStart--;
+    while (pageStart > 0 && itemPages[pageStart - 1] === p) pageStart--;
     const positionInPage = currentIndex - pageStart;
-    const numerator = (page - 1) * TMDB_PAGE_SIZE + positionInPage + 1;
-    if (totalResults <= 0) return `${numerator}`;
-    return `${numerator} / ${totalResults}`;
+    return (p - 1) * TMDB_PAGE_SIZE + positionInPage + 1;
   });
+
+  const counterText = $derived.by(() => {
+    if (items.length === 0) return "";
+    if (totalResults <= 0) return `${currentAbsolute}`;
+    return `${currentAbsolute} / ${totalResults}`;
+  });
+
+  const jumpMax = $derived(Math.min(totalResults || MAX_FEED_ITEMS, MAX_FEED_ITEMS));
+
+  function openJump(): void {
+    if (items.length === 0) return;
+    jumpInput = String(currentAbsolute);
+    jumpError = null;
+    jumpOpen = true;
+  }
+
+  function closeJump(): void {
+    if (jumpLoading) return;
+    jumpOpen = false;
+    jumpError = null;
+  }
+
+  function onJumpDialogClose(): void {
+    jumpOpen = false;
+    jumpError = null;
+  }
+
+  // Open the native <dialog> as a modal once Svelte has mounted it. Same
+  // pattern as the action sheets — the {#if} below lazy-mounts so we don't
+  // carry a hidden dialog around when the feed isn't open.
+  $effect(() => {
+    if (!jumpOpen) return;
+    const d = jumpDialog;
+    if (!d || d.open) return;
+    d.showModal();
+    // Defer focus to next frame: the dialog's own opening animation grabs
+    // focus first, and a same-tick `.focus()` gets clobbered.
+    requestAnimationFrame(() => {
+      const input = d.querySelector<HTMLInputElement>('input[name="jump-target"]');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  });
+
+  async function performJump(): Promise<void> {
+    if (jumpLoading) return;
+    const raw = jumpInput.trim();
+    if (raw === "") {
+      jumpError = "Enter a position number.";
+      return;
+    }
+    const target = Number.parseInt(raw, 10);
+    if (!Number.isFinite(target) || target < 1) {
+      jumpError = "Enter a position number.";
+      return;
+    }
+    const clamped = Math.min(Math.max(1, target), jumpMax);
+    const targetPage = Math.max(1, Math.ceil(clamped / TMDB_PAGE_SIZE));
+
+    jumpLoading = true;
+    jumpError = null;
+    try {
+      // Reset the loaded window so loadInitial("replace") gives us a clean
+      // slate at the target page. Mirror the entry-effect reset so the
+      // sparse window doesn't keep stale items from before the jump.
+      if (dataCtrl) dataCtrl.abort();
+      dataCtrl = new AbortController();
+      const ctrl = dataCtrl;
+      items = [];
+      itemPages = [];
+      firstLoadedPage = 0;
+      lastLoadedPage = 0;
+      feedError = null;
+      pendingForward = false;
+
+      await loadInitial(targetPage);
+      if (ctrl.signal.aborted) return;
+      if (items.length === 0) {
+        jumpError = "No items found at that position.";
+        return;
+      }
+
+      // hideAdded can leave a TMDB page with fewer than 20 visible items, so
+      // the in-page offset might overshoot. Clamp to what we actually got.
+      const positionInPage = (clamped - 1) % TMDB_PAGE_SIZE;
+      const idx = Math.min(positionInPage, items.length - 1);
+
+      const s = scroller;
+      if (!s) {
+        jumpError = "Scroll surface not ready.";
+        return;
+      }
+      let h = s.clientHeight;
+      if (h <= 0) {
+        for (let attempt = 0; attempt < 8; attempt++) {
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+          if (ctrl.signal.aborted) return;
+          h = s.clientHeight;
+          if (h > 0) break;
+        }
+      }
+      if (h <= 0) {
+        jumpError = "Layout not ready, try again.";
+        return;
+      }
+
+      flushSync(() => {
+        currentIndex = idx;
+        // Reset the high-water floor to here. Subsequent forward scrolls
+        // save normally; backward nudges below this point won't overwrite
+        // the explicit jump target.
+        mountFloorIdx = idx;
+      });
+      s.scrollTo({ top: idx * h, behavior: "instant" as ScrollBehavior });
+      flashCounter();
+
+      // Persist the jump as the new resume target. An explicit jump means
+      // "this is where I am now" — overrides whatever the previous saved
+      // position was. Without this, closing the app right after jumping
+      // would resume to the OLD position on next visit.
+      const item = items[idx];
+      if (item) {
+        store.upsertFeedSession({
+          kind: feedKind,
+          sort: feedSort,
+          genres: [...feedGenres],
+          excludedGenres: feedExcludedGenres.length > 0 ? [...feedExcludedGenres] : undefined,
+          hideAdded: feedHideAdded,
+          lastSeenKey: `${item.media_type}:${item.id}`,
+          lastSeenIndex: idx,
+          lastSeenPage: itemPages[idx] ?? targetPage,
+          addedDuringSession: addedKeys.length > 0 ? [...addedKeys] : undefined,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      jumpOpen = false;
+    } catch (e) {
+      jumpError = e instanceof Error ? e.message : String(e);
+    } finally {
+      jumpLoading = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -1033,7 +1277,7 @@
         <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">
           Saved feeds
         </div>
-        {#each savedSessions as s (s.kind + "|" + s.sort + "|" + s.genres.join(",") + "|" + s.hideAdded)}
+        {#each savedSessions as s (s.kind + "|" + s.sort + "|" + s.genres.join(",") + "|x:" + (s.excludedGenres ?? []).join(",") + "|" + s.hideAdded)}
           <!-- Two side-by-side targets so a stray tap on the small remove
                icon never fires the resume action and vice versa. The
                resume button carries kind-specific colour (TV vs Movies)
@@ -1138,23 +1382,13 @@
 
     <div class="space-y-3">
       <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">Show me</div>
-      <div class="flex gap-1 text-xs" role="tablist" aria-label="Media kind">
-        {#each VALID_KIND as k (k)}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={kind === k}
-            use:tactile
-            onclick={() => setKind(k)}
-            class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {kind ===
-            k
-              ? 'border-primary bg-primary text-bg'
-              : 'hover-text-text border-border text-muted'}"
-          >
-            {k === "tv" ? "TV shows" : "Movies"}
-          </button>
-        {/each}
-      </div>
+      <KindFilter
+        value={kind}
+        onChange={(k) => setKind(k as Kind)}
+        kinds={["tv", "movie"]}
+        labels={{ tv: "TV shows", movie: "Movies" }}
+        ariaLabel="Media kind"
+      />
     </div>
 
     <div class="space-y-3">
@@ -1177,29 +1411,41 @@
       <div class="space-y-2">
         <div class="flex items-center gap-2 text-[10px] tracking-wider text-muted uppercase">
           Genres
-          {#if selectedGenresSet.size > 0}
+          {#if selectedGenresSet.size > 0 || excludedGenresSet.size > 0}
             <button
               type="button"
               use:tactile={{ haptic: "warn" }}
               onclick={clearGenres}
               class="tap-target hover-text-error rounded px-1 text-muted"
             >
-              Clear · {selectedGenresSet.size}
+              Clear · {selectedGenresSet.size + excludedGenresSet.size}
             </button>
           {/if}
         </div>
+        <p class="-mt-1 text-[11px] normal-case text-muted">
+          Tap to include · tap again to exclude.
+        </p>
         <div class="flex flex-wrap gap-1.5 text-xs">
           {#each availableGenres as g (g.id)}
-            {@const on = selectedGenresSet.has(g.id)}
+            {@const included = selectedGenresSet.has(g.id)}
+            {@const excluded = excludedGenresSet.has(g.id)}
             <button
               type="button"
               use:tactile
-              onclick={() => toggleGenre(g.id)}
-              aria-pressed={on}
-              class="tap-target tap-target--chip rounded-full border px-3 py-1.5 transition-colors duration-150 {on
+              onclick={() => cycleGenre(g.id)}
+              aria-pressed={included}
+              aria-label={included
+                ? `${g.name} (included) — tap to exclude`
+                : excluded
+                  ? `${g.name} (excluded) — tap to clear`
+                  : `${g.name} — tap to include`}
+              class="tap-target tap-target--chip rounded-md border px-3 py-1.5 transition-colors duration-150 {included
                 ? 'border-primary bg-primary text-bg'
-                : 'hover-text-text border-border text-muted'}"
+                : excluded
+                  ? 'border-error/70 bg-error/10 text-error'
+                  : 'hover-text-text border-border text-muted'}"
             >
+              {#if excluded}<span aria-hidden="true" class="mr-0.5 font-semibold">−</span>{/if}
               {g.name}
             </button>
           {/each}
@@ -1321,19 +1567,89 @@
         {/if}
       </div>
 
-      <!-- Position counter — flashes top-right when the active card changes,
-           fades out 1.5s after the last index change. Tabular nums so the
-           digits don't jiggle as the count grows. -->
-      <div
-        class="feed-counter"
+      <!-- Position counter — top-right pill that flashes in on every index
+           change and lingers ~4.5s before fading out. Tappable while visible
+           to open the quick-jump dialog (and stays in the DOM faded so the
+           jump dialog itself can leave it on screen). Tabular nums so digits
+           don't jiggle as the count grows. -->
+      <button
+        type="button"
+        use:tactile={{ haptic: false }}
+        onclick={openJump}
+        aria-label="Jump to position"
+        aria-hidden={!counterVisible}
+        tabindex={counterVisible ? 0 : -1}
+        class="feed-counter tap-target"
         class:feed-counter--visible={counterVisible}
-        aria-live="polite"
-        aria-atomic="true"
       >
-        {counterText}
-      </div>
+        <span aria-hidden="true">{counterText}</span>
+        <Icon name="search" size={11} />
+      </button>
     {/if}
   </div>
+
+  {#if jumpOpen}
+    <dialog
+      bind:this={jumpDialog}
+      use:portal
+      onclose={onJumpDialogClose}
+      class="jump-dialog w-[min(20rem,92vw)] max-w-[92vw] overflow-hidden border border-border bg-surface p-0 text-text shadow-2xl"
+    >
+      <form
+        class="space-y-4 p-5"
+        onsubmit={(e) => {
+          e.preventDefault();
+          void performJump();
+        }}
+      >
+        <header class="min-w-0">
+          <p class="text-xs uppercase tracking-wider text-muted">Jump to position</p>
+          <h2 class="mt-0.5 text-base font-semibold">
+            Currently at <span class="tabular-nums">{currentAbsolute}</span>
+          </h2>
+        </header>
+
+        <label class="block">
+          <span class="mb-1.5 block text-xs text-muted">
+            Position (1{jumpMax > 0 ? `–${jumpMax}` : ""})
+          </span>
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            name="jump-target"
+            bind:value={jumpInput}
+            disabled={jumpLoading}
+            class="w-full rounded-md border border-border bg-bg px-3 py-2 text-base text-text tabular-nums focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
+
+        {#if jumpError}
+          <p class="text-xs text-error">{jumpError}</p>
+        {/if}
+
+        <div class="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            use:tactile={{ haptic: false }}
+            onclick={closeJump}
+            disabled={jumpLoading}
+            class="tap-target tap-target--btn rounded-md px-3 py-1.5 text-sm text-muted hover-text-text disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            use:tactile={{ haptic: "success" }}
+            disabled={jumpLoading}
+            class="tap-target tap-target--btn rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-bg disabled:opacity-50"
+          >
+            {jumpLoading ? "Jumping…" : "Jump"}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  {/if}
 {/if}
 
 <style>
@@ -1348,15 +1664,20 @@
     position: relative;
   }
 
-  /* Top-right position counter. Hidden by default, fades in for ~1.5s
-     after each index change. Tabular nums + small letter spacing so
-     "5 / 47" reads as a unit, not three separate things. */
+  /* Top-right position counter. Flashes in on every index change, lingers
+     ~4.5s, then fades out — the timer + visibility toggle live in the
+     script. While faded the pill is `pointer-events: none` so a stray tap
+     can't open the jump dialog from an invisible target; surfacing it
+     again is one swipe / scroll gesture away. */
   .feed-counter {
     position: absolute;
     top: max(env(safe-area-inset-top), 0.875rem);
     right: 0.875rem;
     z-index: 6;
-    padding: 0.25rem 0.625rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3125rem 0.6875rem;
     border-radius: 9999px;
     border: 1px solid var(--color-border);
     background: color-mix(in oklab, var(--color-surface) 85%, transparent);
@@ -1367,16 +1688,52 @@
     letter-spacing: 0.04em;
     color: var(--color-text);
     font-variant-numeric: tabular-nums;
+    cursor: pointer;
     pointer-events: none;
     opacity: 0;
     transform: translateY(-4px);
     transition:
-      opacity 200ms ease-out,
-      transform 200ms ease-out;
+      opacity 250ms ease-out,
+      transform 250ms ease-out,
+      border-color 150ms ease-out,
+      color 150ms ease-out;
   }
   .feed-counter--visible {
     opacity: 1;
     transform: translateY(0);
+    pointer-events: auto;
+  }
+  .feed-counter--visible:hover,
+  .feed-counter--visible:focus-visible {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    outline: none;
+  }
+
+  /* Quick-jump dialog. Centered small modal — input + confirm — not a
+     bottom sheet because the feed already locks body scroll, and a sheet
+     under the position counter would feel disconnected. Modal `<dialog>`
+     handles backdrop, focus trap, and Escape natively. */
+  .jump-dialog {
+    margin: auto;
+    border-radius: 0.875rem;
+  }
+  .jump-dialog[open] {
+    animation: pop-in 180ms var(--ease-out);
+  }
+  .jump-dialog::backdrop {
+    background: rgb(0 0 0 / 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .jump-dialog[open]::backdrop {
+    animation: backdrop-in 200ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .jump-dialog[open],
+    .jump-dialog[open]::backdrop {
+      animation: none;
+    }
   }
 
   .feed-scroller {

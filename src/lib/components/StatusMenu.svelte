@@ -13,7 +13,7 @@
     busy?: boolean;
     onSelect: (status: Status) => void | Promise<void>;
     variant?: "primary" | "outline";
-    size?: "sm" | "md";
+    size?: "sm" | "md" | "icon";
     title?: string;
     /** Extra classes appended to the trigger button (e.g. "w-full" inside grids). */
     class?: string;
@@ -86,7 +86,11 @@
   const triggerClass = $derived(
     [
       "tap-target tap-target--btn rounded-md font-medium disabled:cursor-not-allowed disabled:opacity-50",
-      size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
+      size === "icon"
+        ? "flex h-12 w-12 items-center justify-center text-lg"
+        : size === "sm"
+          ? "px-3 py-1.5 text-xs"
+          : "px-4 py-2 text-sm",
       variant === "primary" ? "bg-primary text-bg" : "border border-border",
       extraClass,
     ]

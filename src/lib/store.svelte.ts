@@ -102,15 +102,19 @@ function migrate(parsed: PersistedV10): Store {
 }
 
 /** Stable signature for grouping/looking-up feed sessions by filter set.
- *  Genres are sorted on save so positional comparison is enough. */
+ *  Genres (both directions) are sorted on save so positional comparison is
+ *  enough. Excluded genres get their own slot in the key so a session that
+ *  excludes Horror is distinct from one that includes everything else. */
 function feedFilterKey(s: {
   kind: FeedSession["kind"];
   sort: FeedSession["sort"];
   genres: number[];
+  excludedGenres?: number[];
   hideAdded: boolean;
 }): string {
   const g = [...s.genres].sort((a, b) => a - b).join(",");
-  return `${s.kind}|${s.sort}|${g}|${s.hideAdded ? "1" : "0"}`;
+  const xg = [...(s.excludedGenres ?? [])].sort((a, b) => a - b).join(",");
+  return `${s.kind}|${s.sort}|${g}|x:${xg}|${s.hideAdded ? "1" : "0"}`;
 }
 
 function makeDiaryId(): string {
@@ -431,6 +435,7 @@ function createStore() {
       kind: FeedSession["kind"];
       sort: FeedSession["sort"];
       genres: number[];
+      excludedGenres?: number[];
       hideAdded: boolean;
     }): FeedSession | null {
       const key = feedFilterKey(filters);
@@ -455,6 +460,7 @@ function createStore() {
       kind: FeedSession["kind"];
       sort: FeedSession["sort"];
       genres: number[];
+      excludedGenres?: number[];
       hideAdded: boolean;
     }): void {
       const key = feedFilterKey(filters);
@@ -976,9 +982,12 @@ function createStore() {
         }
       }
       withTimestamp(e);
-      // "Completed" or "Dropped" wraps the title up — temptation resets to 0.
+      // "Completed" wraps the title up cleanly — temptation resets to 0 so a
+      // long-finished show stops nudging the user. "Dropped" deliberately
+      // does NOT reset: the user already lost interest, and forcing the
+      // score to 0 would mask that signal as if they'd just finished it.
       // Other status flips don't reset; the score keeps drifting under decay.
-      if (status === "completed" || status === "dropped") {
+      if (status === "completed") {
         applyKick(e, "marked-finished");
       }
       pushAction({
@@ -1129,8 +1138,11 @@ function createStore() {
       else e.rating = next;
       withTimestamp(e);
       // Crossing into the high-rating band fires once; nudges 9→10 don't
-      // double-bump the score.
-      if (isHigh && !wasHigh) applyKick(e, "rated-high", `rated ${next}`);
+      // double-bump the score. Only nudges active titles — rating a
+      // completed or dropped show is retrospective and shouldn't push it
+      // back up the watchlist.
+      const active = e.status === "watching" || e.status === "plan" || e.status === "tuned";
+      if (active && isHigh && !wasHigh) applyKick(e, "rated-high", `rated ${next}`);
       pushAction({
         type: "rating",
         kind,

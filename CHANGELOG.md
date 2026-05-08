@@ -4,6 +4,29 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-05-08
+
+### Added
+- Feed: tap the position counter (top-right) to jump to any item by number — useful for getting back to where you were when a 1000+ swipe streak got reset.
+- Feed: genre chips are now three-state. First tap includes the genre, second tap excludes it (red border, "−" prefix), third tap clears. Excludes map to TMDB's "without genres", so you can browse "everything but Horror" without hand-rolling filters.
+- Picker: bracket and result cards now show your watched-episode count, your rating, and a "↻" mark for rewatchable picks — helps you weigh head-to-heads without leaving the bracket.
+- "What's new" tour: when a guide section is bumped because a single paragraph or highlight changed, only that item gets a "New" pill — so you can spot the change inside an updated section instead of re-reading the whole thing.
+
+### Changed
+- Filter chips across Feed, Picker, Surprise, and Discover are now squared-off (rounded-border) to match the rest of the app's controls.
+- Feed: TV / Movies toggle on the setup screen now uses the same kind-tabs style as Search.
+- Discover: "Hide already added" toggle is now a labeled filter button on top of the page (with library count) instead of a small chip — fits the watchlist pattern.
+- Show & movie info pages: action buttons (Save, Trailer, More) are unified to the same rounded-border square shape so the Add-status menu trigger lines up with the rest of the row.
+- Feed position counter fades faster (~1.2s) after each swipe so it doesn't camp on the screen.
+
+### Fixed
+- Dropping a show no longer resets its temptation score to zero — drop is a "lost interest" signal, not a clean wrap-up.
+- Rating a completed or dropped title no longer bumps its temptation back up — rating becomes purely retrospective for closed titles.
+- Feed: typing a position into the jump dialog and pressing Enter no longer crashes.
+
+### Removed
+- Show & movie info pages: the inline ✓ "Mark watched", "+ Watched S{N} E{N}", and 📓 "Log a viewing" buttons are gone. Use the status menu / tracking page for those — the info page is now read-only metadata + Save / Trailer / More.
+
 ## [0.24.0] - 2026-05-08
 
 ### Added

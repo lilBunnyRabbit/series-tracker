@@ -289,6 +289,31 @@
     return "Movie";
   }
 
+  // Per-entry progress + rating hint for the bracket card. Returns null when
+  // the entry has nothing notable to surface — keeps the third meta line off
+  // the DOM in the empty case rather than showing a blank gap.
+  function entryHint(e: Entry): string | null {
+    const parts: string[] = [];
+    if (e.kind === "tv") {
+      const seasons = effectiveSeasons(e);
+      const total = seasons.reduce((a, s) => a + s.episodeCount, 0);
+      const watched = seasons.reduce((a, s) => a + (e.progress[s.number] ?? 0), 0);
+      if (total > 0 && watched >= total && e.status === "completed") {
+        parts.push("Completed");
+      } else if (watched > 0) {
+        parts.push(`${watched}/${total} watched`);
+      }
+    } else if (e.kind === "movie") {
+      if (e.watched) parts.push("Watched");
+      else if (typeof e.progress === "number" && e.progress > 0) parts.push("Started");
+    }
+    if (typeof e.rating === "number" && e.rating > 0) {
+      parts.push(`★ ${e.rating}`);
+    }
+    if (e.rewatchable) parts.push("↻");
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }
+
   function entryHref(e: Entry): string {
     return e.kind === "tv" ? `${base}/show/${e.id}/` : `${base}/movie/${e.id}/`;
   }
@@ -315,7 +340,7 @@
               use:tactile
               onclick={() => toggleStatus(s)}
               aria-pressed={active}
-              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
+              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-md border px-3 py-1.5 transition-colors duration-150 {active
                 ? `${c.border} ${c.bg} text-bg`
                 : 'border-border text-muted hover-text-text'}"
             >
@@ -338,7 +363,7 @@
               use:tactile
               onclick={() => (kindFilter = k)}
               aria-pressed={kindFilter === k}
-              class="tap-target tap-target--chip max-w-56 grow rounded-full border px-3 py-1.5 text-center transition-colors duration-150 {kindFilter === k
+              class="tap-target tap-target--chip max-w-56 grow rounded-md border px-3 py-1.5 text-center transition-colors duration-150 {kindFilter === k
                 ? 'border-secondary bg-secondary text-bg'
                 : 'border-border text-muted hover-text-text'}"
             >
@@ -362,7 +387,7 @@
               use:tactile
               onclick={() => setProgress(p)}
               aria-pressed={active}
-              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-full border px-3 py-1.5 transition-colors duration-150 {active
+              class="tap-target tap-target--chip flex max-w-56 grow items-center justify-between gap-3 rounded-md border px-3 py-1.5 transition-colors duration-150 {active
                 ? 'border-secondary bg-secondary text-bg'
                 : 'border-border text-muted hover-text-text'}"
             >
@@ -502,6 +527,14 @@
             <span class="tabular-nums">{entryYear(w)}</span>
             <span aria-hidden="true">·</span>
             <span>{entryMeta(w)}</span>
+          </p>
+        {/if}
+        {#if entryHint(w)}
+          <p
+            class="text-xs tabular-nums text-text/70"
+            in:fly={{ y: 8, duration: 320, easing: backOut, delay: 280 }}
+          >
+            {entryHint(w)}
           </p>
         {/if}
         {#if w.notes && w.notes.trim()}
@@ -695,6 +728,12 @@
         {#if entryYear(e)}<span aria-hidden="true">·</span>{/if}
         <span>{entryMeta(e)}</span>
       </div>
+      {#if entryHint(e)}
+        <!-- Progress + rating + rewatchable hint. Helps the user weigh "have
+             I started this? did I love it?" mid-bracket without opening the
+             title's tracking page. -->
+        <div class="mt-0.5 truncate text-[11px] tabular-nums text-text/70">{entryHint(e)}</div>
+      {/if}
       {#if e.notes && e.notes.trim()}
         <!-- Surface the user's note here so the bracket pick has the context
              they wrote when adding the title (e.g. who recommended it, why

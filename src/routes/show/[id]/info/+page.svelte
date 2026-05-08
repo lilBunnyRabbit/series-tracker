@@ -1,7 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { page } from "$app/state";
-  import DiaryLogSheet from "$lib/components/DiaryLogSheet.svelte";
   import Gallery from "$lib/components/Gallery.svelte";
   import PersonCard from "$lib/components/PersonCard.svelte";
   import PosterCard from "$lib/components/PosterCard.svelte";
@@ -148,38 +147,6 @@
     store.setStatus("tv", id, s);
   }
 
-  function toggleWatched(): void {
-    if (!entry || entry.kind !== "tv") return;
-    store.setStatus("tv", id, entry.status === "completed" ? "watching" : "completed");
-  }
-
-  // Next-episode label for the inline +ep button. Returns null when the show
-  // is fully watched (or not in library), which hides the button. Walks only
-  // the seasons that count for completion (specials excluded by default).
-  const nextEp = $derived.by<{ season: number; episode: number; total: number } | null>(() => {
-    if (!entry || entry.kind !== "tv") return null;
-    for (const s of effectiveSeasons(entry)) {
-      const cur = entry.progress[s.number] ?? 0;
-      if (cur < s.episodeCount) {
-        return { season: s.number, episode: cur + 1, total: s.episodeCount };
-      }
-    }
-    return null;
-  });
-
-  let bumpFlash = $state(false);
-  let flashTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function bumpNextEpisode(): void {
-    if (!entry || entry.kind !== "tv") return;
-    if (!store.incrementCurrent(id)) return;
-    bumpFlash = true;
-    if (flashTimer) clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => (bumpFlash = false), 600);
-  }
-
-  // Diary log sheet — populated from this title's data on open.
-  let logOpen = $state(false);
   const titleHistory = $derived(detail ? store.diaryFor("tv", id) : []);
 
   const posterBorder = $derived(
@@ -283,27 +250,13 @@
 
       <!-- Action bar: icon pill row -->
       <div class="flex items-center gap-2">
-        <button
-          type="button"
-          use:tactile={{ haptic: "success" }}
-          onclick={inLibrary ? toggleWatched : () => addAs("completed")}
-          aria-pressed={status === "completed"}
-          aria-label={status === "completed" ? "Mark unwatched" : "Mark watched"}
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-xl transition-colors duration-150 {status ===
-          'completed'
-            ? 'border-primary bg-primary text-bg'
-            : 'border-border bg-surface text-text hover-border-primary hover-text-primary'}"
-        >
-          ✓
-        </button>
-
         {#if inLibrary && status}
           <button
             type="button"
             use:tactile
             onclick={() => setExistingStatus(status === "plan" ? "watching" : "plan")}
             aria-label={status === "plan" ? "Move to watching" : "Save for later"}
-            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {status ===
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border text-lg transition-colors duration-150 {status ===
             'plan'
               ? 'border-accent bg-accent text-bg'
               : 'border-border bg-surface text-text hover-border-accent'}"
@@ -311,19 +264,8 @@
             🔖
           </button>
         {:else}
-          <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.name}" as...`} variant="outline" size="md" />
+          <StatusMenu label="🔖" onSelect={addAs} title={`Add "${detail.name}" as...`} variant="outline" size="icon" />
         {/if}
-
-        <button
-          type="button"
-          use:tactile
-          onclick={() => (logOpen = true)}
-          aria-label="Log a viewing"
-          title="Log a viewing"
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-secondary"
-        >
-          📓
-        </button>
 
         {#if hasTrailer}
           <button
@@ -332,7 +274,7 @@
             onclick={() => (trailerOpen = !trailerOpen)}
             aria-pressed={trailerOpen}
             aria-label="Trailer"
-            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border text-lg transition-colors duration-150 {trailerOpen
+            class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border text-lg transition-colors duration-150 {trailerOpen
               ? 'border-accent bg-accent text-bg'
               : 'border-border bg-surface text-text hover-border-accent'}"
           >
@@ -344,30 +286,12 @@
           href="{base}/show/{id}/"
           use:tactile={{ haptic: false }}
           aria-label="More tracking options"
-          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-lg text-text hover-border-accent"
+          class="tap-target tap-target--icon flex h-12 w-12 items-center justify-center rounded-md border border-border bg-surface text-lg text-text hover-border-accent"
         >
           ⋯
         </a>
       </div>
 
-      <!-- Inline track-next: bumps the next unwatched episode without leaving
-           the page. Only shown for in-library shows that still have episodes
-           left. -->
-      {#if inLibrary && nextEp}
-        <button
-          type="button"
-          use:tactile={{ haptic: "success" }}
-          onclick={bumpNextEpisode}
-          aria-label="Mark S{nextEp.season} E{nextEp.episode} watched"
-          class="tap-target tap-target--btn flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors duration-150 {bumpFlash
-            ? 'border-primary bg-primary text-bg'
-            : 'border-border bg-surface hover-border-primary hover-text-primary'}"
-        >
-          <span class="text-base leading-none">+</span>
-          <span>Watched S{nextEp.season} E{nextEp.episode}</span>
-          <span class="text-[10px] tabular-nums text-muted">{nextEp.episode}/{nextEp.total}</span>
-        </button>
-      {/if}
     </section>
     </div>
 
@@ -633,13 +557,4 @@
     {/if}
   </div>
 
-  <DiaryLogSheet
-    open={logOpen}
-    onClose={() => (logOpen = false)}
-    kind="tv"
-    refId={id}
-    title={detail.name}
-    poster={posterUrl(detail.poster_path, "w342")}
-    entry={entry}
-  />
 {/if}

@@ -208,7 +208,7 @@
           use:tactile
           onclick={() => setKind(k)}
           aria-pressed={kind === k}
-          class="tap-target tap-target--chip flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors duration-150 {kind === k
+          class="tap-target tap-target--chip flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors duration-150 {kind === k
             ? 'border-primary bg-primary text-bg'
             : 'border-border text-muted hover-text-text'}"
         >

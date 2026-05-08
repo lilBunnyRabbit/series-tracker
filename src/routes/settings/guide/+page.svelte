@@ -3,7 +3,7 @@
   import GuideVisual from "$lib/components/GuideVisual.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
-  import { GUIDE_SECTIONS, type GuideAccent } from "$lib/guide";
+  import { bodyText, GUIDE_SECTIONS, type GuideAccent } from "$lib/guide";
   import { tactile } from "$lib/tactile";
   import { tour } from "$lib/tour.svelte";
 
@@ -134,7 +134,7 @@
 
       <div class="space-y-3 text-sm leading-relaxed">
         {#each section.body as p, i (i)}
-          <p>{p}</p>
+          <p>{bodyText(p)}</p>
         {/each}
       </div>
 

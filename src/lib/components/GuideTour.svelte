@@ -12,7 +12,7 @@
   import { base } from "$app/paths";
   import GuideVisual from "$lib/components/GuideVisual.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import { type GuideAccent } from "$lib/guide";
+  import { bodyAddedIn, bodyText, type GuideAccent } from "$lib/guide";
   import { portal } from "$lib/portal";
   import { tactile } from "$lib/tactile";
   import { tour } from "$lib/tour.svelte";
@@ -267,7 +267,17 @@
             {#if currentStep.body.length > 0}
               <div class="space-y-3 text-sm leading-relaxed text-text/90">
                 {#each currentStep.body as p, i (i)}
-                  <p>{p}</p>
+                  {@const isNew = tour.isItemNew(bodyAddedIn(p))}
+                  <p>
+                    {#if isNew}
+                      <span
+                        class="mr-1.5 inline-block rounded-full bg-accent/15 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-[0.12em] text-accent"
+                        aria-label="New in this version"
+                      >
+                        New
+                      </span>
+                    {/if}{bodyText(p)}
+                  </p>
                 {/each}
               </div>
             {/if}
@@ -275,9 +285,18 @@
             {#if currentStep.highlights}
               <ul class="space-y-1.5 rounded-lg border border-border bg-surface p-3 text-sm">
                 {#each currentStep.highlights as h (h.label)}
+                  {@const hNew = tour.isItemNew(h.addedIn)}
                   <li class="flex items-baseline gap-2">
                     <span class="h-1.5 w-1.5 shrink-0 translate-y-[3px] rounded-full {a.bullet}"></span>
                     <span class="min-w-0">
+                      {#if hNew}
+                        <span
+                          class="mr-1 inline-block rounded-full bg-accent/15 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-[0.12em] text-accent"
+                          aria-label="New in this version"
+                        >
+                          New
+                        </span>
+                      {/if}
                       <strong class="font-medium {a.bulletText}">{h.label}</strong>
                       <span class="text-muted"> — {h.description}</span>
                     </span>

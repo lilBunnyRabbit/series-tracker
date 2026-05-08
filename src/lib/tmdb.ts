@@ -251,6 +251,9 @@ export type DiscoverFilters = {
   sort: DiscoverSort;
   /** TMDB genre IDs to AND-filter on (movie + tv have separate ID spaces). */
   genres: number[];
+  /** TMDB genre IDs to exclude. Maps to TMDB's `without_genres`. Same ID
+   *  space as `genres`. */
+  excludeGenres?: number[];
   page: number;
   /** Minimum vote count to suppress junk (default 20). Set to 0 to disable. */
   minVotes?: number;
@@ -294,6 +297,9 @@ export async function discover(
     include_adult: "false",
   };
   if (filters.genres.length > 0) params.with_genres = filters.genres.join(",");
+  if (filters.excludeGenres && filters.excludeGenres.length > 0) {
+    params.without_genres = filters.excludeGenres.join(",");
+  }
   if (minVotes > 0) params["vote_count.gte"] = String(minVotes);
   // with_people is a movie-only TMDB param. For TV, TMDB silently ignores it
   // (the param has no equivalent on /discover/tv) — callers should switch to

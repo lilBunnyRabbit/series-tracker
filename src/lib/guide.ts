@@ -66,7 +66,36 @@ export type GuideVisual =
 export type GuideHighlight = {
   label: string;
   description: string;
+  /** Semver of the build that introduced this specific highlight. When set
+   *  and newer than the user's `lastSeenGuideVersion`, the post-update tour
+   *  flags this item with a "New" pill so the user can see *what* changed
+   *  inside an updated section, not just that the section as a whole was
+   *  bumped. Leave undefined for pre-existing items. */
+  addedIn?: string;
 };
+
+/** A guide-section body paragraph. The bare-string form is the default; the
+ *  object form lets the post-update tour flag specific paragraphs as new
+ *  without bumping the whole section's `version` away from when the prose
+ *  around it shipped. Render via `bodyText()` / `bodyAddedIn()`. */
+export type GuideBodyItem =
+  | string
+  | {
+      text: string;
+      /** Semver of the build that introduced this paragraph. Same semantics
+       *  as `GuideHighlight.addedIn`. */
+      addedIn?: string;
+    };
+
+/** Convenience: pull the prose out of a GuideBodyItem. */
+export function bodyText(item: GuideBodyItem): string {
+  return typeof item === "string" ? item : item.text;
+}
+
+/** Convenience: pull the addedIn version (if any) off a GuideBodyItem. */
+export function bodyAddedIn(item: GuideBodyItem): string | undefined {
+  return typeof item === "string" ? undefined : item.addedIn;
+}
 
 /** One self-contained step. In the static page each is a card; in the
  *  onboarding tour each is one screen. The shape is the same either way so
@@ -83,8 +112,11 @@ export type GuideSection = {
   /** One-line subhead — shown under the title, in the TOC chip, and as the
    *  step subhead in the tour. Aim for ~110 chars. */
   summary: string;
-  /** Body paragraphs. Each entry renders as its own <p>. */
-  body: string[];
+  /** Body paragraphs. Each entry renders as its own <p>. Plain strings are
+   *  the common case; the object form (`{ text, addedIn }`) lets the
+   *  post-update tour flag a specific paragraph as new without forcing a
+   *  whole-section re-show. */
+  body: GuideBodyItem[];
   /** Optional bulleted callouts for distinct features inside the step. */
   highlights?: GuideHighlight[];
   /** Optional inline demo. Resolved to a snippet by the renderer; absent
@@ -155,7 +187,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "discover",
-    version: "0.17.0",
+    version: "0.25.0",
     icon: "compass",
     accent: "secondary",
     title: "Find new titles",
@@ -170,6 +202,16 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       { label: "Discover", description: "Trending today/this week, recommendations seeded by your library, popular and top-rated rails." },
       { label: "Browse", description: "Full grid filtered by kind, genre, sort, and 'hide added'." },
       { label: "Feed", description: "Full-screen vertical swipe through TMDB. Remembers where you left off across sessions." },
+      {
+        label: "Feed: jump to position",
+        description: "Tap the position counter (top-right) to type any item number and snap straight there — no more 1000-card scroll back.",
+        addedIn: "0.25.0",
+      },
+      {
+        label: "Feed: exclude genres",
+        description: "Tap a genre once to include, twice to exclude (red border). Exclusions browse 'everything but Horror' without leaving the setup screen.",
+        addedIn: "0.25.0",
+      },
       { label: "Surprise", description: "Rolls a single random pick from your plan-list and what's trending. Re-roll until you commit." },
     ],
   },
@@ -219,7 +261,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "picker",
-    version: "0.22.0",
+    version: "0.25.0",
     icon: "trophy",
     accent: "accent",
     title: "Can't decide?",
@@ -227,12 +269,16 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     body: [
       "Filter your library by status, kind, and progress (Started / Untouched), then go head-to-head matchup by matchup until one title is left. The winner gets a 'More like this' rail powered by TMDB recommendations, and you can review the bracket round-by-round to see which titles you knocked out.",
       "For something faster, the Surprise sheet on Discover rolls a single random pick from your plan-list mixed with what's trending. Re-roll until you commit — recent picks won't repeat back-to-back.",
+      {
+        text: "Bracket cards now show your watched-episode count, your rating, and a ↻ for rewatchable picks — easier to weigh head-to-heads without leaving the bracket.",
+        addedIn: "0.25.0",
+      },
     ],
     visual: "picker",
   },
   {
     id: "temptation",
-    version: "0.18.0",
+    version: "0.25.0",
     icon: "flame",
     accent: "accent",
     title: "Temptation",
@@ -253,7 +299,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
       {
         label: "Resets",
-        description: "Marking a title Completed or Dropped resets its score to zero. Other actions (rating, rewatchable, picker) keep adding from there.",
+        description: "Marking a title Completed resets its score to zero. Drop leaves the score where it was — losing interest is its own signal. Rating only nudges active titles, not closed ones.",
+        addedIn: "0.25.0",
       },
     ],
   },

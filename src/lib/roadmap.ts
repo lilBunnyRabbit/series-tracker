@@ -76,6 +76,42 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent v1.0 work that's already in the build you're running.",
         items: [
           {
+            id: "feed-jump-to",
+            title: "Feed: jump to position",
+            summary:
+              "Tap the position counter on the feed to type any item number and snap straight there — useful when a long swipe streak got reset and you want to get back to where you were.",
+            status: "shipped",
+            shippedIn: "0.25.0",
+            complexity: "S",
+          },
+          {
+            id: "feed-exclude-genres",
+            title: "Feed: exclude genres",
+            summary:
+              "Genre chips are three-state — tap to include, tap again to exclude, third tap clears. Browse 'everything but Horror' without leaving the setup screen.",
+            status: "shipped",
+            shippedIn: "0.25.0",
+            complexity: "S",
+          },
+          {
+            id: "picker-bracket-hints",
+            title: "Picker: bracket hints",
+            summary:
+              "Bracket and result cards now show your watched-episode count, your rating, and a ↻ for rewatchable picks — easier to weigh head-to-heads without leaving the bracket.",
+            status: "shipped",
+            shippedIn: "0.25.0",
+            complexity: "XS",
+          },
+          {
+            id: "tour-new-pill",
+            title: "Tour highlights what changed",
+            summary:
+              "When a guide section is bumped because a single paragraph or highlight changed, only that item gets a 'New' pill in the post-update tour — no more re-reading the whole section to spot the change.",
+            status: "shipped",
+            shippedIn: "0.25.0",
+            complexity: "XS",
+          },
+          {
             id: "view-transitions",
             title: "View Transitions for navigation",
             summary:
