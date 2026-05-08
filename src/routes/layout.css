@@ -318,27 +318,33 @@ html.nav-back::view-transition-new(root) {
 }
 
 /* Pull the floating island out of the root snapshot so it doesn't slide
-   with the rest of the page. The default cross-fade on a named element
-   creates a "ghosted" double-image at the midpoint when both old and
-   new are simultaneously translucent. So we override to no animation
-   on either side and force the new snapshot fully opaque from t=0:
-   the user sees the new island state instantly, and the old one snaps
-   out of view rather than fading through.
+   with the rest of the page. View Transitions caveats handled below:
 
-   Critically: VT snapshots are flat rasters that drop `backdrop-filter`
-   (a runtime compositing effect). Without this, the snapshot of the
-   pill — translucent bg + blur in the live state — turns into just
-   "translucent bg" mid-transition, letting the sliding page show
-   through. The `html.is-view-transitioning` flag (toggled in
-   `+layout.svelte` around `startViewTransition`) swaps the pill's bg
-   to fully opaque while the transition is in flight, so the snapshot
-   captures a solid surface; the live state restores blur immediately
-   after.
+   1. `view-transition-name` creates a paint-containment stacking
+      context on the named element. That breaks the pill's
+      `backdrop-filter: blur(...)`, which samples the *page* behind the
+      island — once it's in its own context, there's nothing to sample
+      and the blur silently drops out. So we only set the name during
+      the transition window (gated on `html.is-view-transitioning`),
+      not always. Outside the window, no name, no broken stacking
+      context, blur is back.
+
+   2. The default cross-fade on a named element creates a ghosted
+      double-image at the midpoint when both old and new are
+      simultaneously translucent. We override to `animation: none` on
+      either side, with `opacity: 0` on old / `opacity: 1` on new so
+      the new state shows from t=0 with no fade.
+
+   3. Snapshots are flat rasters that drop `backdrop-filter` regardless
+      of containment — there's no live compositor pass on a snapshot.
+      During the transition window we swap the pill bg to fully opaque
+      `--color-bg` so the snapshot captures a solid surface; the live
+      blur returns the moment the class is removed.
 
    Page-actions rail and desktop header are intentionally NOT named —
    the rail relies on a Svelte enter/exit transition for its slide-up
-   reveal, which conflicts with View Transitions snapshotting it. */
-.floating-nav {
+   reveal, which conflicts with VT snapshotting it. */
+html.is-view-transitioning .floating-nav {
   view-transition-name: floating-nav;
 }
 ::view-transition-old(floating-nav),
@@ -354,10 +360,6 @@ html.nav-back::view-transition-new(root) {
 }
 html.is-view-transitioning .floating-nav-pill,
 html.is-view-transitioning .page-actions-pill {
-  /* Solid bg for the snapshot raster — blur is dropped by VT, so we
-     pre-empt the see-through with a fully-opaque page-bg fill. The
-     class is removed once `transition.finished` resolves, so the live
-     translucency + blur returns immediately after. */
   background: var(--color-bg) !important;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
