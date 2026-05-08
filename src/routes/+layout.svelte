@@ -126,6 +126,11 @@
       if (fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx) {
         root.classList.add(toIdx > fromIdx ? "nav-forward" : "nav-back");
       }
+      // Mark the document as transitioning so CSS can swap any
+      // `backdrop-filter`-dependent surfaces (the floating island) onto a
+      // fully-opaque background — VT snapshots are flat rasters that drop
+      // the blur effect, leaving only translucency.
+      root.classList.add("is-view-transitioning");
 
       // Find the source poster for shared-element animation. Detail URLs
       // match `/(show|movie|person)/N/`; sub-routes like `/info` and
@@ -155,7 +160,7 @@
         // still needs the cleanup to run.
         transition.finished.finally(() => {
           if (sourcePoster) sourcePoster.style.viewTransitionName = "";
-          root.classList.remove("nav-back", "nav-forward");
+          root.classList.remove("nav-back", "nav-forward", "is-view-transitioning");
         });
       });
     });

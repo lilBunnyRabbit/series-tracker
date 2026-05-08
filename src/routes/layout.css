@@ -320,17 +320,24 @@ html.nav-back::view-transition-new(root) {
 /* Pull the floating island out of the root snapshot so it doesn't slide
    with the rest of the page. The default cross-fade on a named element
    creates a "ghosted" double-image at the midpoint when both old and
-   new are simultaneously translucent — and the snapshot raster also
-   loses the live `backdrop-filter` blur. So we override to no animation
+   new are simultaneously translucent. So we override to no animation
    on either side and force the new snapshot fully opaque from t=0:
-   the user sees the new island state instantly with its blur intact,
-   and the old one snaps out of view rather than fading through.
+   the user sees the new island state instantly, and the old one snaps
+   out of view rather than fading through.
+
+   Critically: VT snapshots are flat rasters that drop `backdrop-filter`
+   (a runtime compositing effect). Without this, the snapshot of the
+   pill — translucent bg + blur in the live state — turns into just
+   "translucent bg" mid-transition, letting the sliding page show
+   through. The `html.is-view-transitioning` flag (toggled in
+   `+layout.svelte` around `startViewTransition`) swaps the pill's bg
+   to fully opaque while the transition is in flight, so the snapshot
+   captures a solid surface; the live state restores blur immediately
+   after.
 
    Page-actions rail and desktop header are intentionally NOT named —
    the rail relies on a Svelte enter/exit transition for its slide-up
-   reveal, which conflicts with View Transitions snapshotting it. The
-   desktop header has its own sticky positioning that already handles
-   most of the visual stability we'd want there. */
+   reveal, which conflicts with View Transitions snapshotting it. */
 .floating-nav {
   view-transition-name: floating-nav;
 }
@@ -344,6 +351,16 @@ html.nav-back::view-transition-new(root) {
 }
 ::view-transition-new(floating-nav) {
   opacity: 1;
+}
+html.is-view-transitioning .floating-nav-pill,
+html.is-view-transitioning .page-actions-pill {
+  /* Solid bg for the snapshot raster — blur is dropped by VT, so we
+     pre-empt the see-through with a fully-opaque page-bg fill. The
+     class is removed once `transition.finished` resolves, so the live
+     translucency + blur returns immediately after. */
+  background: var(--color-bg) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Shared-element transition: poster on a card → hero poster on the
