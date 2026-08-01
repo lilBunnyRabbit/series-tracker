@@ -538,7 +538,7 @@
                 {#if s.overview}
                   <p class="mt-1 line-clamp-3 text-xs leading-relaxed text-muted">{s.overview}</p>
                 {/if}
-                <span class="mt-auto pt-1 text-[10px] uppercase tracking-wider text-muted/70 group-active:text-accent">
+                <span class="mt-auto pt-1 text-[10px] uppercase tracking-wider text-muted group-active:text-accent">
                   View season info →
                 </span>
               </div>

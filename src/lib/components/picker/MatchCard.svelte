@@ -59,7 +59,7 @@
       <div class="mt-0.5 truncate text-[11px] tabular-nums text-text/70">{entryHint(entry)}</div>
     {/if}
     {#if entry.notes && entry.notes.trim()}
-      <p class="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-muted/90">"{entry.notes.trim()}"</p>
+      <p class="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-muted">"{entry.notes.trim()}"</p>
     {/if}
   </div>
 </button>

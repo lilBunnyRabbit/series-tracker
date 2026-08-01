@@ -1399,7 +1399,7 @@
         id="feed-sort"
         value={sort}
         onchange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as DiscoverSort)}
-        class="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
+        class="rounded-md border border-strong bg-surface px-3 py-2 text-sm text-text"
       >
         {#each VALID_SORT as s (s)}
           <option value={s}>{SORT_LABELS[s]}</option>
@@ -1620,7 +1620,7 @@
             name="jump-target"
             bind:value={jumpInput}
             disabled={jumpLoading}
-            class="w-full rounded-md border border-border bg-bg px-3 py-2 text-base text-text tabular-nums focus:border-primary focus:outline-none disabled:opacity-50"
+            class="w-full rounded-md border border-strong bg-bg px-3 py-2 text-base text-text tabular-nums focus:border-primary focus:outline-none disabled:opacity-50"
           />
         </label>
 
@@ -1797,9 +1797,10 @@
 
   /* Resume card. Three rows of info inside: title (TV/Movies + sort),
      meta (genres + hideAdded), and position (page + item count). The
-     left edge carries a 4px bar in the kind's accent colour so multiple
-     saved feeds read as visually distinct at a glance — TV always teal,
-     Movies always cyan — instead of a stack of identical rows. */
+     left edge carries a 4px bar in the kind's rail colour so multiple saved
+     feeds read as visually distinct at a glance — TV secondary, Movies
+     accent — instead of a stack of identical rows. Don't rebind the pairing
+     here; KindFilter owns it and this mirrors it. */
   .resume-card {
     flex: 1;
     min-width: 0;
@@ -1827,17 +1828,17 @@
     top: 0;
     bottom: 0;
     width: 4px;
-    background: var(--resume-accent, var(--color-accent));
+    background: var(--resume-accent, var(--color-primary));
   }
   .resume-card:hover {
-    border-color: var(--resume-accent, var(--color-accent));
+    border-color: var(--resume-accent, var(--color-primary));
     background: color-mix(in oklab, var(--resume-accent) 5%, var(--color-surface));
   }
   .resume-card--tv {
     --resume-accent: var(--color-secondary);
   }
   .resume-card--movie {
-    --resume-accent: var(--color-tertiary);
+    --resume-accent: var(--color-accent);
   }
 
   .resume-card-icon {

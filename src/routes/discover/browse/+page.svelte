@@ -231,7 +231,7 @@
         <select
           value={sort}
           onchange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as DiscoverSort)}
-          class="rounded-md border border-border bg-surface px-2 py-1 text-text"
+          class="rounded-md border border-strong bg-surface px-2 py-1 text-text"
         >
           <option value="popularity.desc">Popularity</option>
           <option value="vote_average.desc">Rating</option>

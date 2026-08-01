@@ -55,7 +55,7 @@
     <span class="text-muted">Temptation</span>
     <span class="flex items-center gap-1.5 tabular-nums">
       <span class="font-medium text-text">{label}</span>
-      <span class="text-muted/60">·</span>
+      <span class="text-muted">·</span>
       <span class="font-medium text-text">{pct}%</span>
       {#if direction === "up"}
         <span aria-label="Trending up" class="tt-trend tt-trend-up">↑</span>
@@ -74,41 +74,26 @@
     aria-valuenow={pct}
     aria-valuetext="{pct}% — {label}"
   >
-    <span class="tt-fill absolute inset-0" aria-hidden="true"></span>
+    <span class="heat-ramp absolute inset-0" aria-hidden="true"></span>
     <span class="tt-mask absolute inset-y-0 right-0" style="width: {100 - pct}%" aria-hidden="true"></span>
   </div>
   {#if captionText}
-    <p class="text-[11px] text-muted/80">{captionText}</p>
+    <p class="text-[11px] text-muted">{captionText}</p>
   {:else}
-    <p class="text-[11px] text-muted/60">No activity yet — watch, rate, or pick to build it up.</p>
+    <p class="text-[11px] text-muted">No activity yet — watch, rate, or pick to build it up.</p>
   {/if}
 </section>
 
 <style>
   .tt-track {
-    background: color-mix(in oklab, var(--color-border) 50%, transparent);
-  }
-  /* Cool → warm sweep, fixed across the FULL track width. The .tt-mask sits
-     on top from the right and shrinks as the score rises, revealing more of
-     the gradient. Keeping the gradient track-anchored means a 60% score
-     always lands in the amber portion of the sweep — the colour cue is
-     meaningful, not just a stretched repeat of the cool end. */
-  .tt-fill {
-    background: linear-gradient(
-      90deg,
-      hsl(215 55% 56%) 0%,
-      hsl(190 65% 56%) 25%,
-      hsl(140 50% 56%) 45%,
-      hsl(45 85% 58%) 70%,
-      hsl(15 80% 58%) 100%
-    );
+    background: var(--brand-surface-2);
   }
   /* Mask overlay — animates from right to left as the bar grows. The
      spring-y easing makes the live bump (when an action fires while the
      user's looking at the page) feel like a small reward rather than a
      plain CSS transition. */
   .tt-mask {
-    background: color-mix(in oklab, var(--color-border) 50%, transparent);
+    background: var(--brand-surface-2);
     transition: width 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .tt-trend {
@@ -118,13 +103,18 @@
     font-weight: 600;
   }
   .tt-trend-up {
-    color: hsl(15 80% 65%);
+    color: var(--color-error);
   }
   .tt-trend-down {
     color: var(--color-muted);
   }
+  /* Quietest of the three. `--brand-fg-disabled` rather than another alpha on
+     top of `--color-muted` — muted is already a modifier, and stacking a
+     second alpha lands outside the palette's sanctioned set. Safe to run this
+     faint because the trend is carried by the glyph and the aria-label, not
+     by the colour. */
   .tt-trend-flat {
-    color: color-mix(in oklab, var(--color-muted) 60%, transparent);
+    color: var(--brand-fg-disabled);
   }
 
   @media (prefers-reduced-motion: reduce) {

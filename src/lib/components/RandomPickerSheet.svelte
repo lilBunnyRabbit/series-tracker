@@ -256,10 +256,10 @@
               <!-- User's saved note appears above the TMDB overview — it's
                    their own framing of why they saved the title and is the
                    most likely thing to break a re-roll tie. -->
-              <p class="mt-2 line-clamp-3 text-xs italic text-muted/90">"{pick.notes.trim()}"</p>
+              <p class="mt-2 line-clamp-3 text-xs italic text-muted">"{pick.notes.trim()}"</p>
             {/if}
             {#if pick.overview}
-              <p class="mt-2 line-clamp-3 text-xs text-muted/90">{pick.overview}</p>
+              <p class="mt-2 line-clamp-3 text-xs text-muted">{pick.overview}</p>
             {/if}
           </div>
         </div>

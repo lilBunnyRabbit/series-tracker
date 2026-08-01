@@ -327,18 +327,38 @@
     // style-guide demo — don't actually mutate the library
   }
 
-  // ---- Color token list ---------------------------------------------------
-  const colorTokens = [
+  // ---- Colour tokens ------------------------------------------------------
+  // Mirrors the brand palette in `layout.css`. The ladder is the 7 shades the
+  // contrast contract is measured against; the roles are which rung each
+  // surface tier sits on (and that mapping flips direction between modes).
+  const shadeTokens = [
+    { name: "background-lightest", className: "bg-background-lightest" },
+    { name: "background-lighter", className: "bg-background-lighter" },
+    { name: "background-light", className: "bg-background-light" },
+    { name: "background", className: "bg-background" },
+    { name: "background-dark", className: "bg-background-dark" },
+    { name: "background-darker", className: "bg-background-darker" },
+    { name: "background-darkest", className: "bg-background-darkest" },
+  ] as const;
+
+  const roleTokens = [
     { name: "bg", className: "bg-bg" },
     { name: "surface", className: "bg-surface" },
     { name: "surface-2", className: "bg-surface-2" },
     { name: "border", className: "bg-border" },
+    { name: "strong", className: "bg-strong" },
     { name: "text", className: "bg-text" },
     { name: "muted", className: "bg-muted" },
-    { name: "accent", className: "bg-accent" },
-    { name: "primary", className: "bg-primary" },
-    { name: "secondary", className: "bg-secondary" },
+    { name: "disabled", className: "bg-disabled" },
+  ] as const;
+
+  // Rank order is the brand's own: chroma is rank, 1c → 4c.
+  const railTokens = [
     { name: "tertiary", className: "bg-tertiary" },
+    { name: "secondary", className: "bg-secondary" },
+    { name: "primary", className: "bg-primary" },
+    { name: "accent", className: "bg-accent" },
+    { name: "cottontail", className: "bg-cottontail" },
     { name: "success", className: "bg-success" },
     { name: "warning", className: "bg-warning" },
     { name: "error", className: "bg-error" },
@@ -365,18 +385,89 @@
   </section>
 
   <!-- ============================== TOKENS =============================== -->
-  <section class="space-y-4">
-    <h2 class="text-lg font-semibold tracking-tight">Color tokens</h2>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-      {#each colorTokens as t (t.name)}
-        <div class="space-y-1.5">
-          <div
-            class="h-16 w-full rounded-md border border-border {t.className}"
-            aria-hidden="true"
-          ></div>
-          <div class="text-[11px] tabular-nums text-muted">{t.name}</div>
-        </div>
-      {/each}
+  <section class="space-y-6">
+    <div class="space-y-1">
+      <h2 class="text-lg font-semibold tracking-tight">Colour tokens</h2>
+      <p class="text-sm text-muted">
+        The lilBunnyRabbit brand palette. Every rail below clears WCAG AA 4.5:1 against every
+        shade, in both modes — so any shade can back any section and nothing needs re-checking.
+        <span class="text-text">cottontail</span> is exempt: it's an identity colour and makes no
+        contrast claim.
+      </p>
+    </div>
+
+    <div class="space-y-2">
+      <h3 class="text-sm font-semibold">Shade ladder</h3>
+      <p class="text-xs text-muted">
+        Seven rungs, lightest to darkest. Keep it to three per viewport — neighbours are ~1.1:1
+        apart, so a fourth stops reading as structure.
+      </p>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-7">
+        {#each shadeTokens as t (t.name)}
+          <div class="space-y-1.5">
+            <div
+              class="h-16 w-full rounded-md border border-border {t.className}"
+              aria-hidden="true"
+            ></div>
+            <div class="text-[11px] tabular-nums text-muted">{t.name}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h3 class="text-sm font-semibold">Roles</h3>
+      <p class="text-xs text-muted">
+        Which rung each surface tier sits on. Elevation climbs the ladder in dark and descends it
+        in light, so these rebind per mode while the shade names above never do.
+      </p>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {#each roleTokens as t (t.name)}
+          <div class="space-y-1.5">
+            <div
+              class="h-16 w-full rounded-md border border-border {t.className}"
+              aria-hidden="true"
+            ></div>
+            <div class="text-[11px] tabular-nums text-muted">{t.name}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h3 class="text-sm font-semibold">Rails</h3>
+      <p class="text-xs text-muted">
+        Four brand colours then four states. Hue is identity, chroma is rank — they're all the same
+        lightness, so never place two adjacent without a gap or a border, and never gradient between
+        them <em>decoratively</em>: with nowhere to travel but hue, a decorative blend comes out
+        muddy. A data scale is the one exception (see the Temptation bar), and only interpolated in
+        OKLCH along the shorter hue arc, where the travel is the signal.
+      </p>
+      <div class="grid grid-cols-3 gap-3 sm:grid-cols-9">
+        {#each railTokens as t (t.name)}
+          <div class="space-y-1.5">
+            <div
+              class="h-16 w-full rounded-md border border-border {t.className}"
+              aria-hidden="true"
+            ></div>
+            <div class="text-[11px] tabular-nums text-muted">{t.name}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h3 class="text-sm font-semibold">Modifiers</h3>
+      <p class="text-xs text-muted">
+        Interaction and de-emphasis are alpha on an existing colour, never a new colour.
+      </p>
+      <div class="flex flex-wrap gap-2">
+        {#each [["hover", "85%"], ["active", "70%"], ["muted", "65%"], ["border", "67%"], ["disabled", "38%"]] as [name, pct] (name)}
+          <span class="rounded-md border border-border bg-surface px-2.5 py-1 text-xs">
+            {name}<span class="ml-1.5 tabular-nums text-muted">{pct}</span>
+          </span>
+        {/each}
+      </div>
     </div>
   </section>
 

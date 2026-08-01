@@ -284,7 +284,7 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
     title: "v1.x — Post-1.0 polish",
     summary:
       "Small features and rough-edge fixes that didn't need to hold the v1.0 milestone. Each line gets stamped with the version that landed it.",
-    targetVersion: "1.3.0",
+    targetVersion: "1.4.0",
     groups: [
       {
         id: "just-shipped",
@@ -292,10 +292,19 @@ export const ROADMAP_MILESTONES: RoadmapMilestone[] = [
         description: "Recent post-1.0 work that's already in the build you're running.",
         items: [
           {
-            id: "light-theme",
-            title: "Light theme (experimental)",
+            id: "brand-palette",
+            title: "Brand palette across both themes",
             summary:
-              "Warm-cream palette as an alternative to the dark default. Settings → Preferences → Theme picks Auto / Light / Dark — Dark is still the default; Auto follows your system. Light is still being calibrated.",
+              "Both themes rebuilt on the lilBunnyRabbit palette — a seven-step surface ladder plus four brand and four state colours, every one of them guaranteed readable on every surface. Light is fitted to its own colour wheel rather than being a lightened copy of dark.",
+            status: "shipped",
+            shippedIn: "1.4.0",
+            complexity: "M",
+          },
+          {
+            id: "light-theme",
+            title: "Light theme",
+            summary:
+              "Warm-cream palette as an alternative to the dark default. Settings → Preferences → Theme picks Auto / Light / Dark — Dark is still the default; Auto follows your system.",
             status: "shipped",
             shippedIn: "1.3.0",
             complexity: "M",

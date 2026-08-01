@@ -4,6 +4,19 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-02
+
+### Changed
+- Both themes now run on the lilBunnyRabbit brand palette. Dark is a touch lighter and warmer in the mid-tones, surfaces sit on a proper seven-step ladder instead of three ad-hoc greys, and every text and accent colour is guaranteed readable on every surface — so nothing washes out depending on which panel it lands in.
+- Light theme is out of experimental. It was rebuilt from scratch on its own colour wheel rather than a lightened copy of dark: warm cream paper, deep ink-toned accents, and the same readability guarantee as dark.
+- Plan-to-watch's orange is a little richer and Completed's purple a little softer. "Tuned in" keeps its blue. The Movies filter chip moves from cyan to orange so it reads clearly apart from the TV chip.
+- App icon, install tile, and browser chrome now match the page background exactly, so the PWA no longer shows a seam against the app on launch.
+
+### Fixed
+- Text fields, dropdowns, and steppers now draw a proper edge instead of a nearly invisible one — they were the hardest thing in the app to spot before tapping.
+- Faint secondary text (timestamps, counts, metadata) is legible again. Several places stacked two layers of fading on top of each other and came out far dimmer than intended, worst of all in light mode.
+- The rating badge on a Dropped title's poster no longer lets the artwork bleed through behind the number.
+
 ## [1.3.1] - 2026-05-08
 
 ### Fixed

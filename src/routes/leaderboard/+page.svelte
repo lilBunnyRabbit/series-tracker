@@ -95,7 +95,7 @@
   <div class="space-y-3">
     <h2 class="flex items-baseline justify-between text-sm font-medium uppercase tracking-wider text-muted">
       <span>{label}</span>
-      <span class="text-[11px] tabular-nums text-muted/70">{list.length}</span>
+      <span class="text-[11px] tabular-nums text-muted">{list.length}</span>
     </h2>
     {#if list.length === 0}
       <p class="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted">

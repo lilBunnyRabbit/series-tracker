@@ -1,41 +1,267 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   lilBunnyRabbit brand palette
+   https://lilbunnyrabbit.github.io/brand/
+
+   17 token keys, two modes, nothing rebinds between them — switching mode is
+   a scope change, not a remapping. Dark is the brand and sits on `:root` so
+   the canonical mode needs no class and no JavaScript; light is product UI
+   only and scopes under `.theme-light` (with `[data-theme="light"]` accepted
+   as an alias so snippets pasted straight from the brand guide work here).
+
+   Authored in OKLCH, shipped as hex — the contrast contract below was
+   measured on the 8-bit hexes, so the hexes are what we ship.
+
+   The contract: all 9 rail colours (`foreground`, the 4 brand, the 4 states)
+   clear WCAG AA 4.5:1 against all 7 shades, in both modes. 63 pairs per mode.
+   Worst cell 4.59 dark / 4.55 light. Practical consequence: any shade can
+   back any section and nothing needs re-checking.
+
+   `cottontail` is excluded from the contract — it is an identity colour and
+   makes no contrast claim.
+   ============================================================================ */
+
+:root,
+:root.theme-dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surface ladder. Symmetric ±0.1 lightness around the seed, chroma
+     proportional to lightness so lighter rungs read as elevated. */
+  --brand-background-lightest: #2a3f4a; /* oklch(0.355   0.03244 230.47) */
+  --brand-background-lighter: #233640; /*  oklch(0.3217  0.02939 230.47) */
+  --brand-background-light: #1d2d36; /*    oklch(0.2883  0.02635 230.47) */
+  --brand-background: #17252c; /*          oklch(0.255   0.0233  230.47) — the seed */
+  --brand-background-dark: #111d23; /*     oklch(0.2217  0.02025 230.47) */
+  --brand-background-darker: #0b151a; /*   oklch(0.1883  0.01721 230.47) */
+  --brand-background-darkest: #060d11; /*  oklch(0.155   0.01416 230.47) */
+
+  --brand-foreground: #b1aba8; /* oklch(0.745 0.00777 50.47) — all body copy */
+
+  /* Brand rails. Hue is identity, chroma is rank: the seed's chroma is the
+     quantum and each rank is an integer multiple of it (1c 2c 3c 4c). 5c is
+     deliberately empty so the brand band and the state band stay apart. */
+  --brand-tertiary: #baa7ab; /*  oklch(0.745 0.0233 2.47)   — rank 1 */
+  --brand-secondary: #b2a6c5; /* oklch(0.745 0.0466 302.47) — rank 2 */
+  --brand-primary: #a4b483; /*   oklch(0.745 0.0699 122.47) — rank 3 */
+  --brand-accent: #dc9b76; /*    oklch(0.745 0.0932 50.47)  — rank 4 */
+
+  /* Identity. In dark this is the brightest thing in the system — badge ink,
+     logo detail, focus rings. Never small text on a brand fill. */
+  --brand-cottontail: #e0f9ab; /* oklch(0.945 0.10332 122.47) */
+
+  /* States. Fixed cultural hues at 6c. */
+  --brand-success: #7ac26a; /* oklch(0.745 0.1398 140) */
+  --brand-warning: #e49b39; /* oklch(0.745 0.1398 70)  */
+  --brand-error: #f88876; /*   oklch(0.745 0.1398 30)  */
+  --brand-info: #49b7fb; /*    oklch(0.745 0.1398 240) */
+
+  /* Product roles. The brand ships a ladder, not role names — these pick
+     which rung each surface tier sits on, and the direction flips with mode:
+     in dark, elevation climbs the ladder. Order here mirrors the `roles`
+     block in the brand spec, extended by one rung for the app's third tier. */
+  --brand-page: var(--brand-background); /*             the document */
+  --brand-surface: var(--brand-background-light); /*    cards, sheets, rails */
+  --brand-surface-2: var(--brand-background-lighter); /* chips on a card */
+
+  /* Shadow alpha tiers — consumed as `rgb(var(--shadow-color) / var(--shadow-alpha-N))`.
+     Dark needs heavy black to sink floating chrome into the page. */
+  --shadow-color: 0 0 0;
+  --shadow-alpha-1: 0.7; /*  deepest — the floating island stack */
+  --shadow-alpha-2: 0.5; /*  medium — drop shadows on sheets, modals */
+  --shadow-alpha-3: 0.35; /* shallow — micro-elevation on chips */
+
+  /* Modal backdrop, tinted with the ladder's deepest rung rather than flat
+     black so the dimmed page still reads as this app. */
+  --brand-backdrop: color-mix(in srgb, #060d11 var(--alpha-percent-active), transparent);
+}
+
+/* Light — the product UI twin. Same keys, same jobs, authored as resolved
+   literals because two come out of a contrast solver and two out of a gamut
+   mapper. Three things that are easy to get wrong:
+
+   1. The light primary is ORANGE, not green. Dark's green sits 13.1 ΔE from
+      its own darkened form on this ground — it reads as a shade of the paper
+      rather than a colour on it. Orange measures 15.2. Light is fitted to its
+      own ground; it does not inherit dark's wheel.
+   2. `cottontail` changes job. Dark: badge ink. Light: a UI colour — focus
+      ring, marker, chart highlight. Never text, never the logo.
+   3. The ladder is asymmetric — 0.0294 up, 0.120 down. Up is limited by the
+      GAMUT, not by contrast: past L 0.9744 the page tint no longer fits in
+      sRGB. `background-lightest` is #fff5e6, a cream. It is NOT white and
+      must not be "corrected" to white — at L 1.0 the sRGB chroma ceiling is
+      zero, which strips the tint and puts a hole in the ladder. */
+:root.theme-light,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --brand-background-lightest: #fff5e6; /* oklch(0.9744 0.023 80) */
+  --brand-background-lighter: #fcf2e2; /*  oklch(0.9646 0.023 80) */
+  --brand-background-light: #f8efdf; /*    oklch(0.9548 0.023 80) */
+  --brand-background: #f5ecdc; /*          oklch(0.945  0.023 80) — the page */
+  --brand-background-dark: #e8decf; /*     oklch(0.905  0.023 80) */
+  --brand-background-darker: #dbd1c2; /*   oklch(0.865  0.023 80) */
+  --brand-background-darkest: #cec4b5; /*  oklch(0.825  0.023 80) */
+
+  --brand-foreground: #474f5c; /* oklch(0.425 0.0233 260) */
+
+  --brand-tertiary: #4e4d59; /*  oklch(0.425 0.0205 290.47) — rank 1 */
+  --brand-secondary: #335653; /* oklch(0.425 0.0409 190)    — rank 2 */
+  --brand-primary: #6a442f; /*   oklch(0.425 0.0614 50.47)  — rank 3 */
+  --brand-accent: #6b3c5e; /*    oklch(0.425 0.0818 338.47) — rank 4 */
+
+  --brand-cottontail: #af5100; /* oklch(0.545 0.1431 50.47) — pops by chroma, not lightness */
+
+  --brand-success: #225e12; /* oklch(0.425  0.1228 140)    */
+  --brand-warning: #535200; /* oklch(0.4268 0.0928 109.31) — green-gold, deliberate */
+  --brand-error: #852d22; /*   oklch(0.425  0.1228 30)     */
+  --brand-info: #00548a; /*    oklch(0.4329 0.1119 246.24) */
+
+  /* Roles invert direction: the light page sits near the ceiling (only 0.0294
+     of lightness above it before the tint dies), so elevation walks DOWN the
+     ladder — that's the only side with visible separation. */
+  --brand-page: var(--brand-background);
+  --brand-surface: var(--brand-background-dark);
+  --brand-surface-2: var(--brand-background-darker);
+
+  /* Muted runs at the `active` alpha here rather than the `muted` one. The
+     0.65 that yields the brand's published 3.76:1 is a DARK-page number, and
+     it holds there because dark's tiers climb toward the text. Light's tiers
+     descend three rungs below the page, so the same alpha buys progressively
+     less: 3.11 / 2.94 / 2.73, i.e. two of the three tiers the app uses fall
+     under even the AA-large floor. 0.70 is the next value up in the brand's
+     own sanctioned set and restores 3.48 / 3.24 / 3.02 — within 0.3 of dark
+     at every tier. Holding the RATIO constant across modes is what the
+     "AA-large at best" contract actually means; holding the raw alpha
+     constant would only look faithful. */
+  --alpha-muted: 0.7;
+  --alpha-percent-muted: 70%;
+
+  /* Light needs almost no ink — the cream ground gives the same depth
+     perception at a fraction of the alpha. */
+  --shadow-alpha-1: 0.18;
+  --shadow-alpha-2: 0.12;
+  --shadow-alpha-3: 0.08;
+
+  --brand-backdrop: color-mix(in srgb, #060d11 var(--alpha-percent-disabled), transparent);
+}
+
+/* ----------------------------------------------------------------------------
+   Mode-invariant values. These belong to neither palette and must not flip.
+   ---------------------------------------------------------------------------- */
+:root {
+  /* The mark's pale ears. Byte-identical in both modes — only the disc
+     themes. Deriving light ears from the light primary gives 2.28 on the
+     disc against 7.36 for this, and they vanish under greyscale. */
+  --mark-ears: #e0f9ab;
+
+  /* Scrim for chrome painted over poster artwork (rating badges, status
+     dots, quick-action buttons). Pinned to the dark ladder's deepest rung in
+     both modes because it sits over photos, not over the page. */
+  --brand-scrim: #060d11;
+
+  /* Text on that scrim. The brand's lightest cream rather than #fff — the
+     system contains no pure white, and `--brand-foreground` would flip dark
+     in light mode and vanish against the scrim. */
+  --brand-on-scrim: #fff5e6;
+
+  /* ----------------------------------------------------------------------
+     Modifiers. Interaction and de-emphasis are ALPHA on an existing colour,
+     never a new colour. Composited in gamma sRGB (`color-mix(in srgb, …)`),
+     which is what a browser actually paints — mixing in a linear space
+     over-reports light-on-dark, the common case in a dark theme.
+     ---------------------------------------------------------------------- */
+  --alpha-hover: 0.85;
+  --alpha-active: 0.7;
+  --alpha-muted: 0.65; /*    AA-large at best — captions and metadata only */
+  --alpha-disabled: 0.38; /* 2.17:1. Legally exempt, never anything informational */
+  --alpha-border: 0.67; /*   lowest alpha clearing 3:1 on EVERY shade */
+
+  /* Percentage twins — `color-mix()` wants a <percentage>, not a <number>. */
+  --alpha-percent-hover: 85%;
+  --alpha-percent-active: 70%;
+  --alpha-percent-muted: 65%;
+  --alpha-percent-disabled: 38%;
+  --alpha-percent-border: 67%;
+
+  /* Pre-composited foreground modifiers. */
+  --brand-fg-muted: color-mix(in srgb, var(--brand-foreground) var(--alpha-percent-muted), transparent);
+  --brand-fg-disabled: color-mix(in srgb, var(--brand-foreground) var(--alpha-percent-disabled), transparent);
+  /* The 3:1 border. Use for outlines that carry meaning — inputs, focus
+     rings, ghost buttons. 3.91 dark / 3.25 light on the page. */
+  --brand-fg-border: color-mix(in srgb, var(--brand-foreground) var(--alpha-percent-border), transparent);
+
+  /* The structural hairline — the card/sheet/section edge, ~290 of them.
+     Alpha rather than a shade, and this is the one place the brand's own
+     `roles` block doesn't survive contact with this app. That block maps
+     border to `background_lightest`, which works for the three-tier UI it
+     was written against. This app stacks four tiers, so by the time a chip
+     sits on surface-2 the "border" rung is one step away and the edge
+     disappears: 1.43 / 1.29 / 1.14 going up the stack, against 1.96 / 1.72 /
+     1.43 before the recolor.
+
+     A shade decays as the tiers climb toward it; an alpha composites over
+     whatever is behind it and so holds the same separation everywhere —
+     2.17 / 2.11 / 2.02 dark, 1.84 / 1.78 / 1.73 light. That meets or beats
+     the old baseline at every tier and is flat instead of collapsing.
+
+     0.38 is reused verbatim from the sanctioned alpha set rather than being
+     dialled in by eye; 0.67 is the next one up and reads as an outline, not
+     a hairline (that's `--brand-fg-border`, above). */
+  --brand-line: color-mix(in srgb, var(--brand-foreground) var(--alpha-percent-disabled), transparent);
+}
+
+/* ----------------------------------------------------------------------------
+   Tailwind bridge. The `--brand-*` block above is the source of truth; this
+   maps the app's semantic utility names onto it, so `bg-surface`,
+   `text-muted`, `border-border` and friends keep working and simply carry
+   brand values now. The seven ladder rungs are also registered directly
+   (`bg-background-dark`, `text-background-lightest`, …) for new code that
+   wants a specific rung rather than a role.
+   ---------------------------------------------------------------------------- */
 @theme {
-  --color-bg: oklch(0.205 0.022 230.47);
-  --color-surface: oklch(0.255 0.0233 230.47);
-  --color-surface-2: oklch(0.31 0.022 230.47);
-  --color-border: oklch(0.4 0.018 230.47);
-  --color-text: oklch(0.745 0.00777 50.47);
-  --color-muted: oklch(0.58 0.012 50.47);
-  --color-accent: oklch(0.745 0.0699 50.47);
-  --color-primary: oklch(0.745 0.0699 122.47);
-  --color-secondary: oklch(0.745 0.0699 302.47);
-  --color-tertiary: oklch(0.745 0.0699 212.47);
+  /* Roles */
+  --color-bg: var(--brand-page);
+  --color-surface: var(--brand-surface);
+  --color-surface-2: var(--brand-surface-2);
+  --color-border: var(--brand-line);
+  --color-text: var(--brand-foreground);
+  --color-muted: var(--brand-fg-muted);
+  --color-disabled: var(--brand-fg-disabled);
+  /* `border-strong` — the AA 3:1 outline. Not the default card hairline. */
+  --color-strong: var(--brand-fg-border);
 
-  /* Semantic colors. Share the same lightness/chroma envelope as primary
-     (l=0.745, c≈primary.c × 2) so they sit visually next to it; only the
-     hue distinguishes them. Used for status messaging and destructive UI. */
-  --color-success: oklch(0.745 0.1398 140);
-  --color-warning: oklch(0.745 0.1398 70);
-  --color-error: oklch(0.745 0.1398 30);
-  --color-info: oklch(0.745 0.1398 240);
+  /* Brand rails */
+  --color-tertiary: var(--brand-tertiary);
+  --color-secondary: var(--brand-secondary);
+  --color-primary: var(--brand-primary);
+  --color-accent: var(--brand-accent);
+  --color-cottontail: var(--brand-cottontail);
 
-  /* Image-overlay scrim — black with theme-tuned alpha. Used for chips
-     painted over poster artwork (rating badges, status dots, quick-action
-     buttons). Stays near-black in both themes because it sits over photos,
-     not over the page bg; only the alpha shifts. */
-  --color-overlay: rgb(0 0 0 / 0.65);
-  /* Text colour for content sitting on the overlay scrim. Always white-ish
-     so chip text stays legible regardless of theme — `text-text` would
-     flip to dark in light mode and vanish against the scrim. */
-  --color-on-overlay: rgb(255 255 255);
-  /* Modal backdrop — full-viewport scrim behind sheets/dialogs. Heavier
-     in dark to sink the page; lighter in light so cream chrome doesn't
-     read as dimmed. */
-  --color-backdrop: rgb(0 0 0 / 0.6);
+  /* States */
+  --color-success: var(--brand-success);
+  --color-warning: var(--brand-warning);
+  --color-error: var(--brand-error);
+  --color-info: var(--brand-info);
+
+  /* The ladder, addressable by rung */
+  --color-background-lightest: var(--brand-background-lightest);
+  --color-background-lighter: var(--brand-background-lighter);
+  --color-background-light: var(--brand-background-light);
+  --color-background: var(--brand-background);
+  --color-background-dark: var(--brand-background-dark);
+  --color-background-darker: var(--brand-background-darker);
+  --color-background-darkest: var(--brand-background-darkest);
+
+  /* Scrims */
+  --color-overlay: color-mix(in srgb, var(--brand-scrim) 65%, transparent);
+  --color-on-overlay: var(--brand-on-scrim);
+  --color-backdrop: var(--brand-backdrop);
 
   --font-sans:
     "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Hack", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Tactile motion tokens. Asymmetric press/release durations are the
      trick that makes a button feel springy: snap down fast, ease back. */
@@ -45,52 +271,6 @@
   --dur-release: 200ms;
   --dur-fast: 120ms;
   --dur-base: 180ms;
-}
-
-/* Shadow alpha tiers — referenced from box-shadow rules across the codebase
-   as `rgb(var(--shadow-color) / var(--shadow-alpha-N))`. Two-token form
-   (rgb triple + alpha) lets us swap just the alpha per theme without
-   restating the whole box-shadow stack. Dark needs heavy black to sink
-   floating chrome into the page; light needs almost nothing because the
-   cream bg gives the same depth perception with way less ink. */
-:root {
-  color-scheme: dark;
-  --shadow-color: 0 0 0;
-  --shadow-alpha-1: 0.7;  /* deepest — for the floating island stack */
-  --shadow-alpha-2: 0.5;  /* medium — drop shadows on sheets, modals */
-  --shadow-alpha-3: 0.35; /* shallow — micro-elevation on chips */
-}
-
-/* Light theme — warm cream bg with cool slate text. Status hues track the
-   user-provided palette, not the dark scheme: primary=orange (h60),
-   secondary=sky-blue (h240), accent=pink (h330). Tertiary keeps the cyan
-   role via split-a (h210). Surface ladder uses the bg-{light,lighter}-flat
-   tier from the proposed scheme so layering stays at the same lightness
-   delta the dark theme uses. */
-:root.theme-light {
-  color-scheme: light;
-  --color-bg: oklch(0.96 0.018 85);
-  --color-surface: oklch(0.97167 0.018 85);
-  --color-surface-2: oklch(0.98333 0.018 85);
-  --color-border: oklch(0.88 0.012 85);
-  --color-text: oklch(0.48 0.018 240);
-  --color-muted: oklch(0.62 0.018 240);
-  --color-primary: oklch(0.72 0.09 60);
-  --color-secondary: oklch(0.72 0.09 240);
-  --color-accent: oklch(0.72 0.09 330);
-  --color-tertiary: oklch(0.72 0.09 210);
-  --color-success: oklch(0.72 0.18 145);
-  --color-warning: oklch(0.72 0.18 75);
-  --color-error: oklch(0.72 0.18 25);
-  --color-info: oklch(0.72 0.18 230);
-
-  --color-overlay: rgb(0 0 0 / 0.55);
-  --color-on-overlay: rgb(255 255 255);
-  --color-backdrop: rgb(0 0 0 / 0.35);
-
-  --shadow-alpha-1: 0.18;
-  --shadow-alpha-2: 0.12;
-  --shadow-alpha-3: 0.08;
 }
 
 @layer base {
@@ -152,6 +332,36 @@
 }
 
 @layer utilities {
+  /* Temptation heat ramp — cold to hot, shared by the live TemptationBar and
+     its guide/tour demo so the two can't drift.
+
+     Built from the four state tokens only. The brand's "no gradients between
+     brand colours" rule is about decoration: two rails at identical lightness
+     have nowhere to travel and come out muddy. Here the travel IS the signal,
+     so we interpolate in OKLCH and take the shorter hue arc — constant
+     lightness, constant chroma, hue sweeping 240 → 30. That keeps every
+     midpoint as saturated as its endpoints instead of dipping through grey,
+     which is exactly what an sRGB or OKLab interpolation would do across a
+     100° hue gap. The sRGB declaration above it is the fallback for engines
+     without interpolation-space support — they'd otherwise drop the rule
+     entirely and paint nothing. */
+  .heat-ramp {
+    background: linear-gradient(
+      90deg,
+      var(--brand-info) 0%,
+      var(--brand-success) 42%,
+      var(--brand-warning) 70%,
+      var(--brand-error) 100%
+    );
+    background: linear-gradient(
+      in oklch shorter hue 90deg,
+      var(--brand-info) 0%,
+      var(--brand-success) 42%,
+      var(--brand-warning) 70%,
+      var(--brand-error) 100%
+    );
+  }
+
   /* Press feedback. The `.is-pressed` class is added by the `tactile` action
      on pointerdown and removed on release/cancel. We use a class (not :active
      alone) because :active is unreliable on a parent <a> when the user taps
@@ -227,6 +437,9 @@
     }
     .hover-border-warning:hover {
       border-color: var(--color-warning);
+    }
+    .hover-border-info:hover {
+      border-color: var(--color-info);
     }
     .hover-bg-surface:hover {
       background-color: var(--color-surface);

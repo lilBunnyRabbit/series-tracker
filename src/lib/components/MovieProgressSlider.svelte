@@ -130,7 +130,7 @@
             style="transform: scaleY({bounce}); transform-origin: center; transition: transform 90ms cubic-bezier(0.34, 1.56, 0.64, 1);"
           ></span>
           {#if isHalfHour}
-            <span class="absolute bottom-0.5 text-[10px] font-medium tabular-nums text-muted/80">{i}m</span>
+            <span class="absolute bottom-0.5 text-[10px] font-medium tabular-nums text-muted">{i}m</span>
           {/if}
         </span>
       {/each}

@@ -81,7 +81,7 @@
         value={selectedRegion}
         onchange={onChange}
         aria-label="Region"
-        class="region-select min-w-0 max-w-[12rem] rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs outline-none focus:border-accent"
+        class="region-select min-w-0 max-w-[12rem] rounded-md border border-strong bg-surface-2 px-2 py-0.5 text-xs outline-none focus:border-accent"
       >
         {#each availableRegions as code (code)}
           <option value={code}>{regionName(code)}</option>

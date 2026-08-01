@@ -249,7 +249,7 @@
         <section class="space-y-3">
           <header class="flex items-baseline justify-between">
             <h2 class="text-xs font-medium uppercase tracking-[0.2em] text-accent">Your Top {leaderboard.length}</h2>
-            <span class="text-[11px] text-muted/70">After {totalGames} games · score = wins − losses</span>
+            <span class="text-[11px] text-muted">After {totalGames} games · score = wins − losses</span>
           </header>
           <ol class="space-y-1.5">
             {#each leaderboard as row, i (entryKey(row.entry))}

@@ -165,7 +165,7 @@
   {#if totalCount() === 0 && !backfillPrompt}
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">
       <p class="mb-2">Your diary is empty.</p>
-      <p class="text-xs text-muted/70">
+      <p class="text-xs text-muted">
         Tap the 📓 button on a show or movie page to log a viewing.
       </p>
     </div>
@@ -197,7 +197,7 @@
         <div class="space-y-2">
           <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
             {bucket.label}
-            <span class="ml-1 font-normal normal-case text-muted/70">
+            <span class="ml-1 font-normal normal-case text-muted">
               · {bucket.items.length} entr{bucket.items.length === 1 ? "y" : "ies"}
             </span>
           </h2>
@@ -254,14 +254,14 @@
                         <input
                           type="date"
                           bind:value={editing.watchedAt}
-                          class="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs outline-none focus:border-accent"
+                          class="w-full rounded-md border border-strong bg-surface px-2 py-1.5 text-xs outline-none focus:border-accent"
                         />
                         <textarea
                           bind:value={editing.note}
                           rows="2"
                           maxlength="1000"
                           placeholder="Note…"
-                          class="w-full resize-none rounded-md border border-border bg-surface px-2 py-1.5 text-xs outline-none focus:border-accent"
+                          class="w-full resize-none rounded-md border border-strong bg-surface px-2 py-1.5 text-xs outline-none focus:border-accent"
                         ></textarea>
                         <div class="flex items-center gap-2 text-xs">
                           <label class="flex items-center gap-1.5 text-muted">
@@ -277,7 +277,7 @@
                                 const v = Number((e.currentTarget as HTMLInputElement).value);
                                 editing.rating = Number.isNaN(v) || v <= 0 ? undefined : Math.min(10, v);
                               }}
-                              class="w-14 rounded-md border border-border bg-surface px-2 py-1 tabular-nums outline-none focus:border-accent"
+                              class="w-14 rounded-md border border-strong bg-surface px-2 py-1 tabular-nums outline-none focus:border-accent"
                             />
                           </label>
                           <label class="flex items-center gap-1.5 text-muted">

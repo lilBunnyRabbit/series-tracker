@@ -332,7 +332,7 @@
         placeholder="Paste your v3 API key"
         autocomplete="off"
         spellcheck="false"
-        class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
+        class="w-full rounded-md border border-strong bg-surface-2 px-3 py-2 outline-none focus:border-accent"
       />
       <div class="flex flex-wrap items-center gap-2">
         <button
@@ -558,7 +558,7 @@
       <select
         value={defaultAddStatus}
         onchange={setDefaultStatus}
-        class="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
+        class="rounded-md border border-strong bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
       >
         <option value="">Always ask</option>
         {#each ADD_STATUSES as s (s)}
@@ -583,7 +583,7 @@
       <select
         value={languagePref}
         onchange={setLanguage}
-        class="w-full rounded-md border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent sm:w-auto sm:max-w-[12rem]"
+        class="w-full rounded-md border border-strong bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent sm:w-auto sm:max-w-[12rem]"
       >
         <option value="">Auto ({detectedLanguage})</option>
         {#each LANGUAGE_OPTIONS as code (code)}

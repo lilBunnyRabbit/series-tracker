@@ -224,7 +224,7 @@
   {:else if actions.length === 0}
     <div class="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">
       <p class="mb-2">No activity yet.</p>
-      <p class="text-xs text-muted/70">
+      <p class="text-xs text-muted">
         Adds, status changes, progress and ratings will show up here.
       </p>
     </div>
@@ -233,7 +233,7 @@
       <div class="space-y-2">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
           {bucket.label}
-          <span class="ml-1 font-normal normal-case text-muted/70">
+          <span class="ml-1 font-normal normal-case text-muted">
             · {bucket.items.length} change{bucket.items.length === 1 ? "" : "s"}
           </span>
         </h2>
@@ -267,7 +267,7 @@
                     {/if}
                     {#if v.suffix}<span class="text-muted">{v.suffix}</span>{/if}
                   </p>
-                  <p class="mt-0.5 text-[11px] tabular-nums text-muted/70">
+                  <p class="mt-0.5 text-[11px] tabular-nums text-muted">
                     {relativeTime(a.createdAt)}{#if a.undoneAt}<span class="ml-1.5 uppercase tracking-wider">· undone</span>{/if}
                   </p>
                 </div>

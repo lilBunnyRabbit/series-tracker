@@ -21,8 +21,15 @@
   const DEFAULT_LABELS: Record<KindKey, string> = { all: "All", tv: "TV", movie: "Movies" };
   const KIND_COLOR: Record<KindKey, { bg: string; border: string; borderSoft: string; dot: string; text: string }> = {
     all: { bg: "bg-primary", border: "border-primary", borderSoft: "border-border/60", dot: "bg-primary", text: "text-muted" },
+    // TV = secondary (rank 2), Movies = accent (rank 4). Movies used to ride
+    // `tertiary`, but at rank 1 that rail carries a third of secondary's
+    // chroma at the same lightness — the two dots came out 0.040 apart in
+    // OKLab, under the 0.099 they had before and close enough to read as one
+    // colour. Accent is the furthest rail from secondary in both modes.
+    // This map is the source of truth for the TV/Movies pairing; the feed's
+    // resume cards mirror it rather than defining their own.
     tv: { bg: "bg-secondary", border: "border-secondary", borderSoft: "border-secondary/60", dot: "bg-secondary", text: "text-secondary" },
-    movie: { bg: "bg-tertiary", border: "border-tertiary", borderSoft: "border-tertiary/60", dot: "bg-tertiary", text: "text-tertiary" },
+    movie: { bg: "bg-accent", border: "border-accent", borderSoft: "border-accent/60", dot: "bg-accent", text: "text-accent" },
   };
 </script>
 

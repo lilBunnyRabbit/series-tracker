@@ -96,7 +96,7 @@
     {/if}
     {#if winner.notes && winner.notes.trim()}
       <p
-        class="mx-auto max-w-prose text-sm italic text-muted/90"
+        class="mx-auto max-w-prose text-sm italic text-muted"
         in:fly={{ y: 8, duration: 320, easing: backOut, delay: 320 }}
       >
         "{winner.notes.trim()}"

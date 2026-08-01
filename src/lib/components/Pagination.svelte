@@ -92,7 +92,7 @@
       onkeydown={onKey}
       onblur={commit}
       aria-label="Page number"
-      class="w-14 rounded-md border border-border bg-surface-2 px-1.5 py-2 text-center text-sm tabular-nums outline-none focus:border-primary"
+      class="w-14 rounded-md border border-strong bg-surface-2 px-1.5 py-2 text-center text-sm tabular-nums outline-none focus:border-primary"
     />
     <span class="whitespace-nowrap text-xs tabular-nums text-muted">
       / {total.toLocaleString()}

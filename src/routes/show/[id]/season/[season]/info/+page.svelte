@@ -248,7 +248,7 @@
                     <span class="inline-flex shrink-0 items-center gap-1 text-[11px]">
                       <span class="text-accent">★</span>
                       <span class="font-medium tabular-nums text-text/90">{ep.vote_average.toFixed(1)}</span>
-                      <span class="text-muted/80 tabular-nums">({ep.vote_count})</span>
+                      <span class="text-muted tabular-nums">({ep.vote_count})</span>
                     </span>
                   {/if}
                 </div>
@@ -271,13 +271,13 @@
                   <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
                     {#if directors}
                       <span>
-                        <span class="uppercase tracking-wider text-muted/70">Directed by</span>
+                        <span class="uppercase tracking-wider text-muted">Directed by</span>
                         <span class="text-text/90">{directors}</span>
                       </span>
                     {/if}
                     {#if writers}
                       <span>
-                        <span class="uppercase tracking-wider text-muted/70">Written by</span>
+                        <span class="uppercase tracking-wider text-muted">Written by</span>
                         <span class="text-text/90">{writers}</span>
                       </span>
                     {/if}
@@ -286,9 +286,9 @@
 
                 {#if guests.length > 0}
                   <div class="space-y-1.5 pt-1">
-                    <div class="text-[10px] uppercase tracking-wider text-muted/70">
+                    <div class="text-[10px] uppercase tracking-wider text-muted">
                       Guest stars
-                      <span class="ml-1 text-muted/60 tabular-nums">{guests.length}</span>
+                      <span class="ml-1 text-muted tabular-nums">{guests.length}</span>
                     </div>
                     <!-- Rail stays inside the card's padding so the right-most
                          visible avatar reads as cleanly cut, with a fading

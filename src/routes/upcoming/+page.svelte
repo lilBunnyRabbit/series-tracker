@@ -173,7 +173,7 @@
       <div class="space-y-2.5">
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
           {bucket.label}
-          <span class="ml-1 font-normal normal-case text-muted/70">
+          <span class="ml-1 font-normal normal-case text-muted">
             · {bucket.items.length} episode{bucket.items.length === 1 ? "" : "s"}
           </span>
         </h2>

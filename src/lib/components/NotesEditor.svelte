@@ -40,6 +40,6 @@
     onblur={save}
     rows="2"
     {placeholder}
-    class="w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+    class="w-full resize-y rounded-md border border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
   ></textarea>
 </div>

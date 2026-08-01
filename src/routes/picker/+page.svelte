@@ -153,7 +153,7 @@
     {/each}
   </ul>
 
-  <p class="pt-2 text-center text-[11px] text-muted/70">
+  <p class="pt-2 text-center text-[11px] text-muted">
     Filters, rewatchable boost, and Temptation weighting carry across every mode.
   </p>
 </section>

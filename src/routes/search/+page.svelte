@@ -214,7 +214,7 @@
           autofocus
           autocomplete="off"
           spellcheck="false"
-          class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none transition-colors duration-150 focus:border-primary"
+          class="w-full rounded-md border border-strong bg-surface py-2 pl-9 pr-3 text-sm outline-none transition-colors duration-150 focus:border-primary"
         />
       </label>
       <a
@@ -240,7 +240,7 @@
             onclick={() => pickSuggestion(q)}
             class="tap-target tap-target--chip flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-muted hover-border-accent hover-text-text"
           >
-            <Icon name="search" size={11} class="text-muted/60" />
+            <Icon name="search" size={11} class="text-muted" />
             <span class="truncate">{q}</span>
           </button>
         {/each}
@@ -263,7 +263,7 @@
             type="button"
             use:tactile
             onclick={() => (query = q)}
-            class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-surface-2/60 px-3.5 py-1.5 text-muted/80 hover-text-text"
+            class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-surface-2/60 px-3.5 py-1.5 text-muted hover-text-text"
           >
             {q}
           </button>
@@ -273,7 +273,7 @@
           use:tactile={{ haptic: "warn" }}
           onclick={() => store.clearSearchHistory()}
           aria-label="Clear recent searches"
-          class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted/60 hover-text-error"
+          class="tap-target tap-target--chip flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted hover-text-error"
         >
           Clear
         </button>

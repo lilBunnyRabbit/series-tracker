@@ -94,9 +94,9 @@
       </p>
       {#if sharedTitle || sharedText || sharedUrl}
         <div class="space-y-1 rounded bg-surface-2 p-3 text-xs text-muted">
-          {#if sharedTitle}<p><span class="text-muted/70">Title:</span> {sharedTitle}</p>{/if}
-          {#if sharedText}<p class="break-all"><span class="text-muted/70">Text:</span> {sharedText}</p>{/if}
-          {#if sharedUrl}<p class="break-all"><span class="text-muted/70">URL:</span> {sharedUrl}</p>{/if}
+          {#if sharedTitle}<p><span class="text-muted">Title:</span> {sharedTitle}</p>{/if}
+          {#if sharedText}<p class="break-all"><span class="text-muted">Text:</span> {sharedText}</p>{/if}
+          {#if sharedUrl}<p class="break-all"><span class="text-muted">URL:</span> {sharedUrl}</p>{/if}
         </div>
       {/if}
       <div class="flex flex-wrap gap-2">

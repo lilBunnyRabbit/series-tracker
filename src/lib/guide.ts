@@ -384,7 +384,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "backup",
-    version: "1.3.0",
+    version: "1.4.0",
     icon: "download",
     accent: "primary",
     inTour: false,
@@ -392,7 +392,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     summary: "Export to JSON, import to merge or replace, and tune the app to your taste.",
     body: [
       "Settings → Backup exports your full library, diary, search history, and preferences as a JSON file you can stash anywhere. Import in Merge mode (max progress wins, newer metadata wins) to combine with another device, or in Replace mode to overwrite. The API key is left out of exports by default — opt in if you're moving between devices.",
-      "Preferences cover the Theme picker (Auto / Light / Dark — Dark is still the default; Light is experimental and follows your OS only when you pick Auto), Haptics on/off, a Default add status (skips the picker if set), and a Locale that controls the language of TMDB titles and the default Where-to-Watch region. Storage usage is shown so you can keep an eye on the IndexedDB footprint.",
+      "Preferences cover the Theme picker (Auto / Light / Dark — Dark is the default and the one the brand is built around; Light is a full warm-cream counterpart, and Auto follows your OS), Haptics on/off, a Default add status (skips the picker if set), and a Locale that controls the language of TMDB titles and the default Where-to-Watch region. Storage usage is shown so you can keep an eye on the IndexedDB footprint.",
     ],
   },
   {

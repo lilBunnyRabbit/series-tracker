@@ -478,7 +478,7 @@
             placeholder="Filter by title..."
             autocomplete="off"
             spellcheck="false"
-            class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-9 text-sm outline-none transition-colors duration-150 focus:border-primary"
+            class="w-full rounded-md border border-strong bg-surface py-2 pl-9 pr-9 text-sm outline-none transition-colors duration-150 focus:border-primary"
           />
           {#if queryDraft}
             <button

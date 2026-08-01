@@ -154,7 +154,7 @@
       bind:value={input}
       placeholder={"Severance\n- Breaking Bad\n1. Dune (2021)"}
       rows="5"
-      class="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary"
+      class="w-full resize-y rounded-lg border border-strong bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary"
     ></textarea>
     <p class="text-[11px] text-muted">
       Markdown bullets (- * +), numbered lists (1.), task checkboxes ([ ]) and quotes (&gt;) are stripped automatically.

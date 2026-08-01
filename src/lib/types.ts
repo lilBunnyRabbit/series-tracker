@@ -73,20 +73,33 @@ export const STATUS_COLOR: Record<
     text: "text-muted",
     border: "border-muted",
     borderSoft: "border-muted/60",
-    bg: "bg-muted",
+    // `bg-text`, not `bg-muted`. `.bg` is the only field painted as an opaque
+    // fill over poster artwork (the rating badge) and as a progress-bar fill,
+    // and `muted` is a 65% alpha on the foreground — over a photo that makes
+    // the badge's contrast depend on whatever pixels are behind it. The
+    // opaque foreground is the same neutral, bounded at 6.92 dark / 7.05
+    // light against the `text-bg` ink. Everything else here stays muted, so
+    // Dropped still recedes in mixed lists.
+    bg: "bg-text",
     bgSoft: "bg-muted/15",
     chip: "border-border text-muted",
     hoverBorder: "hover-border-muted",
   },
+  // `info`, not `tertiary`. Tertiary is the brand's rank-1 rail at 1× the
+  // seed chroma, which puts it within a just-noticeable difference of the
+  // foreground in both modes (ΔE 1.8 dark, 1.2 light) — deliberate as the
+  // quietest brand colour, unusable as one of five statuses you're meant to
+  // tell apart at a glance. `info` is the furthest in-palette hue from the
+  // other four and the only state token this app wasn't already using.
   tuned: {
-    dot: "bg-tertiary",
-    text: "text-tertiary",
-    border: "border-tertiary",
-    borderSoft: "border-tertiary/60",
-    bg: "bg-tertiary",
-    bgSoft: "bg-tertiary/15",
-    chip: "border-tertiary text-tertiary",
-    hoverBorder: "hover-border-tertiary",
+    dot: "bg-info",
+    text: "text-info",
+    border: "border-info",
+    borderSoft: "border-info/60",
+    bg: "bg-info",
+    bgSoft: "bg-info/15",
+    chip: "border-info text-info",
+    hoverBorder: "hover-border-info",
   },
 };
 

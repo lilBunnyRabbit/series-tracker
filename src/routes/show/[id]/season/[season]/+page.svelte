@@ -408,7 +408,7 @@
                       >
                         <span class="text-accent">★</span>
                         <span class="font-medium text-text/90">{ep.vote_average.toFixed(1)}</span>
-                        <span class="text-muted/80">({ep.vote_count})</span>
+                        <span class="text-muted">({ep.vote_count})</span>
                       </span>
                     {/if}
                   </div>
@@ -469,7 +469,7 @@
           }}
           onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
           aria-label="Watched episodes"
-          class="h-10 w-12 rounded-md border border-border bg-surface-2 px-1 text-center text-sm font-semibold tabular-nums outline-none focus:border-accent"
+          class="h-10 w-12 rounded-md border border-strong bg-surface-2 px-1 text-center text-sm font-semibold tabular-nums outline-none focus:border-accent"
         />
         <span class="text-sm tabular-nums text-muted">/ {total}</span>
       </div>

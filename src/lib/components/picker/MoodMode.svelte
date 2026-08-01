@@ -250,7 +250,7 @@
       <div class="grid flex-1 grid-rows-[1fr_auto_2fr] gap-4">
         <div class="self-start text-center">
           <p class="text-xs uppercase tracking-[0.18em] text-tertiary">In the mood</p>
-          <p class="text-[10px] text-muted/80">
+          <p class="text-[10px] text-muted">
             {length === "any" ? "any length" : length}
             <span aria-hidden="true">·</span>
             {vibe === "any" ? "any vibe" : vibe}

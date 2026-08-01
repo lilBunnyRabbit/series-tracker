@@ -6,10 +6,12 @@ import type { Theme } from "./types";
  *  the html class before first paint. Mirror of `Preferences.theme` so the
  *  initial paint isn't blocked on the async IDB load. */
 const LS_KEY = "series-tracker:theme";
-/** Hex paint colours for the meta theme-color tag. Match the `--color-bg`
- *  oklch values for each theme so the PWA browser chrome blends with the
- *  page bg on iOS / Android. Hardcoded because <meta> can't read CSS vars. */
-const THEME_COLOR = { dark: "#141b21", light: "#f7f1e5" } as const;
+/** Hex paint colours for the meta theme-color tag. These are the brand
+ *  `background` token in each mode — the same value `--brand-page` resolves
+ *  to — so the PWA browser chrome blends with the page bg on iOS / Android.
+ *  Hardcoded because <meta> can't read CSS vars; mirror of the boot script
+ *  in `src/app.html`, keep the two in sync. */
+const THEME_COLOR = { dark: "#17252c", light: "#f5ecdc" } as const;
 
 /** Resolve the user's saved preference into a concrete theme. "auto"
  *  consults the system; explicit picks pass through. Used both at startup
@@ -46,8 +48,9 @@ function applyMeta(resolved: "light" | "dark"): void {
 function createTheme() {
   // `pref` is what the user picked. `resolved` is what's actually applied —
   // they diverge for "auto" (and re-resolve when the system pref flips).
-  // Default is "dark" rather than "auto" because light mode is still
-  // experimental — new users shouldn't be flipped to it just because
+  // Default is "dark" rather than "auto" because dark IS the brand — light is
+  // a product-UI twin, held to the same contrast contract but not an identity
+  // palette. New users shouldn't be flipped out of the brand just because
   // their OS is on light. They opt in explicitly via Settings.
   let pref = $state<Theme>("dark");
   let resolved = $state<"light" | "dark">("dark");

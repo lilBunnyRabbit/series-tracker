@@ -88,7 +88,7 @@ export const TEMPTATION_GLOW_COLOR: Record<Status, string> = {
   watching: "var(--color-primary)",
   completed: "var(--color-secondary)",
   plan: "var(--color-accent)",
-  tuned: "var(--color-tertiary)",
+  tuned: "var(--color-info)",
   dropped: "var(--color-muted)",
 };
 

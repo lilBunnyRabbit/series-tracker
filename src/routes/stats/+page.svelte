@@ -257,7 +257,7 @@
         <h2 class="text-sm font-medium uppercase tracking-wider text-muted">
           Top genres
           {#if stats.entriesWithGenres < stats.total}
-            <span class="ml-1 font-normal normal-case text-muted/70">
+            <span class="ml-1 font-normal normal-case text-muted">
               (from {stats.entriesWithGenres} of {stats.total} entries)
             </span>
           {/if}
@@ -286,7 +286,7 @@
           <span class="flex items-center gap-2">
             <span aria-hidden="true">♻</span>
             <span>Rewatchable</span>
-            <span class="font-normal normal-case text-muted/70">· {rewatchable.length}</span>
+            <span class="font-normal normal-case text-muted">· {rewatchable.length}</span>
           </span>
           <a
             href="{base}/watchlist/?rewatch=1"

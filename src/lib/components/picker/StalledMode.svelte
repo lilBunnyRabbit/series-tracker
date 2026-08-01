@@ -193,7 +193,7 @@
               {#if entryHint(e)}
                 <div class="truncate text-[11px] tabular-nums text-text/70">{entryHint(e)}</div>
               {/if}
-              <div class="text-[10px] uppercase tracking-wider text-muted/80">
+              <div class="text-[10px] uppercase tracking-wider text-muted">
                 Temptation <span class="tabular-nums text-text">{tempLabel(e)}</span>
               </div>
             </div>
@@ -204,7 +204,7 @@
         {/each}
       </div>
 
-      <p class="text-center text-[11px] text-muted/70">
+      <p class="text-center text-[11px] text-muted">
         Tap any to lock it in — or pull a new shortlist from the bottom rail.
       </p>
     </div>

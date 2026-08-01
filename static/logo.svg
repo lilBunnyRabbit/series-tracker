@@ -3,6 +3,6 @@
 <mask id="path-2-inside-1_2001_2" fill="white">
 <rect x="48" y="48" width="472" height="304" rx="16"/>
 </mask>
-<rect x="48" y="48" width="472" height="304" rx="16" fill="#17252C" stroke="#A6BA7D" stroke-width="64" mask="url(#path-2-inside-1_2001_2)"/>
-<rect x="216" y="384" width="136" height="136" rx="16" fill="#BCA4DE"/>
+<rect x="48" y="48" width="472" height="304" rx="16" fill="#17252C" stroke="#A4B483" stroke-width="64" mask="url(#path-2-inside-1_2001_2)"/>
+<rect x="216" y="384" width="136" height="136" rx="16" fill="#B2A6C5"/>
 </svg>

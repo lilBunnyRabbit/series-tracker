@@ -211,7 +211,7 @@
           type="date"
           bind:value={watchedAt}
           max={todayIso()}
-          class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+          class="w-full rounded-md border border-strong bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </label>
 
@@ -229,7 +229,7 @@
                 toEp = Math.min(toEp, s.episodeCount);
               }
             }}
-            class="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+            class="w-full rounded-md border border-strong bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
           >
             {#each seasons as s (s.number)}
               <option value={s.number}>S{s.number} · {s.name} ({s.episodeCount} ep)</option>
@@ -290,7 +290,7 @@
             Logging
             <span class="text-text">{toEp - fromEp + 1}</span>
             episode{toEp - fromEp + 1 === 1 ? "" : "s"}
-            {#if currentSeason}<span class="text-muted/70"> of S{currentSeason.number} · {currentSeason.episodeCount} total</span>{/if}
+            {#if currentSeason}<span class="text-muted"> of S{currentSeason.number} · {currentSeason.episodeCount} total</span>{/if}
           </p>
         </div>
       {/if}
@@ -311,7 +311,7 @@
           rows="3"
           maxlength="1000"
           placeholder="On a flight, with friends, drunk on a Tuesday…"
-          class="w-full resize-none rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+          class="w-full resize-none rounded-md border border-strong bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
         ></textarea>
       </label>
 

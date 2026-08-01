@@ -601,15 +601,15 @@
       </div>
 
       {#if !spinning && !dragging && nearMisses.length > 0}
-        <p class="text-center text-[11px] text-muted/80">
+        <p class="text-center text-[11px] text-muted">
           Just missed:
           {#each nearMisses as miss, i (`${i}-${miss.kind}:${miss.id}`)}
-            <span class="text-text/80">{miss.title}</span>{#if i < nearMisses.length - 1}<span class="text-muted/60">, </span>{/if}
+            <span class="text-text/80">{miss.title}</span>{#if i < nearMisses.length - 1}<span class="text-muted">, </span>{/if}
           {/each}
         </p>
       {/if}
 
-      <p class="text-center text-[11px] text-muted/70">
+      <p class="text-center text-[11px] text-muted">
         Swipe the reel to spin — the wheel is endless.
       </p>
     </div>

@@ -318,7 +318,7 @@
       >
         <header class="space-y-0.5 text-center">
           <h2 class="text-xs font-medium uppercase tracking-[0.2em] text-muted">Bracket</h2>
-          <p class="text-[11px] text-muted/80">
+          <p class="text-[11px] text-muted">
             {bracketLog.length} match{bracketLog.length === 1 ? "" : "es"} · winner highlighted
           </p>
         </header>
@@ -367,7 +367,7 @@
       <div class="truncate text-[11px] font-medium {won ? 'text-text' : 'text-muted line-through decoration-muted/40'}">
         {e.title}
       </div>
-      <div class="text-[9px] uppercase tracking-wider text-muted/70">
+      <div class="text-[9px] uppercase tracking-wider text-muted">
         {won ? "Advanced" : "Eliminated"}
       </div>
     </div>

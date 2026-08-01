@@ -309,26 +309,22 @@
           <span class="text-muted">Temptation</span>
           <span class="flex items-center gap-1.5 tabular-nums">
             <span class="font-medium text-text">{activeBand.label}</span>
-            <span class="text-muted/60">·</span>
+            <span class="text-muted">·</span>
             <span class="font-medium text-text">{pct}%</span>
           </span>
         </div>
         <div
           class="relative h-1.5 w-full overflow-hidden rounded-full"
-          style="background: color-mix(in oklab, var(--color-border) 50%, transparent);"
+          style="background: var(--brand-surface-2);"
         >
-          <span
-            class="absolute inset-0"
-            aria-hidden="true"
-            style="background: linear-gradient(90deg, hsl(215 55% 56%) 0%, hsl(190 65% 56%) 25%, hsl(140 50% 56%) 45%, hsl(45 85% 58%) 70%, hsl(15 80% 58%) 100%);"
-          ></span>
+          <span class="heat-ramp absolute inset-0" aria-hidden="true"></span>
           <span
             class="absolute inset-y-0 right-0 transition-all duration-700 ease-out"
             aria-hidden="true"
-            style="width: {100 - pct}%; background: color-mix(in oklab, var(--color-border) 50%, transparent);"
+            style="width: {100 - pct}%; background: var(--brand-surface-2);"
           ></span>
         </div>
-        <p class="text-[11px] text-muted/80">+0.25 · watched S2E5 · 2d ago</p>
+        <p class="text-[11px] text-muted">+0.25 · watched S2E5 · 2d ago</p>
       </div>
       <div class="grid grid-cols-5 gap-1 text-center text-[9px] uppercase tracking-wider">
         {#each TEMPT_BANDS as b (b.label)}

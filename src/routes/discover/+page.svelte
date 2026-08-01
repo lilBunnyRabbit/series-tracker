@@ -263,7 +263,7 @@
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="sparkles" size={14} />
         Recommended
-        <span class="ml-1 text-[11px] font-normal normal-case text-muted/70">based on your library</span>
+        <span class="ml-1 text-[11px] font-normal normal-case text-muted">based on your library</span>
       </h2>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         {#each visibleRecs as r (r.media_type + ":" + r.id)}
@@ -286,7 +286,7 @@
       </h2>
       {#if visiblePopularTv.length > 0}
         <div class="space-y-2">
-          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted">
             <Icon name="tv" size={12} />
             TV
           </h3>
@@ -299,7 +299,7 @@
       {/if}
       {#if visiblePopularMovies.length > 0}
         <div class="space-y-2">
-          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted">
             <Icon name="film" size={12} />
             Movies
           </h3>
@@ -319,11 +319,11 @@
       <h2 class="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted">
         <Icon name="trophy" size={14} />
         Top rated
-        <span class="ml-1 text-[11px] font-normal normal-case text-muted/70">all-time on TMDB</span>
+        <span class="ml-1 text-[11px] font-normal normal-case text-muted">all-time on TMDB</span>
       </h2>
       {#if visibleTopRatedTv.length > 0}
         <div class="space-y-2">
-          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted">
             <Icon name="tv" size={12} />
             TV
           </h3>
@@ -336,7 +336,7 @@
       {/if}
       {#if visibleTopRatedMovies.length > 0}
         <div class="space-y-2">
-          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted/80">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted">
             <Icon name="film" size={12} />
             Movies
           </h3>
