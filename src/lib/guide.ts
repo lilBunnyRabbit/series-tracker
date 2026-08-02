@@ -169,7 +169,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "statuses",
-    version: "0.17.0",
+    version: "1.5.0",
     icon: "tag",
     accent: "primary",
     title: "Five statuses, five colours",

@@ -21,10 +21,17 @@ export const STATUS_DESCRIPTION: Record<Status, string> = {
   tuned: "Caught a few episodes — not really tracking",
 };
 
-// Tailwind class fragments mapping each status to a colour family.
-// Kept as a single source of truth so cards, dots, and the picker stay in sync.
-// `bgSoft` is the /15-tinted background (rating chips); kept as a literal
-// string so Tailwind's content scanner can see every variant.
+// Tailwind class fragments mapping each status to its colour.
+// Single source of truth so cards, dots, chips and the picker stay in sync.
+//
+// These point at the `--status-*` scale, NOT the brand rails. The rails all
+// share one lightness, which makes them unusable as a five-way categorical
+// encoding — see the long comment in `src/routes/layout.css`. The status
+// scale adds the lightness axis the rails give up, so a 6px dot still reads,
+// including under colour-vision deficiency.
+//
+// Every fragment is a literal string so Tailwind's content scanner sees it.
+// `bgSoft` is the /15 tint (rating chips), `borderSoft` the /60 edge.
 export const STATUS_COLOR: Record<
   Status,
   {
@@ -39,67 +46,54 @@ export const STATUS_COLOR: Record<
   }
 > = {
   watching: {
-    dot: "bg-primary",
-    text: "text-primary",
-    border: "border-primary",
-    borderSoft: "border-primary/60",
-    bg: "bg-primary",
-    bgSoft: "bg-primary/15",
-    chip: "border-primary text-primary",
-    hoverBorder: "hover-border-primary",
+    dot: "bg-status-watching",
+    text: "text-status-watching",
+    border: "border-status-watching",
+    borderSoft: "border-status-watching/60",
+    bg: "bg-status-watching",
+    bgSoft: "bg-status-watching/15",
+    chip: "border-status-watching text-status-watching",
+    hoverBorder: "hover-border-status-watching",
   },
   completed: {
-    dot: "bg-secondary",
-    text: "text-secondary",
-    border: "border-secondary",
-    borderSoft: "border-secondary/60",
-    bg: "bg-secondary",
-    bgSoft: "bg-secondary/15",
-    chip: "border-secondary text-secondary",
-    hoverBorder: "hover-border-secondary",
+    dot: "bg-status-completed",
+    text: "text-status-completed",
+    border: "border-status-completed",
+    borderSoft: "border-status-completed/60",
+    bg: "bg-status-completed",
+    bgSoft: "bg-status-completed/15",
+    chip: "border-status-completed text-status-completed",
+    hoverBorder: "hover-border-status-completed",
   },
   plan: {
-    dot: "bg-accent",
-    text: "text-accent",
-    border: "border-accent",
-    borderSoft: "border-accent/60",
-    bg: "bg-accent",
-    bgSoft: "bg-accent/15",
-    chip: "border-accent text-accent",
-    hoverBorder: "hover-border-accent",
+    dot: "bg-status-plan",
+    text: "text-status-plan",
+    border: "border-status-plan",
+    borderSoft: "border-status-plan/60",
+    bg: "bg-status-plan",
+    bgSoft: "bg-status-plan/15",
+    chip: "border-status-plan text-status-plan",
+    hoverBorder: "hover-border-status-plan",
   },
   dropped: {
-    dot: "bg-muted",
-    text: "text-muted",
-    border: "border-muted",
-    borderSoft: "border-muted/60",
-    // `bg-text`, not `bg-muted`. `.bg` is the only field painted as an opaque
-    // fill over poster artwork (the rating badge) and as a progress-bar fill,
-    // and `muted` is a 65% alpha on the foreground — over a photo that makes
-    // the badge's contrast depend on whatever pixels are behind it. The
-    // opaque foreground is the same neutral, bounded at 6.92 dark / 7.05
-    // light against the `text-bg` ink. Everything else here stays muted, so
-    // Dropped still recedes in mixed lists.
-    bg: "bg-text",
-    bgSoft: "bg-muted/15",
-    chip: "border-border text-muted",
-    hoverBorder: "hover-border-muted",
+    dot: "bg-status-dropped",
+    text: "text-status-dropped",
+    border: "border-status-dropped",
+    borderSoft: "border-status-dropped/60",
+    bg: "bg-status-dropped",
+    bgSoft: "bg-status-dropped/15",
+    chip: "border-status-dropped text-status-dropped",
+    hoverBorder: "hover-border-status-dropped",
   },
-  // `info`, not `tertiary`. Tertiary is the brand's rank-1 rail at 1× the
-  // seed chroma, which puts it within a just-noticeable difference of the
-  // foreground in both modes (ΔE 1.8 dark, 1.2 light) — deliberate as the
-  // quietest brand colour, unusable as one of five statuses you're meant to
-  // tell apart at a glance. `info` is the furthest in-palette hue from the
-  // other four and the only state token this app wasn't already using.
   tuned: {
-    dot: "bg-info",
-    text: "text-info",
-    border: "border-info",
-    borderSoft: "border-info/60",
-    bg: "bg-info",
-    bgSoft: "bg-info/15",
-    chip: "border-info text-info",
-    hoverBorder: "hover-border-info",
+    dot: "bg-status-tuned",
+    text: "text-status-tuned",
+    border: "border-status-tuned",
+    borderSoft: "border-status-tuned/60",
+    bg: "bg-status-tuned",
+    bgSoft: "bg-status-tuned/15",
+    chip: "border-status-tuned text-status-tuned",
+    hoverBorder: "hover-border-status-tuned",
   },
 };
 

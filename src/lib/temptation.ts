@@ -79,17 +79,18 @@ export function glowIntensity(value: number): number {
 }
 
 /** Map each status to the CSS variable that drives the card glow's hue. The
- *  glow inherits the status colour rather than using a fixed amber so a
- *  high-temptation "Watching" card stays in its primary palette and a
- *  high-temptation "Plan" card stays in accent — no clash with the
- *  status-tinted border. Stored as `var(--color-X)` strings so the cards can
- *  drop them into inline `--tt-c` declarations directly. */
+ *  glow inherits the status colour rather than using a fixed amber, so a
+ *  high-temptation card glows in the same colour as its own border instead of
+ *  fighting it. Points at the `--status-*` scale (see `layout.css`), which is
+ *  also what `STATUS_COLOR` in `types.ts` renders — keep the two in step.
+ *  Stored as `var(--status-X)` strings so cards can drop them into inline
+ *  `--tt-c` declarations directly. */
 export const TEMPTATION_GLOW_COLOR: Record<Status, string> = {
-  watching: "var(--color-primary)",
-  completed: "var(--color-secondary)",
-  plan: "var(--color-accent)",
-  tuned: "var(--color-info)",
-  dropped: "var(--color-muted)",
+  watching: "var(--status-watching)",
+  completed: "var(--status-completed)",
+  plan: "var(--status-plan)",
+  tuned: "var(--status-tuned)",
+  dropped: "var(--status-dropped)",
 };
 
 const MS_PER_DAY = 86_400_000;

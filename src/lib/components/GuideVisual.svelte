@@ -6,7 +6,7 @@
   // all state — drop-in renderable anywhere.
   import Icon from "$lib/components/Icon.svelte";
   import type { GuideVisual } from "$lib/guide";
-  import { STATUS_COLOR, STATUS_LABEL, STATUSES } from "$lib/types";
+  import { STATUS_COLOR, STATUS_DESCRIPTION, STATUS_LABEL, STATUSES } from "$lib/types";
 
   type Props = {
     visual: GuideVisual;
@@ -185,7 +185,7 @@
           </span>
           <div class="min-w-0">
             <div class="text-sm font-medium {active ? c.text : ''}">{STATUS_LABEL[s]}</div>
-            <div class="text-[11px] text-muted">{c.text.replace("text-", "")} family</div>
+            <div class="text-[11px] text-muted">{STATUS_DESCRIPTION[s]}</div>
           </div>
         </div>
       {/each}

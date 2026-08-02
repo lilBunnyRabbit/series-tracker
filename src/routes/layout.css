@@ -57,6 +57,16 @@
   --brand-error: #f88876; /*   oklch(0.745 0.1398 30)  */
   --brand-info: #49b7fb; /*    oklch(0.745 0.1398 240) */
 
+  /* ----------------------------------------------------------------------
+     STATUS SCALE — a data encoding, NOT brand. See the block comment above
+     the light values for the full derivation and why this exists.
+     ---------------------------------------------------------------------- */
+  --status-watching: #dcfc8f; /*  oklch(0.945 0.1398 122.47) — cottontail's hue, at cottontail's lightness */
+  --status-plan: #fbc5b0; /*      oklch(0.865 0.0688 42.00)  */
+  --status-tuned: #81ddfa; /*     oklch(0.850 0.0964 221.00) */
+  --status-completed: #a5abf8; /* oklch(0.765 0.1101 280.00) */
+  --status-dropped: #ab998f; /*   oklch(0.695 0.0256 50.47)  — near-neutral, it should recede */
+
   /* Product roles. The brand ships a ladder, not role names — these pick
      which rung each surface tier sits on, and the direction flips with mode:
      in dark, elevation climbs the ladder. Order here mirrors the `roles`
@@ -117,6 +127,46 @@
   --brand-warning: #535200; /* oklch(0.4268 0.0928 109.31) — green-gold, deliberate */
   --brand-error: #852d22; /*   oklch(0.425  0.1228 30)     */
   --brand-info: #00548a; /*    oklch(0.4329 0.1119 246.24) */
+
+  /* ----------------------------------------------------------------------
+     STATUS SCALE — the five library statuses. This is a DATA ENCODING and it
+     is deliberately NOT part of the brand palette, the same way `mark-ears`
+     and `--brand-scrim` sit outside it.
+
+     Why it has to exist. The brand rails are all one lightness — the spread
+     across all nine is 0.0018 — because constant lightness is exactly what
+     buys the 63-pair contrast contract. That leaves hue as the only axis,
+     and hue is the axis that fails first: at 6px, at 1px borders, and under
+     colour-vision deficiency. Measured on the rails the app was using, the
+     worst pair sat at ΔE 0.011, and brute-forcing all 126 five-rail subsets
+     found nothing better than 0.025 — barely over the ~0.02 JND. Under
+     deuteranopia `primary` and `accent` land on #afaf84 / #b4b473 with
+     `foreground` between them. No re-mapping fixes that; the palette simply
+     cannot express a five-way categorical encoding.
+
+     How these were derived. Anchored on `cottontail`, which is the one
+     identity colour sitting OFF the L 0.745 line (L 0.945 dark) and which
+     carries its own rule — chroma as a fraction of the sRGB gamut ceiling at
+     a given lightness. Reusing that rule at five (lightness, hue) points
+     opens a 0.235 lightness band where the rails had 0.002, and the ladder
+     descends in engagement order: watching (cottontail itself) → plan →
+     tuned → completed → dropped. Chroma is capped at the brand's loudest
+     existing value so nothing out-shouts the palette.
+
+     Verified: every status clears AA 4.5:1 against page, surface and
+     surface-2 in both modes — so `text-bg` on a status fill is also ≥4.5,
+     the ratio being symmetric. Worst pairwise separation across normal,
+     deuteranopic, protanopic and tritanopic vision is 0.083 dark / 0.065
+     light, against 0.011 for what this replaced.
+
+     Hues stay put across modes on purpose. The rails re-fit themselves to
+     each ground; a status must not, because users learn "green = watching".
+     ---------------------------------------------------------------------- */
+  --status-watching: #283302; /*  oklch(0.300 0.0713 122.47) */
+  --status-plan: #633805; /*      oklch(0.385 0.0845 63.00)  */
+  --status-tuned: #085062; /*     oklch(0.400 0.0703 221.00) */
+  --status-completed: #57338e; /* oklch(0.415 0.1431 298.00) */
+  --status-dropped: #635852; /*   oklch(0.470 0.0174 50.47)  */
 
   /* Roles invert direction: the light page sits near the ceiling (only 0.0294
      of lightness above it before the tint dies), so elevation walks DOWN the
@@ -244,6 +294,14 @@
   --color-warning: var(--brand-warning);
   --color-error: var(--brand-error);
   --color-info: var(--brand-info);
+
+  /* Status scale — data encoding, not brand. `bg-status-watching`,
+     `text-status-dropped`, `border-status-plan`, … */
+  --color-status-watching: var(--status-watching);
+  --color-status-plan: var(--status-plan);
+  --color-status-tuned: var(--status-tuned);
+  --color-status-completed: var(--status-completed);
+  --color-status-dropped: var(--status-dropped);
 
   /* The ladder, addressable by rung */
   --color-background-lightest: var(--brand-background-lightest);
@@ -440,6 +498,23 @@
     }
     .hover-border-info:hover {
       border-color: var(--color-info);
+    }
+    /* Status scale — one per library status, consumed via
+       `STATUS_COLOR[s].hoverBorder` in `src/lib/types.ts`. */
+    .hover-border-status-watching:hover {
+      border-color: var(--status-watching);
+    }
+    .hover-border-status-plan:hover {
+      border-color: var(--status-plan);
+    }
+    .hover-border-status-tuned:hover {
+      border-color: var(--status-tuned);
+    }
+    .hover-border-status-completed:hover {
+      border-color: var(--status-completed);
+    }
+    .hover-border-status-dropped:hover {
+      border-color: var(--status-dropped);
     }
     .hover-bg-surface:hover {
       background-color: var(--color-surface);

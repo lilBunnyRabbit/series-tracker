@@ -352,6 +352,15 @@
     { name: "disabled", className: "bg-disabled" },
   ] as const;
 
+  // Engagement order — the scale is a lightness ladder, brightest first.
+  const statusTokens = [
+    { name: "watching", className: "bg-status-watching" },
+    { name: "plan", className: "bg-status-plan" },
+    { name: "tuned", className: "bg-status-tuned" },
+    { name: "completed", className: "bg-status-completed" },
+    { name: "dropped", className: "bg-status-dropped" },
+  ] as const;
+
   // Rank order is the brand's own: chroma is rank, 1c → 4c.
   const railTokens = [
     { name: "tertiary", className: "bg-tertiary" },
@@ -445,6 +454,27 @@
       </p>
       <div class="grid grid-cols-3 gap-3 sm:grid-cols-9">
         {#each railTokens as t (t.name)}
+          <div class="space-y-1.5">
+            <div
+              class="h-16 w-full rounded-md border border-border {t.className}"
+              aria-hidden="true"
+            ></div>
+            <div class="text-[11px] tabular-nums text-muted">{t.name}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h3 class="text-sm font-semibold">Status scale <span class="font-normal text-muted">— data encoding, not brand</span></h3>
+      <p class="text-xs text-muted">
+        The one place colour carries meaning rather than emphasis, so it's the one place the rails
+        can't be used: they share a single lightness, and hue alone doesn't survive a 6px dot or
+        colour-vision deficiency. This scale is anchored on <span class="text-text">cottontail</span>
+        and adds the lightness axis back — brightest is most engaged, dimmest is dropped.
+      </p>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {#each statusTokens as t (t.name)}
           <div class="space-y-1.5">
             <div
               class="h-16 w-full rounded-md border border-border {t.className}"

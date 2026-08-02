@@ -4,6 +4,14 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-02
+
+### Changed
+- The five library statuses now have their own colours instead of borrowing from the brand set. Watching is the bright lime from the logo, and the rest step down in brightness as engagement drops — Plan to watch, Tuned in, Completed, then Dropped. Brightness now carries as much of the signal as hue does, so a status dot reads at a glance instead of needing a second look.
+
+### Fixed
+- Status colours are now distinguishable for colour-blind users. The previous set relied entirely on hue, which meant four of the five statuses collapsed into the same shade under the most common form of colour blindness — the dots, borders, and rating badges were effectively unreadable. All five are now separated by brightness as well, which survives every type.
+
 ## [1.4.0] - 2026-08-02
 
 ### Changed
