@@ -150,10 +150,19 @@ export async function applyUpdate(): Promise<void> {
   // and re-register a fresh SW, which is the only reliable way to escape
   // a stale precache when the install cycle hasn't completed.
   state.stage = "clearing";
+  //
+  // Scoped to this app: every lilbunnyrabbit.github.io project page shares one
+  // origin, so getRegistrations() and caches.keys() also return the other
+  // apps' workers and caches. Wiping them all logged those apps out of their
+  // offline shells. Workbox names its caches after the registration scope.
+  let scope = new URL(`${base}/`, location.origin).href;
   if ("serviceWorker" in navigator) {
     try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        scope = reg.scope;
+        await reg.unregister();
+      }
     } catch {
       // best-effort
     }
@@ -161,7 +170,7 @@ export async function applyUpdate(): Promise<void> {
   if ("caches" in window) {
     try {
       const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => k.includes(scope)).map((k) => caches.delete(k)));
     } catch {
       // best-effort
     }

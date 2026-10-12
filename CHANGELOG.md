@@ -4,6 +4,9 @@ All notable user-visible changes to Series Tracker. Format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Fixed
+- Updating Series Tracker no longer clears the offline copy of other apps hosted on the same site.
+
 ## [1.5.0] - 2026-08-02
 
 ### Changed
